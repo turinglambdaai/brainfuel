@@ -25,6 +25,7 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     {
         _settings = settings;
         _client = CreateClient();
+        CardOpacity = settings.CardOpacity;
         _refreshTimer = new DispatcherTimer
         {
             Interval = TimeSpan.FromMinutes(Math.Max(1, _settings.RefreshIntervalMinutes)),
@@ -62,6 +63,8 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         _client?.Dispose();
         _client = CreateClient();
         _refreshTimer.Interval = TimeSpan.FromMinutes(Math.Max(1, _settings.RefreshIntervalMinutes));
+        CardOpacity = _settings.CardOpacity;
+        UpdateTexts(); // re-localize dynamic strings immediately (e.g. after language change)
         _ = RefreshAsync();
     }
 
@@ -93,14 +96,14 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         if (snap?.HasHourly == true && h >= thr && !_hourlyAlerted)
         {
             _hourlyAlerted = true;
-            OnNotify("5 小时额度即将耗尽", $"已用 {Math.Round(h):0}%");
+            OnNotify(Strings.Get("NotifyHourlyTitle"), Strings.Get("NotifyUsed", Math.Round(h)));
         }
         if (h < thr - 5) _hourlyAlerted = false;
 
         if (snap?.HasWeekly == true && w >= thr && !_weeklyAlerted)
         {
             _weeklyAlerted = true;
-            OnNotify("周额度即将耗尽", $"已用 {Math.Round(w):0}%");
+            OnNotify(Strings.Get("NotifyWeeklyTitle"), Strings.Get("NotifyUsed", Math.Round(w)));
         }
         if (w < thr - 5) _weeklyAlerted = false;
     }
@@ -117,13 +120,15 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         double hourlyShown = _settings.HourlyDisplayStyle == DisplayStyle.Remaining ? 100 - hourlyUsed : hourlyUsed;
         HourlyPercentText = FormatPct(hourlyShown, snap?.HasHourly);
 
-        WeeklySubText = snap?.WeeklyResetAt is { } wr ? FutureWords(wr) : "—";
-        HourlySubText = snap?.HourlyResetAt is { } hr ? FutureWords(hr) : "—";
+        WeeklySubText = snap?.WeeklyResetAt is { } wr ? FutureWords(wr) : Strings.Get("None");
+        HourlySubText = snap?.HourlyResetAt is { } hr ? FutureWords(hr) : Strings.Get("None");
 
         if (_inError)
-            RefreshAgoText = snap is null ? "刷新失败" : $"刷新失败 · 上次 {snap.FetchedAt.LocalDateTime:HH:mm}";
+            RefreshAgoText = snap is null
+                ? Strings.Get("RefreshFailed")
+                : Strings.Get("RefreshFailedAt", snap.FetchedAt.LocalDateTime.ToString("HH:mm"));
         else if (snap is null)
-            RefreshAgoText = "刷新中…";
+            RefreshAgoText = Strings.Get("Refreshing");
         else
             RefreshAgoText = PastWords(snap.FetchedAt);
 
@@ -136,19 +141,19 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     private static string PastWords(DateTimeOffset t)
     {
         var d = DateTimeOffset.Now - t;
-        if (d.TotalMinutes < 1) return "刚刚";
-        if (d.TotalHours < 1) return $"{(int)d.TotalMinutes} 分钟前";
-        if (d.TotalDays < 1) return $"{(int)d.TotalHours} 小时前";
-        return $"{(int)d.TotalDays} 天前";
+        if (d.TotalMinutes < 1) return Strings.Get("JustNow");
+        if (d.TotalHours < 1) return Strings.Get("MinutesAgo", (int)d.TotalMinutes);
+        if (d.TotalDays < 1) return Strings.Get("HoursAgo", (int)d.TotalHours);
+        return Strings.Get("DaysAgo", (int)d.TotalDays);
     }
 
     private static string FutureWords(DateTimeOffset t)
     {
         var d = t - DateTimeOffset.Now;
-        if (d.TotalMinutes <= 0) return "即将重置";
-        if (d.TotalHours < 1) return $"{(int)Math.Ceiling(d.TotalMinutes)} 分钟后";
-        if (d.TotalDays < 1) return $"{(int)Math.Round(d.TotalHours)} 小时后";
-        return $"{(int)Math.Round(d.TotalDays)} 天后";
+        if (d.TotalMinutes <= 0) return Strings.Get("ResettingSoon");
+        if (d.TotalHours < 1) return Strings.Get("MinutesLater", (int)Math.Ceiling(d.TotalMinutes));
+        if (d.TotalDays < 1) return Strings.Get("HoursLater", (int)Math.Round(d.TotalHours));
+        return Strings.Get("DaysLater", (int)Math.Round(d.TotalDays));
     }
 
     // ---- bindable properties ----
@@ -167,6 +172,8 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     private string _hourlySubText = "5 小时";
     public string RefreshAgoText { get => _refreshAgoText; set => Set(ref _refreshAgoText, value); }
     private string _refreshAgoText = "刷新中…";
+    public double CardOpacity { get => _cardOpacity; set => Set(ref _cardOpacity, value); }
+    private double _cardOpacity = 1.0;
     public bool IsError { get => _isError; set => Set(ref _isError, value); }
     private bool _isError;
 

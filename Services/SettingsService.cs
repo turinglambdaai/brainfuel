@@ -6,6 +6,8 @@ namespace BrainFuel.Services;
 
 public enum DisplayStyle { Used, Remaining }
 
+public enum AppTheme { System, Light, Dark }
+
 public class AppSettings
 {
     public string? ApiKey { get; set; }
@@ -18,6 +20,9 @@ public class AppSettings
     public bool AutoStart { get; set; }
     public bool NotifyEnabled { get; set; } = true;
     public int NotifyThreshold { get; set; } = 80;
+    public AppTheme ThemeMode { get; set; } = AppTheme.Dark;
+    public double CardOpacity { get; set; } = 1.0;
+    public AppLanguage Language { get; set; } = AppLanguage.Zh;
 
     public bool IsValid => !string.IsNullOrWhiteSpace(ApiKey) && !string.IsNullOrWhiteSpace(BaseDomain);
 }

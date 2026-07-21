@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Styling;
 using BrainFuel.Services;
 using BrainFuel.ViewModels;
 
@@ -19,6 +20,8 @@ public partial class App : Application
     public override void OnFrameworkInitializationCompleted()
     {
         Settings = SettingsService.Load();
+        ApplyTheme(Settings.ThemeMode);
+        Strings.ApplyLanguage(Settings.Language);
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
@@ -34,5 +37,17 @@ public partial class App : Application
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    /// <summary>Switches the app theme (Fluent + the custom palette in App.axaml).</summary>
+    public static void ApplyTheme(AppTheme theme)
+    {
+        if (Application.Current is null) return;
+        Application.Current.RequestedThemeVariant = theme switch
+        {
+            AppTheme.Light => ThemeVariant.Light,
+            AppTheme.Dark => ThemeVariant.Dark,
+            _ => ThemeVariant.Default,
+        };
     }
 }

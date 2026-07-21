@@ -8,6 +8,7 @@ namespace BrainFuel.Controls;
 /// <summary>
 /// Two concentric progress rings: outer = weekly usage, inner = 5-hour usage.
 /// Progress values are 0..1 (used portion); value changes animate via Transitions.
+/// Brush colors are bindable so they follow the app theme.
 /// </summary>
 public class UsageRing : Control
 {
@@ -17,13 +18,20 @@ public class UsageRing : Control
     public static readonly StyledProperty<double> HourlyProgressProperty =
         AvaloniaProperty.Register<UsageRing, double>(nameof(HourlyProgress));
 
-    private static readonly IBrush TrackBrush = new SolidColorBrush(Color.FromRgb(58, 57, 55));     // warm dark
-    private static readonly IBrush WeeklyBrush = new SolidColorBrush(Color.FromRgb(217, 119, 87));  // Anthropic clay
-    private static readonly IBrush HourlyBrush = new SolidColorBrush(Color.FromRgb(232, 212, 184)); // warm sand
+    public static readonly StyledProperty<IBrush> TrackBrushProperty =
+        AvaloniaProperty.Register<UsageRing, IBrush>(nameof(TrackBrush), new SolidColorBrush(Color.FromRgb(58, 57, 55)));
+
+    public static readonly StyledProperty<IBrush> WeeklyBrushProperty =
+        AvaloniaProperty.Register<UsageRing, IBrush>(nameof(WeeklyBrush), new SolidColorBrush(Color.FromRgb(217, 119, 87)));
+
+    public static readonly StyledProperty<IBrush> HourlyBrushProperty =
+        AvaloniaProperty.Register<UsageRing, IBrush>(nameof(HourlyBrush), new SolidColorBrush(Color.FromRgb(232, 212, 184)));
 
     static UsageRing()
     {
-        AffectsRender<UsageRing>(WeeklyProgressProperty, HourlyProgressProperty);
+        AffectsRender<UsageRing>(
+            WeeklyProgressProperty, HourlyProgressProperty,
+            TrackBrushProperty, WeeklyBrushProperty, HourlyBrushProperty);
     }
 
     public UsageRing()
@@ -53,6 +61,24 @@ public class UsageRing : Control
     {
         get => GetValue(HourlyProgressProperty);
         set => SetValue(HourlyProgressProperty, value);
+    }
+
+    public IBrush TrackBrush
+    {
+        get => GetValue(TrackBrushProperty);
+        set => SetValue(TrackBrushProperty, value);
+    }
+
+    public IBrush WeeklyBrush
+    {
+        get => GetValue(WeeklyBrushProperty);
+        set => SetValue(WeeklyBrushProperty, value);
+    }
+
+    public IBrush HourlyBrush
+    {
+        get => GetValue(HourlyBrushProperty);
+        set => SetValue(HourlyBrushProperty, value);
     }
 
     public override void Render(DrawingContext context)

@@ -15,6 +15,7 @@ public partial class SettingsWindow : Window
     {
         InitializeComponent();
         _settings = settings;
+        Title = Strings.Get("WinTitle");
 
         KeyBox.Text = settings.ApiKey;
         PlatformBox.SelectedIndex =
@@ -25,6 +26,9 @@ public partial class SettingsWindow : Window
         AutoStartBox.IsChecked = AutoStartService.IsEnabled();
         NotifyBox.IsChecked = settings.NotifyEnabled;
         ThresholdBox.Value = Math.Clamp(settings.NotifyThreshold, 10, 99);
+        ThemeBox.SelectedIndex = (int)settings.ThemeMode;
+        OpacitySlider.Value = settings.CardOpacity;
+        LangBox.SelectedIndex = (int)settings.Language;
     }
 
     private void Save_Click(object? sender, RoutedEventArgs e)
@@ -37,7 +41,12 @@ public partial class SettingsWindow : Window
         _settings.AutoStart = AutoStartBox.IsChecked ?? false;
         _settings.NotifyEnabled = NotifyBox.IsChecked ?? true;
         _settings.NotifyThreshold = (int)(ThresholdBox.Value ?? 80);
+        _settings.ThemeMode = (AppTheme)ThemeBox.SelectedIndex;
+        _settings.CardOpacity = OpacitySlider.Value;
+        _settings.Language = (AppLanguage)LangBox.SelectedIndex;
         SettingsService.Save(_settings);
+        App.ApplyTheme(_settings.ThemeMode);
+        Strings.ApplyLanguage(_settings.Language);
         try { AutoStartService.SetEnabled(_settings.AutoStart); } catch { }
         Close();
     }

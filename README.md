@@ -41,6 +41,8 @@ Output goes to `publish/<rid>/`.
 
 - Two nested rings (outer = weekly, inner = 5-hour window), animated.
 - Clickable refresh button; auto-refresh every N minutes.
+- **Light / Dark / System theme** (Anthropic-style palette) and a **card opacity** slider so it doesn't block your desktop.
+- **中文 / English** UI toggle.
 - Optional **start-on-login** (Windows registry / macOS LaunchAgent / Linux autostart).
 - Optional **desktop notification** when a quota crosses an exhaustion threshold (default 80% used, configurable).
 - Right-click the card for refresh / settings / quit. Drag to move (position remembered).

@@ -2,7 +2,38 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="BrainFuel.App"
              RequestedThemeVariant="Default">
-             <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+    <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="CardBg" Color="#1F1F1E"/>
+                    <SolidColorBrush x:Key="CardBorder" Color="#26F0EEE6"/>
+                    <SolidColorBrush x:Key="TextPrimary" Color="#F0EEE6"/>
+                    <SolidColorBrush x:Key="TextSecondary" Color="#A39E94"/>
+                    <SolidColorBrush x:Key="TextMuted" Color="#9B968B"/>
+                    <SolidColorBrush x:Key="Separator" Color="#36352F"/>
+                    <SolidColorBrush x:Key="RingWeekly" Color="#D97757"/>
+                    <SolidColorBrush x:Key="RingHourly" Color="#E8D4B8"/>
+                    <SolidColorBrush x:Key="RingTrack" Color="#3A3937"/>
+                    <SolidColorBrush x:Key="HoverOverlay" Color="#1AF0EEE6"/>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="CardBg" Color="#F2F0E9"/>
+                    <SolidColorBrush x:Key="CardBorder" Color="#22807872"/>
+                    <SolidColorBrush x:Key="TextPrimary" Color="#1F1F1E"/>
+                    <SolidColorBrush x:Key="TextSecondary" Color="#56524B"/>
+                    <SolidColorBrush x:Key="TextMuted" Color="#7A766E"/>
+                    <SolidColorBrush x:Key="Separator" Color="#D8D4C8"/>
+                    <SolidColorBrush x:Key="RingWeekly" Color="#C25E3E"/>
+                    <SolidColorBrush x:Key="RingHourly" Color="#B5895A"/>
+                    <SolidColorBrush x:Key="RingTrack" Color="#D8D4C8"/>
+                    <SolidColorBrush x:Key="HoverOverlay" Color="#14000000"/>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
 
     <Application.Styles>
         <FluentTheme />
