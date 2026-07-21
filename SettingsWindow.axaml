@@ -1,30 +1,33 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="clr-namespace:BrainFuel.ViewModels"
         x:Class="BrainFuel.SettingsWindow"
         Title="BrainFuel 设置"
-        Width="440" Height="430"
+        Width="460" Height="470"
         CanResize="False"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="True"
         Topmost="True"
         WindowDecorations="Full">
-    <Grid RowDefinitions="Auto,*,Auto">
-        <StackPanel Grid.Row="0" Margin="22,20,22,8" Spacing="10">
+    <Grid RowDefinitions="Auto, *, Auto">
+        <!-- header -->
+        <StackPanel Grid.Row="0" Margin="24,20,24,8" Spacing="6">
             <TextBlock Text="GLM 套餐额度监控" FontSize="18" FontWeight="Bold"/>
-            <TextBlock Text="填入你的 GLM Coding Plan Key 与平台，控件会用它查询额度。" Foreground="#FF9FA0A0" TextWrapping="Wrap"/>
+            <TextBlock Text="填入你的 GLM Coding Plan Key 与平台，控件会用它查询额度。"
+                       Foreground="#FF9FA0A0" TextWrapping="Wrap"/>
         </StackPanel>
 
-        <ScrollViewer Grid.Row="1" Margin="22,0">
-            <StackPanel Spacing="14">
+        <!-- form -->
+        <ScrollViewer Grid.Row="1" Margin="24,0" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Spacing="16">
                 <StackPanel Spacing="4">
                     <TextBlock Text="API Key"/>
-                    <TextBox x:Name="KeyBox" PlaceholderText="粘贴 GLM Coding Plan Key" PasswordChar="•" Width="380"/>
+                    <TextBox x:Name="KeyBox" PlaceholderText="粘贴 GLM Coding Plan Key"
+                             PasswordChar="•" HorizontalAlignment="Stretch"/>
                 </StackPanel>
 
                 <StackPanel Spacing="4">
                     <TextBlock Text="平台"/>
-                    <ComboBox x:Name="PlatformBox" SelectedIndex="0" Width="380">
+                    <ComboBox x:Name="PlatformBox" SelectedIndex="0" HorizontalAlignment="Stretch">
                         <ComboBoxItem Content="智谱国内 · open.bigmodel.cn"/>
                         <ComboBoxItem Content="Z.ai 国际 · api.z.ai"/>
                     </ComboBox>
@@ -32,7 +35,8 @@
 
                 <StackPanel Spacing="4">
                     <TextBlock Text="刷新间隔（分钟）"/>
-                    <NumericUpDown x:Name="IntervalBox" Minimum="1" Maximum="60" Value="5" Width="160"/>
+                    <NumericUpDown x:Name="IntervalBox" Minimum="1" Maximum="60" Value="5"
+                                   Width="140" HorizontalAlignment="Left"/>
                 </StackPanel>
 
                 <StackPanel Spacing="6">
@@ -40,24 +44,27 @@
                     <CheckBox x:Name="HourlyRemaining" Content="5 小时显示「剩余」而非「已用」"/>
                 </StackPanel>
 
-                <Border Height="1" Background="#22000000" Margin="0,6"/>
+                <Border Height="1" Background="#22000000" Margin="0,4"/>
 
                 <CheckBox x:Name="AutoStartBox" Content="开机自动启动"/>
 
                 <StackPanel Spacing="6">
                     <CheckBox x:Name="NotifyBox" Content="额度接近耗尽时桌面通知"/>
-                    <StackPanel Orientation="Horizontal" Spacing="6" Margin="22,0,0,0">
+                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="24,0,0,0">
                         <TextBlock Text="触发阈值（已用 %）" VerticalAlignment="Center" FontSize="12"/>
-                        <NumericUpDown x:Name="ThresholdBox" Minimum="10" Maximum="99" Value="80" Width="100"/>
+                        <NumericUpDown x:Name="ThresholdBox" Minimum="10" Maximum="99" Value="80" Width="140"/>
                     </StackPanel>
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>
 
+        <!-- footer -->
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right"
-                    Spacing="8" Margin="22,8,22,18">
-            <Button Content="取消" Click="Cancel_Click" Width="88"/>
-            <Button Content="保存" Click="Save_Click" Width="88" Classes="accent"/>
+                    Spacing="10" Margin="24,8,24,20">
+            <Button Content="取消" Click="Cancel_Click" Width="100"
+                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+            <Button Content="保存" Click="Save_Click" Width="100" Classes="accent"
+                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
         </StackPanel>
     </Grid>
 </Window>
