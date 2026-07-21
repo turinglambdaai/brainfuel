@@ -1,0 +1,20 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="BrainFuel.NotificationWindow"
+        Width="280" Height="64"
+        CanResize="False"
+        ShowInTaskbar="False"
+        WindowDecorations="None"
+        Topmost="True"
+        Background="#1F1F1E"
+        WindowStartupLocation="Manual">
+    <Border Padding="12,8"
+            Background="#1F1F1E"
+            BorderBrush="#4DD97757"
+            BorderThickness="1">
+        <StackPanel Spacing="2">
+            <TextBlock x:Name="TitleText" FontSize="12" FontWeight="Bold" Foreground="#FFD97757"/>
+            <TextBlock x:Name="MessageText" FontSize="11" Foreground="#FFCFCBC2" TextWrapping="Wrap"/>
+        </StackPanel>
+    </Border>
+</Window>

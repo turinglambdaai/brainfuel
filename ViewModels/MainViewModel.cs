@@ -15,6 +15,11 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     private GlmUsageClient? _client;
     private UsageSnapshot? _last;
     private bool _inError;
+    private bool _hourlyAlerted;
+    private bool _weeklyAlerted;
+
+    /// <summary>UI hook to surface a desktop notification (title, message).</summary>
+    public Action<string, string>? OnNotify { get; set; }
 
     public MainViewModel(AppSettings settings)
     {
@@ -74,6 +79,30 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         HourlyProgress = (_settings.HourlyDisplayStyle == DisplayStyle.Remaining ? 100 - hourlyUsed : hourlyUsed) / 100.0;
 
         UpdateTexts();
+        CheckAlerts();
+    }
+
+    private void CheckAlerts()
+    {
+        if (!_settings.NotifyEnabled || OnNotify is null) return;
+        var snap = _last;
+        double h = snap?.HourlyUsedPct ?? 0;
+        double w = snap?.WeeklyUsedPct ?? 0;
+        int thr = Math.Clamp(_settings.NotifyThreshold, 1, 99);
+
+        if (snap?.HasHourly == true && h >= thr && !_hourlyAlerted)
+        {
+            _hourlyAlerted = true;
+            OnNotify("5 小时额度即将耗尽", $"已用 {Math.Round(h):0}%");
+        }
+        if (h < thr - 5) _hourlyAlerted = false;
+
+        if (snap?.HasWeekly == true && w >= thr && !_weeklyAlerted)
+        {
+            _weeklyAlerted = true;
+            OnNotify("周额度即将耗尽", $"已用 {Math.Round(w):0}%");
+        }
+        if (w < thr - 5) _weeklyAlerted = false;
     }
 
     private void UpdateTexts()

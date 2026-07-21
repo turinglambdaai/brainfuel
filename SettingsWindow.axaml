@@ -39,6 +39,18 @@
                     <CheckBox x:Name="WeeklyRemaining" Content="周用量显示「剩余」而非「已用」"/>
                     <CheckBox x:Name="HourlyRemaining" Content="5 小时显示「剩余」而非「已用」"/>
                 </StackPanel>
+
+                <Border Height="1" Background="#22000000" Margin="0,6"/>
+
+                <CheckBox x:Name="AutoStartBox" Content="开机自动启动"/>
+
+                <StackPanel Spacing="6">
+                    <CheckBox x:Name="NotifyBox" Content="额度接近耗尽时桌面通知"/>
+                    <StackPanel Orientation="Horizontal" Spacing="6" Margin="22,0,0,0">
+                        <TextBlock Text="触发阈值（已用 %）" VerticalAlignment="Center" FontSize="12"/>
+                        <NumericUpDown x:Name="ThresholdBox" Minimum="10" Maximum="99" Value="80" Width="100"/>
+                    </StackPanel>
+                </StackPanel>
             </StackPanel>
         </ScrollViewer>
 

@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Threading;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using BrainFuel.Services;
@@ -25,6 +26,10 @@ public partial class MainWindow : Window
         DataContext = vm;
         if (settings.WindowX is int x && settings.WindowY is int y)
             Position = new PixelPoint(x, y);
+
+        vm.OnNotify = (title, msg) => Dispatcher.UIThread.Post(() =>
+            new NotificationWindow().ShowNotification(title, msg));
+
         vm.Start();
     }
 

@@ -15,6 +15,9 @@ public class AppSettings
     public int? WindowY { get; set; }
     public DisplayStyle WeeklyDisplayStyle { get; set; } = DisplayStyle.Used;
     public DisplayStyle HourlyDisplayStyle { get; set; } = DisplayStyle.Remaining;
+    public bool AutoStart { get; set; }
+    public bool NotifyEnabled { get; set; } = true;
+    public int NotifyThreshold { get; set; } = 80;
 
     public bool IsValid => !string.IsNullOrWhiteSpace(ApiKey) && !string.IsNullOrWhiteSpace(BaseDomain);
 }
