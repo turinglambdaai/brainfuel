@@ -25,7 +25,9 @@ Settings & API key live under `%APPDATA%\BrainFuel\` (Windows) / `~/.config/Brai
 
 ## Distribute
 
-Self-contained single-file exe (no .NET install needed on the target machine):
+**Option A — download a prebuilt exe** from [Releases](https://github.com/turinglambdaai/brainfuel/releases). The `release` workflow builds self-contained single-file exes for `win-x64`, `osx-arm64`, and `linux-x64` — no .NET install needed on the target. (A manual run from the [Actions tab](https://github.com/turinglambdaai/brainfuel/actions) also produces downloadable artifacts.)
+
+**Option B — build locally:**
 
 ```powershell
 ./publish.ps1                 # win-x64 (default)
@@ -33,7 +35,7 @@ Self-contained single-file exe (no .NET install needed on the target machine):
 ./publish.ps1 linux-x64       # Linux
 ```
 
-Output goes to `publish/<rid>/`. The single `BrainFuel.exe` runs on a clean machine with no .NET installed.
+Output goes to `publish/<rid>/`.
 
 ## Features
 
