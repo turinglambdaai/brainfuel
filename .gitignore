@@ -1,0 +1,18 @@
+# Build output
+bin/
+obj/
+
+# IDE
+.vs/
+.idea/
+*.user
+*.suo
+*.userprefs
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local secrets / runtime state (kept out of the repo)
+appsettings.*.json
+*.secret
