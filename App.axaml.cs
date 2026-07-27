@@ -1,7 +1,11 @@
+using System.Threading;
+using System.Threading.Tasks;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Styling;
+using Avalonia.Threading;
 using BrainFuel.Services;
 using BrainFuel.ViewModels;
 
@@ -11,6 +15,8 @@ public partial class App : Application
 {
     public static AppSettings Settings { get; private set; } = new();
     public static MainViewModel? ViewModel { get; private set; }
+
+    private static CancellationTokenSource? _instanceServerCts;
 
     public override void Initialize()
     {
@@ -34,6 +40,20 @@ public partial class App : Application
             // First run (or key cleared): open settings so the user can configure it.
             if (!Settings.IsValid)
                 main.OpenSettings();
+
+            // Listen for "show" pokes from second-launch attempts, and bring this
+            // window to the foreground when they arrive.
+            _instanceServerCts = new CancellationTokenSource();
+            _ = SingleInstanceActivation.RunServerAsync(
+                onShow: () => Dispatcher.UIThread.Post(() =>
+                {
+                    var w = desktop.MainWindow;
+                    if (w is null) return;
+                    w.Show();
+                    w.WindowState = WindowState.Normal;
+                    w.Activate();
+                }),
+                _instanceServerCts.Token);
         }
 
         base.OnFrameworkInitializationCompleted();
