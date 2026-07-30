@@ -1,4 +1,4 @@
-# brainfuel
+# BrainFuel
 
 A tiny always-on-top desktop widget that monitors your **GLM Coding Plan** quota — the 5-hour rolling window and the weekly allowance — so you don't get blindsided by a rate limit mid-session. Built with **Avalonia 12** / .NET 10. Cross-platform (Windows / macOS / Linux).
 

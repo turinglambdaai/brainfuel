@@ -1,4 +1,4 @@
-# brainfuel
+# BrainFuel
 
 一个常驻置顶的桌面小组件，用于监控你的 **GLM Coding Plan** 额度——包括 5 小时滚动窗口和每周额度，避免在开发过程中突然触发限流。基于 **Avalonia 12** / .NET 10 构建，支持跨平台（Windows / macOS / Linux）。
 
