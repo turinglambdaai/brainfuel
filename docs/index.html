@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BrainFuel — GLM Coding Plan quota monitor</title>
+    <meta name="description" content="A tiny always-on-top desktop widget that monitors your GLM Coding Plan quota — the 5-hour rolling window and the weekly allowance. Cross-platform.">
+    <link rel="stylesheet" href="styles.css?v=1">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2222%22 fill=%22%23C15F3C%22/><path d=%22M57 18 L30 58 L48 58 L43 82 L72 40 L52 40 Z%22 fill=%22white%22/></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,500&display=swap" rel="stylesheet">
+    <style>
+        /* widget mockup */
+        .widget-mockup { margin-top: 24px; display: flex; justify-content: center; }
+        .widget-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 22px; padding: 26px 26px 18px; box-shadow: var(--shadow-window); width: 252px; }
+        .widget-rings { position: relative; width: 198px; height: 198px; margin: 0 auto; }
+        .widget-rings svg { width: 100%; height: 100%; }
+        .widget-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
+        .widget-pct { font-family: var(--font-serif); font-size: 40px; font-weight: 500; color: var(--accent); line-height: 1; }
+        .widget-sub { font-size: 10.5px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.07em; margin-top: 5px; }
+        .widget-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 18px; font-size: 12.5px; color: var(--text-2); }
+        .widget-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+        .widget-refresh { background: var(--accent-tint); border: none; width: 30px; height: 30px; border-radius: 50%; color: var(--accent); font-size: 15px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+    </style>
+</head>
+
+<body>
+
+    <!-- Nav -->
+    <nav class="nav-container">
+        <div class="nav-wrapper">
+            <div class="nav-brand">
+                <svg class="nav-logo" width="28" height="28" viewBox="0 0 512 512" fill="none">
+                    <rect width="512" height="512" rx="115" fill="#C15F3C"/>
+                    <path d="M290 90 L150 300 L250 300 L230 432 L380 200 L280 200 Z" fill="#FFFFFF"/>
+                </svg>
+                BrainFuel
+            </div>
+            <ul class="nav-menu">
+                <li><a href="#features" data-en="Features" data-zh="功能">Features</a></li>
+                <li><a href="#download" data-en="Download" data-zh="下载">Download</a></li>
+                <li class="lang-dropdown-wrapper">
+                    <button class="lang-btn">
+                        <svg class="globe-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                        <span id="current-lang-label" data-en="English" data-zh="简体中文">English</span>
+                    </button>
+                    <ul class="lang-menu">
+                        <li onclick="setLanguage('en')">English</li>
+                        <li onclick="setLanguage('zh')">简体中文</li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="hero" id="overview">
+        <div class="container">
+            <span class="eyebrow animate-on-scroll" data-en="Open source · Cross-platform" data-zh="开源 · 跨平台">Open source · Cross-platform</span>
+            <h1 class="animate-on-scroll">
+                <span data-en="Never get blindsided" data-zh="再也不会被配额限流">Never get blindsided</span>
+                <span class="accent" data-en="by a quota limit." data-zh="打个措手不及。">by a quota limit.</span>
+            </h1>
+            <p class="lead animate-on-scroll"
+                data-en="BrainFuel is a tiny always-on-top desktop widget that watches your GLM Coding Plan quota — the 5-hour rolling window and the weekly allowance — so you always know how much you have left."
+                data-zh="BrainFuel 是一个始终置顶的桌面小部件，实时监控你的 GLM Coding Plan 配额——5 小时滚动窗口与每周额度——让你随时知道还剩多少。">
+                BrainFuel is a tiny always-on-top desktop widget that watches your GLM Coding Plan quota — the 5-hour rolling window and the weekly allowance — so you always know how much you have left.
+            </p>
+
+            <div class="hero-buttons animate-on-scroll">
+                <a href="#download" class="btn btn-primary" data-en="Download BrainFuel" data-zh="下载 BrainFuel">Download BrainFuel</a>
+                <a href="https://github.com/turinglambdaai/brainfuel" class="btn btn-secondary" data-en="View on GitHub" data-zh="在 GitHub 查看">View on GitHub</a>
+            </div>
+
+            <!-- Widget mockup -->
+            <div class="widget-mockup animate-on-scroll">
+                <div class="widget-card">
+                    <div class="widget-rings">
+                        <svg viewBox="0 0 200 200">
+                            <circle cx="100" cy="100" r="88" fill="none" stroke="var(--accent-tint)" stroke-width="9"/>
+                            <circle cx="100" cy="100" r="88" fill="none" stroke="var(--accent)" stroke-width="9" stroke-linecap="round" stroke-dasharray="552.9" stroke-dashoffset="210" transform="rotate(-90 100 100)"/>
+                            <circle cx="100" cy="100" r="64" fill="none" stroke="var(--bg-sidebar)" stroke-width="8"/>
+                            <circle cx="100" cy="100" r="64" fill="none" stroke="#9B9489" stroke-width="8" stroke-linecap="round" stroke-dasharray="402.1" stroke-dashoffset="120" transform="rotate(-90 100 100)"/>
+                        </svg>
+                        <div class="widget-center">
+                            <div class="widget-pct">70%</div>
+                            <div class="widget-sub">5h window</div>
+                        </div>
+                    </div>
+                    <div class="widget-foot">
+                        <span><span class="widget-dot" style="background:var(--accent)"></span><span data-en="Weekly 62%" data-zh="本周 62%">Weekly 62%</span></span>
+                        <button class="widget-refresh" aria-label="refresh">↻</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section id="features">
+        <div class="container">
+            <h2 class="section-title text-center animate-on-scroll" data-en="See your quota at a glance." data-zh="一眼看清你的配额。">See your quota at a glance.</h2>
+            <p class="section-subtitle text-center animate-on-scroll" data-en="Two nested rings on a card that floats above your work. No browser tab to check, no surprise rate limits."
+                data-zh="一张悬浮在工作区上方的卡片，两个嵌套圆环。无需翻浏览器标签，不再被限流打断。">
+                Two nested rings on a card that floats above your work. No browser tab to check, no surprise rate limits.
+            </p>
+
+            <div class="bento-grid">
+                <div class="bento-card span-2 animate-on-scroll">
+                    <div class="card-icon">⭕</div>
+                    <h3 data-en="Nested quota rings" data-zh="嵌套配额环">Nested quota rings</h3>
+                    <p data-en="The outer ring tracks your weekly allowance, the inner ring tracks the 5-hour rolling window. Both animate as they drain and refill, so the state is readable in a quarter-second."
+                        data-zh="外环跟踪每周额度，内环跟踪 5 小时滚动窗口。两者在消耗与恢复时动态变化，四分之一秒就能读懂状态。">
+                        The outer ring tracks your weekly allowance, the inner ring tracks the 5-hour rolling window. Both animate as they drain and refill, so the state is readable in a quarter-second.
+                    </p>
+                </div>
+
+                <div class="bento-card animate-on-scroll">
+                    <div class="card-icon">🔄</div>
+                    <h3 data-en="Auto-refresh" data-zh="自动刷新">Auto-refresh</h3>
+                    <p data-en="A clickable refresh button, plus automatic refresh every few minutes — hitting the same endpoint the official plugin uses."
+                        data-zh="可点击的刷新按钮，外加每隔几分钟自动刷新——调用与官方插件相同的接口。">
+                        A clickable refresh button, plus automatic refresh every few minutes.
+                    </p>
+                </div>
+
+                <div class="bento-card animate-on-scroll">
+                    <div class="card-icon">🎨</div>
+                    <h3 data-en="Anthropic-style themes" data-zh="Anthropic 风主题">Anthropic-style themes</h3>
+                    <p data-en="Light / Dark / System, warm palette, and a card opacity slider so it never blocks your desktop."
+                        data-zh="浅色 / 深色 / 跟随系统，暖色调，卡片透明度可调，绝不遮挡桌面。">
+                        Light / Dark / System, warm palette, and a card opacity slider so it never blocks your desktop.
+                    </p>
+                </div>
+
+                <div class="bento-card span-2 animate-on-scroll">
+                    <div class="card-icon">🔔</div>
+                    <h3 data-en="Quota notifications" data-zh="配额通知">Quota notifications</h3>
+                    <p data-en="Optional desktop notification when a quota crosses an exhaustion threshold — default 80% used, configurable. So you wrap up before the wall, not after."
+                        data-zh="当配额越过耗尽阈值时可选桌面通知——默认 80% 已用，可配置。让你在撞墙之前收尾，而不是之后。">
+                        Optional desktop notification when a quota crosses an exhaustion threshold — default 80% used, configurable. So you wrap up before the wall, not after.
+                    </p>
+                </div>
+
+                <div class="bento-card animate-on-scroll">
+                    <div class="card-icon">💬</div>
+                    <h3 data-en="Bilingual UI" data-zh="中英双语">Bilingual UI</h3>
+                    <p data-en="Chinese / English toggle, system-locale aware."
+                        data-zh="中英切换，自动跟随系统语言。">
+                        Chinese / English toggle, system-locale aware.
+                    </p>
+                </div>
+
+                <div class="bento-card animate-on-scroll">
+                    <div class="card-icon">📌</div>
+                    <h3 data-en="Movable & autostart" data-zh="可拖动 · 开机启动">Movable & autostart</h3>
+                    <p data-en="Drag the card anywhere — position is remembered. Optional start-on-login for Windows / macOS / Linux."
+                        data-zh="拖动卡片到任意位置——位置会被记住。可选开机启动，支持 Windows / macOS / Linux。">
+                        Drag the card anywhere — position is remembered. Optional start-on-login.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Download -->
+    <section id="download">
+        <div class="container text-center">
+            <span class="eyebrow animate-on-scroll" data-en="Native builds" data-zh="原生构建">Native builds</span>
+            <h2 class="section-title animate-on-scroll" data-en="Get BrainFuel." data-zh="获取 BrainFuel。">Get BrainFuel.</h2>
+            <p class="section-subtitle animate-on-scroll" data-en="Cross-platform desktop widget. Bring your Coding Plan API key."
+                data-zh="跨平台桌面小部件，带上你的 Coding Plan API key 即可使用。">
+                Cross-platform desktop widget. Bring your Coding Plan API key.
+            </p>
+
+            <div class="platforms-grid">
+                <a class="platform-card animate-on-scroll" id="dl-macos" href="https://github.com/turinglambdaai/brainfuel/releases">
+                    <div class="platform-icon"><svg role="img" viewBox="0 0 24 24" width="48" height="48" fill="currentColor"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg></div>
+                    <span class="platform-name">macOS</span>
+                    <span class="platform-format" data-en=".dmg · Universal" data-zh=".dmg · 通用版">.dmg · Universal</span>
+                </a>
+                <a class="platform-card animate-on-scroll" id="dl-windows" href="https://github.com/turinglambdaai/brainfuel/releases">
+                    <div class="platform-icon"><svg role="img" viewBox="0 0 24 24" width="48" height="48" fill="currentColor"><path d="M0 0h11.377v11.372H0zm12.623 0H24v11.372H12.623zM0 12.623h11.377V24H0zm12.623 0H24V24H12.623z"/></svg></div>
+                    <span class="platform-name">Windows</span>
+                    <span class="platform-format" data-en=".exe · x64" data-zh=".exe · x64">.exe · x64</span>
+                </a>
+                <a class="platform-card animate-on-scroll" id="dl-linux" href="https://github.com/turinglambdaai/brainfuel/releases">
+                    <div class="platform-icon"><svg role="img" viewBox="0 0 24 24" width="48" height="48" fill="currentColor"><path d="M12.504 0c-.155 0-.315.008-.48.021-4.226.333-3.105 4.807-3.17 6.298-.076 1.092-.3 1.953-1.05 3.02-.885 1.051-2.127 2.75-2.716 4.521-.278.832-.41 1.684-.287 2.489a.424.424 0 00-.11.135c-.26.268-.45.6-.663.839-.199.199-.485.267-.797.4-.313.136-.658.269-.864.68-.09.189-.136.394-.132.602 0 .199.027.4.055.536.058.399.116.728.04.97-.249.68-.28 1.145-.106 1.484.174.334.535.47.94.601.81.2 1.91.135 2.774.6.926.466 1.866.67 2.616.47.526-.116.97-.464 1.208-.946.587-.003 1.23-.269 2.26-.334.699-.058 1.574.267 2.577.2.025.134.063.198.114.333l.003.003c.391.778 1.113 1.132 1.884 1.071.771-.06 1.592-.536 2.257-1.306.631-.765 1.683-1.084 2.378-1.503.348-.199.629-.469.649-.853.023-.4-.2-.811-.714-1.376v-.097l-.003-.003c-.17-.2-.25-.535-.338-.926-.085-.401-.182-.786-.492-1.046h-.003c-.059-.054-.123-.067-.188-.135a.357.357 0 00-.19-.064c.431-1.278.264-2.55-.173-3.694-.533-1.41-1.465-2.638-2.175-3.483-.796-1.005-1.576-1.957-1.56-3.368.026-2.152.236-6.133-3.544-6.139z"/></svg></div>
+                    <span class="platform-name">Linux</span>
+                    <span class="platform-format" data-en="AppImage · x64" data-zh="AppImage · x64">AppImage · x64</span>
+                </a>
+            </div>
+
+            <div class="download-cta">
+                <a href="https://github.com/turinglambdaai/brainfuel/releases" class="btn btn-primary">
+                    <span data-en="All downloads" data-zh="全部下载">All downloads</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </a>
+                <span class="version-badge" data-en="Latest:" data-zh="最新版：">Latest: <span class="ver" id="ver-badge">—</span></span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">BrainFuel</div>
+                <div class="footer-links">
+                    <a href="https://github.com/turinglambdaai/brainfuel">GitHub</a>
+                    <a href="https://github.com/turinglambdaai/brainfuel/releases" data-en="Releases" data-zh="版本发布">Releases</a>
+                </div>
+                <div>&copy; 2026 BrainFuel. <span data-en="MIT License." data-zh="MIT 协议。">MIT License.</span></div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js?v=1"></script>
+</body>
+
+</html>
