@@ -40,6 +40,7 @@
                 <MenuItem Header="{DynamicResource MenuRefresh}" Click="Refresh_Click"/>
                 <MenuItem Header="{DynamicResource MenuSettings}" Click="Settings_Click"/>
                 <Separator/>
+                <MenuItem Header="{DynamicResource MenuHide}" Click="Hide_Click"/>
                 <MenuItem Header="{DynamicResource MenuQuit}" Click="Quit_Click"/>
             </ContextMenu>
         </Border.ContextMenu>
