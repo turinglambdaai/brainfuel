@@ -41,14 +41,21 @@ public partial class MainWindow : Window
         vm.Start();
     }
 
-    private void OnScreensChanged(object? sender, EventArgs e)
+    private async void OnScreensChanged(object? sender, EventArgs e)
     {
         // Defer so the Screens list reflects the new topology before we test it.
-        Dispatcher.UIThread.Post(() =>
+        // On Windows the list may still be stale right after the event fires, so
+        // re-check a few times over the next seconds — cheap and settles the
+        // "widget stranded on an unplugged monitor" case reliably.
+        foreach (var delay in new[] { 100, 1000, 3000 })
         {
-            if (!IsOnAnyScreen(Position))
-                Position = EnsureOnPrimary(Position);
-        });
+            await System.Threading.Tasks.Task.Delay(delay);
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                if (!IsOnAnyScreen(Position))
+                    Position = EnsureOnPrimary(Position);
+            });
+        }
     }
 
     /// <summary>True if a point lies inside any currently connected screen's bounds.</summary>
@@ -86,6 +93,19 @@ public partial class MainWindow : Window
     private void Settings_Click(object? sender, RoutedEventArgs e) => OpenSettings();
 
     private void Quit_Click(object? sender, RoutedEventArgs e) => Close();
+
+    /// <summary>Hides the widget; polling and notifications keep running in the tray.</summary>
+    private void Hide_Click(object? sender, RoutedEventArgs e) => Hide();
+
+    /// <summary>Restores the window (from hide/tray or a second launch) and guarantees it lands on a connected screen.</summary>
+    public void EnsureVisible()
+    {
+        if (!IsOnAnyScreen(Position))
+            Position = EnsureOnPrimary(Position);
+        Show();
+        WindowState = WindowState.Normal;
+        Activate();
+    }
 
     public void OpenSettings()
     {

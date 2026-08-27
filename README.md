@@ -15,6 +15,8 @@ A tiny always-on-top desktop widget that monitors your **GLM Coding Plan** quota
 - **Start-on-login** — optional autostart (Windows registry / macOS LaunchAgent / Linux autostart)
 - **Quota notifications** — optional desktop notification when a quota crosses an exhaustion threshold (default 80% used, configurable)
 - **Movable card** — right-click for refresh / settings / quit; drag to move (position remembered)
+- **System tray** — hide to tray keeps polling and notifications running; bring the widget back from the tray icon (or by launching the exe again). Only the tray/card "Quit" really exits
+- **Multi-monitor safe** — if a monitor is unplugged and the card ends up off-screen, it is pulled back onto a visible display automatically
 
 ## How It Works
 
