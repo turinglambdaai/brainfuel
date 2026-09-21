@@ -63,13 +63,22 @@
                                    HourlyProgress="{Binding HourlyProgress}"/>
 
                     <StackPanel Grid.Column="1" Margin="16,0,0,0" Spacing="9" VerticalAlignment="Center">
-                        <!-- refresh button (displays last refresh, click to refresh) -->
-                        <Button Classes="ghost" HorizontalAlignment="Right" Click="Refresh_Click">
-                            <StackPanel Orientation="Horizontal" Spacing="4">
-                                <TextBlock Text="↻" FontSize="13" Foreground="{DynamicResource TextMuted}"/>
-                                <TextBlock Text="{Binding RefreshAgoText}" FontSize="11" Foreground="{DynamicResource TextMuted}"/>
-                            </StackPanel>
-                        </Button>
+                        <!-- Primary card actions: both common refresh and software update are visible without a context menu. -->
+                        <StackPanel Orientation="Horizontal" Spacing="3" HorizontalAlignment="Right">
+                            <Button Classes="ghost" Click="Refresh_Click">
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <TextBlock Text="↻" FontSize="13" Foreground="{DynamicResource TextMuted}"/>
+                                    <TextBlock Text="{Binding RefreshAgoText}" FontSize="11" Foreground="{DynamicResource TextMuted}"/>
+                                </StackPanel>
+                            </Button>
+                            <Button x:Name="UpdateButton"
+                                    Classes="ghost"
+                                    Content="{DynamicResource BtnCheckUpdates}"
+                                    Click="Update_Click"
+                                    FontSize="11"
+                                    Foreground="{DynamicResource RingWeekly}"
+                                    ToolTip.Tip="{DynamicResource MenuCheckUpdates}"/>
+                        </StackPanel>
 
                         <!-- 5-hour window -->
                         <StackPanel Spacing="3" HorizontalAlignment="Right">
