@@ -19,6 +19,8 @@ public partial class SettingsWindow : Window
 
     private readonly AppSettings _settings;
     private readonly bool _installedBuild;
+    private int _savedRefreshInterval;
+    private bool _initializingInterval = true;
     private bool _validated;    // key confirmed working in this dialog
     private bool _saveAnyway;   // validation failed, user chose to save regardless
 
@@ -34,7 +36,8 @@ public partial class SettingsWindow : Window
         KeyBox.Text = settings.ApiKey;
         PlatformBox.SelectedIndex =
             settings.BaseDomain.Contains("z.ai", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
-        IntervalBox.Value = Math.Max(1, settings.RefreshIntervalMinutes);
+        _savedRefreshInterval = Math.Clamp(settings.RefreshIntervalMinutes, 1, 60);
+        IntervalBox.Value = _savedRefreshInterval;
         WeeklyRemaining.IsChecked = settings.WeeklyDisplayStyle == DisplayStyle.Remaining;
         HourlyRemaining.IsChecked = settings.HourlyDisplayStyle == DisplayStyle.Remaining;
         AutoStartBox.IsChecked = AutoStartService.IsEnabled();
@@ -43,6 +46,9 @@ public partial class SettingsWindow : Window
         ThemeBox.SelectedIndex = (int)settings.ThemeMode;
         OpacitySlider.Value = settings.CardOpacity;
         LangBox.SelectedIndex = (int)settings.Language;
+
+        _initializingInterval = false;
+        RefreshIntervalStatus();
 
         var version = typeof(SettingsWindow).Assembly.GetName().Version?.ToString(3) ?? "dev";
         var buildKind = Strings.Get(_installedBuild ? "UpdateInstalledBuild" : "UpdatePortableBuild");
@@ -77,6 +83,30 @@ public partial class SettingsWindow : Window
         {
             UpdateStatusText.Text = Strings.Get("UpdateFailed");
         }
+    }
+
+    private void Interval_ValueChanged(object? sender, NumericUpDownValueChangedEventArgs e)
+    {
+        if (_initializingInterval)
+            return;
+
+        RefreshIntervalStatus();
+    }
+
+    private void IntervalPreset_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button button || !int.TryParse(button.Content?.ToString(), out var minutes))
+            return;
+
+        IntervalBox.Value = Math.Clamp(minutes, 1, 60);
+        RefreshIntervalStatus();
+    }
+
+    private void RefreshIntervalStatus()
+    {
+        var minutes = Math.Clamp((int)(IntervalBox.Value ?? _savedRefreshInterval), 1, 60);
+        var key = minutes == _savedRefreshInterval ? "IntervalActiveStatus" : "IntervalPendingStatus";
+        IntervalStatusText.Text = string.Format(Strings.Get(key), minutes);
     }
 
     private async void CheckUpdate_Click(object? sender, RoutedEventArgs e)
@@ -164,7 +194,7 @@ public partial class SettingsWindow : Window
     {
         _settings.ApiKey = KeyBox.Text?.Trim();
         _settings.BaseDomain = PlatformBox.SelectedIndex == 1 ? "https://api.z.ai" : "https://open.bigmodel.cn";
-        _settings.RefreshIntervalMinutes = (int)(IntervalBox.Value ?? 5);
+        _settings.RefreshIntervalMinutes = Math.Clamp((int)(IntervalBox.Value ?? 5), 1, 60);
         _settings.WeeklyDisplayStyle = (WeeklyRemaining.IsChecked ?? false) ? DisplayStyle.Remaining : DisplayStyle.Used;
         _settings.HourlyDisplayStyle = (HourlyRemaining.IsChecked ?? false) ? DisplayStyle.Remaining : DisplayStyle.Used;
         _settings.AutoStart = AutoStartBox.IsChecked ?? false;
@@ -178,6 +208,7 @@ public partial class SettingsWindow : Window
     private void PersistAndClose()
     {
         SettingsService.Save(_settings);
+        _savedRefreshInterval = _settings.RefreshIntervalMinutes;
         App.ApplyTheme(_settings.ThemeMode);
         Strings.ApplyLanguage(_settings.Language);
         try { AutoStartService.SetEnabled(_settings.AutoStart); } catch { }
