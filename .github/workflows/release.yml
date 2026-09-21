@@ -1,9 +1,10 @@
 name: release
 
 # Builds self-contained single-file exes on GitHub's runners and ships them
-# via GitHub Releases — end users just download their platform's zip and run.
+# via GitHub Releases — Windows users get a setup exe, everyone else downloads
+# their platform's zip and runs.
 #   - workflow_dispatch : manual run, uploads build artifacts to the Actions run.
-#   - push tag v*        : creates a GitHub Release with the zips attached.
+#   - push tag v*        : creates a GitHub Release with everything attached.
 on:
   workflow_dispatch:
   push:
@@ -57,3 +58,31 @@ jobs:
         with:
           files: publish/BrainFuel-${{ matrix.platform }}.zip
           generate_release_notes: true
+
+  # Windows installer: publish win-x64 + compile installer/BrainFuel.iss with
+  # Inno Setup (auto-provisioned under .tools by the build script — no admin).
+  installer:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build setup exe
+        shell: pwsh
+        run: ./installer/build-installer.ps1
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BrainFuel-windows-setup
+          path: dist/*.exe
+
+      - name: Attach to Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.exe

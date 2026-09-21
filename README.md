@@ -8,6 +8,7 @@ A tiny always-on-top desktop widget that monitors your **GLM Coding Plan** quota
 
 ## Features
 
+- **Guided first run** — the settings dialog opens automatically on first launch with a quick-start note, a console link to grab your GLM Coding Plan key, and on-save key validation (with a "save anyway" escape hatch for offline/restricted networks)
 - **Nested quota rings** — outer ring = weekly allowance, inner ring = 5-hour rolling window, animated
 - **Auto-refresh** — clickable refresh button plus automatic refresh every few minutes
 - **Light / Dark / System theme** — Anthropic-style palette, with a card opacity slider so it doesn't block your desktop
@@ -56,17 +57,21 @@ On first launch, paste your GLM Coding Plan key in the settings dialog.
 
 ## Distribute
 
-**Option A — download a prebuilt exe** from [Releases](https://github.com/turinglambdaai/brainfuel/releases). The `release` workflow builds self-contained single-file exes for `win-x64`, `osx-arm64`, and `linux-x64` — no .NET install needed on the target. (A manual run from the [Actions tab](https://github.com/turinglambdaai/brainfuel/actions) also produces downloadable artifacts.)
+**Option A — download from [Releases](https://github.com/turinglambdaai/brainfuel/releases):**
+
+- **Windows installer** — `BrainFuel-Setup-<version>.exe`: a per-user setup (no admin/UAC) that installs into `%LOCALAPPDATA%\Programs\BrainFuel` with Start-menu / optional desktop shortcuts, an optional start-on-login task, and a clean uninstall entry. User data (`%APPDATA%\BrainFuel`) is kept on uninstall.
+- **Portable exes** — self-contained single-file zips for `win-x64`, `osx-arm64`, and `linux-x64`; no .NET install needed on the target.
+
+(A manual run from the [Actions tab](https://github.com/turinglambdaai/brainfuel/actions) also produces downloadable artifacts.)
 
 **Option B — build locally:**
 
 ```powershell
-./publish.ps1                 # win-x64 (default)
-./publish.ps1 osx-arm64       # macOS Apple Silicon
-./publish.ps1 linux-x64       # Linux
+./publish.ps1                          # portable single-file exe (win-x64 default)
+./installer/build-installer.ps1        # Windows: publish + compile the setup exe
 ```
 
-Output goes to `publish/<rid>/`.
+`build-installer.ps1` reads the version from `BrainFuel.csproj`, publishes `win-x64`, and compiles `installer/BrainFuel.iss`. It finds Inno Setup on PATH / in Program Files, or provisions a private copy under `.tools\` automatically (no admin needed). Output: `dist/BrainFuel-Setup-<version>.exe`.
 
 ## Project Structure
 
@@ -88,6 +93,7 @@ brainfuel/
 │   └── UsageModels.cs        # Quota data models
 ├── ViewModels/
 │   └── MainViewModel.cs      # MVVM view model
+├── installer/                # Inno Setup script + Windows build script
 ├── publish.ps1               # Local self-contained build script
 └── BrainFuel.csproj          # Project file
 ```

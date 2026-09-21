@@ -88,7 +88,15 @@ public partial class MainWindow : Window
     }
 
     private async void Refresh_Click(object? sender, RoutedEventArgs e)
-        => await (_vm?.RefreshAsync() ?? System.Threading.Tasks.Task.CompletedTask);
+    {
+        // Unconfigured: the only useful "refresh" is getting a key — route there.
+        if (_settings is { IsValid: false })
+        {
+            OpenSettings();
+            return;
+        }
+        await (_vm?.RefreshAsync() ?? System.Threading.Tasks.Task.CompletedTask);
+    }
 
     private void Settings_Click(object? sender, RoutedEventArgs e) => OpenSettings();
 
