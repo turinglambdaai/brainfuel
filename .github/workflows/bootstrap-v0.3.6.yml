@@ -1,0 +1,20 @@
+name: bootstrap-v0.3.6
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  dispatch-release:
+    if: github.event.head_commit.message == 'Bootstrap v0.3.6 through the canonical release workflow'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch the canonical release workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref main -f version=0.3.6 -f publish=true
