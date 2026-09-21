@@ -1,4 +1,5 @@
 using System.Threading;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -64,8 +65,8 @@ public partial class App : Application
 
     /// <summary>
     /// Keeps a tray presence so the widget can be hidden (polling keeps running)
-    /// and brought back later. The tray menu's Quit is the only real exit path
-    /// besides the card's context-menu Quit.
+    /// and brought back later. The tray also exposes an explicit one-click online
+    /// update path for installed builds.
     /// </summary>
     private void InitTrayIcon(MainWindow main)
     {
@@ -83,6 +84,10 @@ public partial class App : Application
         settingsItem.Click += (_, _) => Dispatcher.UIThread.Post(main.OpenSettings);
         menu.Add(settingsItem);
 
+        var updateItem = new NativeMenuItem { Header = UpdateText("检查更新…", "Check for updates…") };
+        updateItem.Click += async (_, _) => await RunManualUpdateAsync(updateItem);
+        menu.Add(updateItem);
+
         menu.Add(new NativeMenuItemSeparator());
 
         var quitItem = new NativeMenuItem { Header = Strings.Get("TrayQuit") };
@@ -98,6 +103,45 @@ public partial class App : Application
         // Left-click / double-click the tray icon: show the widget.
         _trayIcon.Clicked += (_, _) => main.EnsureVisible();
     }
+
+    private static async Task RunManualUpdateAsync(NativeMenuItem item)
+    {
+        if (!item.IsEnabled)
+            return;
+
+        item.IsEnabled = false;
+        try
+        {
+            var result = await UpdateService.CheckDownloadAndRestartAsync(stage =>
+                Dispatcher.UIThread.Post(() => item.Header = stage switch
+                {
+                    ManualUpdateStage.Checking => UpdateText("正在检查更新…", "Checking for updates…"),
+                    ManualUpdateStage.Downloading => UpdateText("正在下载更新…", "Downloading update…"),
+                    ManualUpdateStage.Restarting => UpdateText("正在安装并重启…", "Installing and restarting…"),
+                    _ => UpdateText("检查更新…", "Check for updates…"),
+                }));
+
+            item.Header = result switch
+            {
+                ManualUpdateResult.UpToDate => UpdateText("已是最新版本", "You're up to date"),
+                ManualUpdateResult.NotInstalled => UpdateText("在线更新仅支持安装版", "Online update requires the installed build"),
+                ManualUpdateResult.Restarting => UpdateText("正在安装并重启…", "Installing and restarting…"),
+                _ => UpdateText("更新检查失败", "Update check failed"),
+            };
+
+            // If Velopack did not terminate immediately, leave enough time for
+            // the user to see the outcome before restoring the menu label.
+            await Task.Delay(3000);
+        }
+        finally
+        {
+            item.Header = UpdateText("检查更新…", "Check for updates…");
+            item.IsEnabled = true;
+        }
+    }
+
+    private static string UpdateText(string zh, string en)
+        => Strings.Current == AppLanguage.Zh ? zh : en;
 
     private static void StopBackgroundServicesAndDisposeTray()
     {

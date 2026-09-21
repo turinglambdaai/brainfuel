@@ -7,11 +7,27 @@ using Velopack.Sources;
 
 namespace BrainFuel.Services;
 
+public enum ManualUpdateStage
+{
+    Checking,
+    Downloading,
+    Restarting,
+}
+
+public enum ManualUpdateResult
+{
+    Restarting,
+    UpToDate,
+    NotInstalled,
+    Failed,
+}
+
 /// <summary>
-/// Checks GitHub Releases for Velopack updates and downloads them in the
-/// background. Velopack prefers delta packages and automatically falls back to
-/// the full package when a delta cannot be used. A downloaded update is applied
-/// on the next normal application launch.
+/// Checks GitHub Releases for Velopack updates. Installed Windows builds can
+/// either stage updates quietly in the background or perform a user-requested
+/// check/download/apply cycle that restarts directly into the new version.
+/// Velopack prefers delta packages and falls back to the full package when
+/// necessary.
 /// </summary>
 public static class UpdateService
 {
@@ -51,14 +67,15 @@ public static class UpdateService
         var entered = false;
         try
         {
+            // A background check should never queue behind a user-requested
+            // update operation. It simply tries again on the next interval.
             entered = await Gate.WaitAsync(0, cancellationToken);
             if (!entered)
                 return false;
 
-            var manager = new UpdateManager(new GithubSource(RepositoryUrl, null, false));
+            var manager = CreateManager();
 
-            // Development builds and the legacy portable ZIP are not Velopack
-            // installations. Update checks must be a no-op in those cases.
+            // Development builds and portable ZIPs are not Velopack installs.
             if (!manager.IsInstalled)
                 return false;
 
@@ -87,6 +104,59 @@ public static class UpdateService
                 Gate.Release();
         }
     }
+
+    /// <summary>
+    /// User-requested online update. Waits for any background check to finish,
+    /// checks GitHub Releases, downloads the delta/full package, then asks
+    /// Velopack to install it and restart BrainFuel immediately.
+    /// </summary>
+    public static async Task<ManualUpdateResult> CheckDownloadAndRestartAsync(
+        Action<ManualUpdateStage>? reportStage = null,
+        CancellationToken cancellationToken = default)
+    {
+        var entered = false;
+        try
+        {
+            await Gate.WaitAsync(cancellationToken);
+            entered = true;
+
+            var manager = CreateManager();
+            if (!manager.IsInstalled)
+                return ManualUpdateResult.NotInstalled;
+
+            reportStage?.Invoke(ManualUpdateStage.Checking);
+            var update = await manager.CheckForUpdatesAsync();
+            if (update is null)
+                return ManualUpdateResult.UpToDate;
+
+            reportStage?.Invoke(ManualUpdateStage.Downloading);
+            await manager.DownloadUpdatesAsync(update, cancelToken: cancellationToken);
+
+            reportStage?.Invoke(ManualUpdateStage.Restarting);
+            manager.ApplyUpdatesAndRestart(update);
+
+            // ApplyUpdatesAndRestart normally terminates this process. Keep a
+            // result for testability and for defensive behavior if it ever returns.
+            return ManualUpdateResult.Restarting;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return ManualUpdateResult.Failed;
+        }
+        catch (Exception ex)
+        {
+            TryLogFailure(ex);
+            return ManualUpdateResult.Failed;
+        }
+        finally
+        {
+            if (entered)
+                Gate.Release();
+        }
+    }
+
+    private static UpdateManager CreateManager()
+        => new(new GithubSource(RepositoryUrl, null, false));
 
     private static void TryLogFailure(Exception ex)
     {
