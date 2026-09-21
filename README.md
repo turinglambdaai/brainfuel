@@ -8,6 +8,7 @@ A tiny always-on-top desktop widget that monitors your **GLM Coding Plan** quota
 
 ## Features
 
+- **Guided first run** — the settings dialog opens automatically on first launch with a quick-start note, a console link to grab your GLM Coding Plan key, and on-save key validation (with a "save anyway" escape hatch for offline/restricted networks)
 - **Nested quota rings** — outer ring = weekly allowance, inner ring = 5-hour rolling window, animated
 - **Auto-refresh** — clickable refresh button plus automatic refresh every few minutes
 - **Light / Dark / System theme** — Anthropic-style palette, with a card opacity slider so it doesn't block your desktop

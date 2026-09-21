@@ -44,6 +44,15 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
 
     public async Task RefreshAsync()
     {
+        // Unconfigured: skip the pointless 401 round-trip; the card shows a
+        // "not configured, click to set up" state instead of an error.
+        if (string.IsNullOrWhiteSpace(_settings.ApiKey))
+        {
+            _last = null;
+            _inError = false;
+            ApplySnapshot();
+            return;
+        }
         try
         {
             if (_client is null) _client = CreateClient();
@@ -123,7 +132,9 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         WeeklySubText = snap?.WeeklyResetAt is { } wr ? FutureWords(wr) : Strings.Get("None");
         HourlySubText = snap?.HourlyResetAt is { } hr ? FutureWords(hr) : Strings.Get("None");
 
-        if (_inError)
+        if (!_settings.IsValid)
+            RefreshAgoText = Strings.Get("NotConfigured");
+        else if (_inError)
             RefreshAgoText = snap is null
                 ? Strings.Get("RefreshFailed")
                 : Strings.Get("RefreshFailedAt", snap.FetchedAt.LocalDateTime.ToString("HH:mm"));

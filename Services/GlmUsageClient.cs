@@ -42,7 +42,9 @@ public sealed class GlmUsageClient : IDisposable
         try { File.WriteAllText(_debugPath, body); } catch { /* non-fatal */ }
 
         if (!resp.IsSuccessStatusCode)
-            throw new HttpRequestException($"quota/limit HTTP {(int)resp.StatusCode}");
+            // Carry the status code so callers can tell "bad key" (401/403)
+            // from connectivity problems.
+            throw new HttpRequestException($"quota/limit HTTP {(int)resp.StatusCode}", null, resp.StatusCode);
 
         var parsed = JsonSerializer.Deserialize<QuotaLimitResponse>(body, JsonOpts);
         var limits = parsed?.Data?.Limits ?? new List<RawLimit>();

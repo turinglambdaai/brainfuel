@@ -7,12 +7,42 @@
         ShowInTaskbar="True"
         Topmost="True"
         WindowDecorations="Full">
+
+    <Window.Styles>
+        <!-- hyperlink-style button (console link under the API key box) -->
+        <Style Selector="Button.link">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="MinWidth" Value="0"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.link TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource RingWeekly}"/>
+        </Style>
+        <Style Selector="Button.link:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+    </Window.Styles>
+
     <Grid RowDefinitions="Auto, *, Auto">
         <!-- header -->
         <StackPanel Grid.Row="0" Margin="24,20,24,8" Spacing="6">
             <TextBlock Text="{DynamicResource SettingsTitle}" FontSize="18" FontWeight="Bold"/>
             <TextBlock Text="{DynamicResource SettingsDesc}"
                        Foreground="#FF9FA0A0" TextWrapping="Wrap"/>
+            <!-- first run (or key cleared): quick-start note -->
+            <Border x:Name="FirstRunPanel" IsVisible="False" CornerRadius="10" Padding="12,10"
+                    Background="{DynamicResource HoverOverlay}"
+                    BorderBrush="{DynamicResource Separator}" BorderThickness="1">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="{DynamicResource FirstRunTitle}" FontSize="13" FontWeight="Bold"
+                               Foreground="{DynamicResource TextPrimary}"/>
+                    <TextBlock Text="{DynamicResource FirstRunBody}" FontSize="12" TextWrapping="Wrap"
+                               Foreground="{DynamicResource TextSecondary}"/>
+                </StackPanel>
+            </Border>
         </StackPanel>
 
         <!-- form (right margin reserves space for the scrollbar) -->
@@ -46,6 +76,13 @@
                     <TextBlock Text="{DynamicResource LblApiKey}"/>
                     <TextBox x:Name="KeyBox" PlaceholderText="{DynamicResource KeyPlaceholder}"
                              PasswordChar="•" HorizontalAlignment="Stretch"/>
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="{DynamicResource KeyHint}" FontSize="11" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+                        <Button x:Name="ConsoleLink" Classes="link" Click="ConsoleLink_Click">
+                            <TextBlock Text="{DynamicResource KeyOpenConsole}" TextDecorations="Underline" FontSize="11"/>
+                        </Button>
+                    </StackPanel>
                 </StackPanel>
 
                 <StackPanel Spacing="4">
@@ -82,12 +119,13 @@
         </ScrollViewer>
 
         <!-- footer -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right"
-                    Spacing="10" Margin="24,8,24,20">
-            <Button Content="{DynamicResource BtnCancel}" Click="Cancel_Click" Width="100"
-                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
-            <Button Content="{DynamicResource BtnSave}" Click="Save_Click" Width="100" Classes="accent"
-                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
-        </StackPanel>
+        <Grid Grid.Row="2" ColumnDefinitions="*, Auto, Auto" Margin="24,8,24,20">
+            <TextBlock x:Name="ValidateMsg" Grid.Column="0" TextWrapping="Wrap" FontSize="12"
+                       VerticalAlignment="Center" Foreground="{DynamicResource RingWeekly}"/>
+            <Button Grid.Column="1" Content="{DynamicResource BtnCancel}" Click="Cancel_Click" Width="100"
+                    Margin="0,0,10,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+            <Button x:Name="SaveBtn" Grid.Column="2" Content="{DynamicResource BtnSave}" Click="Save_Click" Width="100"
+                    Classes="accent" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+        </Grid>
     </Grid>
 </Window>
