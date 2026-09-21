@@ -75,7 +75,7 @@
                 <Border CornerRadius="10" Padding="12,10"
                         Background="{DynamicResource HoverOverlay}"
                         BorderBrush="{DynamicResource Separator}" BorderThickness="1">
-                    <Grid ColumnDefinitions="*, Auto" RowDefinitions="Auto, Auto" ColumnSpacing="12" RowSpacing="4">
+                    <Grid ColumnDefinitions="*, Auto" RowDefinitions="Auto, Auto, Auto" ColumnSpacing="12" RowSpacing="4">
                         <StackPanel Grid.Row="0" Grid.Column="0" Spacing="2">
                             <TextBlock Text="{DynamicResource UpdateSectionTitle}" FontWeight="Bold"/>
                             <TextBlock x:Name="CurrentVersionText" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
@@ -87,6 +87,12 @@
                         <TextBlock x:Name="UpdateStatusText" Grid.Row="1" Grid.ColumnSpan="2"
                                    FontSize="11" Foreground="{DynamicResource RingWeekly}"
                                    TextWrapping="Wrap"/>
+                        <Button x:Name="OpenReleasesBtn" Grid.Row="2" Grid.ColumnSpan="2"
+                                Classes="link" IsVisible="False" Click="OpenReleases_Click"
+                                HorizontalAlignment="Left">
+                            <TextBlock Text="{DynamicResource UpdateOpenDownloads}"
+                                       TextDecorations="Underline" FontSize="11"/>
+                        </Button>
                     </Grid>
                 </Border>
 

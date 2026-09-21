@@ -11,7 +11,7 @@ A tiny always-on-top desktop widget that monitors your **GLM Coding Plan** quota
 - **Guided first run** — settings opens automatically on first launch with a quick-start note, console link, and API-key validation
 - **Nested quota rings** — outer ring = weekly allowance, inner ring = 5-hour rolling window
 - **Auto-refresh** — manual refresh plus configurable periodic refresh
-- **Windows automatic updates** — installed builds check GitHub Releases in the background, prefer Velopack delta packages, and fall back to a full package when required; downloaded updates are applied on the next normal launch
+- **Windows automatic updates** — installed builds check GitHub Releases in the background, prefer Velopack delta packages, and fall back to a full package when required; users can also check and install immediately from the card menu or Settings
 - **Light / Dark / System theme** — with adjustable card opacity
 - **Bilingual UI** — Chinese / English
 - **Start-on-login** — Windows registry / macOS LaunchAgent / Linux autostart
@@ -28,7 +28,9 @@ Release builds no longer continuously persist the raw quota response to disk. Ra
 
 ## Automatic Updates
 
-The installed Windows build uses Velopack. It checks for updates about 15 seconds after startup and then every six hours. When an update exists, it is downloaded in the background. Velopack uses delta packages when possible and automatically falls back to the full package when a delta is unavailable or unsuitable. The staged update is applied on the next normal launch instead of interrupting the current session.
+The installed Windows build uses Velopack. It checks for updates about 15 seconds after startup and then every six hours. When an update exists, it is downloaded in the background. Velopack uses delta packages when possible and automatically falls back to the full package when a delta is unavailable or unsuitable. Background-staged updates are applied on the next normal launch; a manual **Check for updates** action downloads, installs, and restarts immediately.
+
+Portable builds intentionally do not self-update. Settings identifies the current build as **Windows installed build** or **Portable build**. Portable users get a direct link to the latest GitHub Release and update by replacing the old executable with the new ZIP contents.
 
 ### Migrating from v0.2.x and earlier
 
@@ -36,7 +38,7 @@ Older BrainFuel versions use the Inno Setup installer and do not contain the Vel
 
 1. Quit the old BrainFuel instance.
 2. Uninstall the old application. User data under `%APPDATA%\BrainFuel` is preserved.
-3. Download and run the new `*-Setup.exe` from Releases.
+3. Download and run the new `BrainFuel-win-Setup.exe` from Releases.
 
 Subsequent installed Windows releases update in-app. Portable ZIP builds remain manually replaceable, and the current macOS/Linux releases are still portable builds rather than auto-updating installations.
 
@@ -62,10 +64,23 @@ On first launch, paste your GLM Coding Plan key into Settings.
 
 ## Distribution
 
-Download from [Releases](https://github.com/turinglambdaai/brainfuel/releases):
+Download from [Releases](https://github.com/turinglambdaai/brainfuel/releases).
 
-- **Windows installed build** — Velopack `*-Setup.exe`. Once installed, the app can update itself. Releases also contain `releases.win.json`, a full update package, and a delta package when one can be generated.
-- **Portable builds** — self-contained single-file ZIPs for `win-x64`, `osx-arm64`, and `linux-x64`. They do not require .NET on the target machine, but portable ZIPs do not auto-update.
+### Recommended for Windows
+
+**Use `BrainFuel-win-Setup.exe` unless you specifically need a portable copy.** The installed build is the normal end-user distribution: it supports automatic background checks, tiny delta updates when available, one-click manual update/install/restart, normal uninstall behavior, and clear version/build information in Settings.
+
+### Portable / advanced use
+
+Portable ZIPs are kept for scenarios where installation is undesirable or unavailable:
+
+- `BrainFuel-windows-x64.zip`
+- `BrainFuel-macos-arm64.zip`
+- `BrainFuel-linux-x64.zip`
+
+They are self-contained and do not require .NET on the target machine. Portable builds **do not modify their own directory and do not auto-update**; download the latest ZIP and replace the previous files manually. This makes them appropriate for temporary testing, locked-down machines, removable drives, and troubleshooting.
+
+macOS and Linux are currently distributed only as portable builds.
 
 Local builds:
 

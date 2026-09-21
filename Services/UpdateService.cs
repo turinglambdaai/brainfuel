@@ -27,14 +27,32 @@ public enum ManualUpdateResult
 /// either stage updates quietly in the background or perform a user-requested
 /// check/download/apply cycle that restarts directly into the new version.
 /// Velopack prefers delta packages and falls back to the full package when
-/// necessary.
+/// necessary. Portable builds intentionally remain manually replaceable.
 /// </summary>
 public static class UpdateService
 {
     private const string RepositoryUrl = "https://github.com/turinglambdaai/brainfuel";
+    public const string ReleasesUrl = RepositoryUrl + "/releases/latest";
+
     private static readonly TimeSpan InitialDelay = TimeSpan.FromSeconds(15);
     private static readonly TimeSpan CheckInterval = TimeSpan.FromHours(6);
     private static readonly SemaphoreSlim Gate = new(1, 1);
+
+    /// <summary>
+    /// True only when this process is running from a Velopack-managed install.
+    /// Development builds and portable ZIPs intentionally return false.
+    /// </summary>
+    public static bool IsInstalledBuild()
+    {
+        try
+        {
+            return CreateManager().IsInstalled;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 
     public static async Task RunAutomaticUpdateLoopAsync(CancellationToken cancellationToken)
     {

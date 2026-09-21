@@ -18,6 +18,7 @@ public partial class SettingsWindow : Window
     };
 
     private readonly AppSettings _settings;
+    private readonly bool _installedBuild;
     private bool _validated;    // key confirmed working in this dialog
     private bool _saveAnyway;   // validation failed, user chose to save regardless
 
@@ -27,6 +28,7 @@ public partial class SettingsWindow : Window
     {
         InitializeComponent();
         _settings = settings;
+        _installedBuild = UpdateService.IsInstalledBuild();
         Title = Strings.Get("WinTitle");
 
         KeyBox.Text = settings.ApiKey;
@@ -41,9 +43,13 @@ public partial class SettingsWindow : Window
         ThemeBox.SelectedIndex = (int)settings.ThemeMode;
         OpacitySlider.Value = settings.CardOpacity;
         LangBox.SelectedIndex = (int)settings.Language;
-        CurrentVersionText.Text = string.Format(
-            Strings.Get("UpdateCurrentVersion"),
-            typeof(SettingsWindow).Assembly.GetName().Version?.ToString(3) ?? "dev");
+
+        var version = typeof(SettingsWindow).Assembly.GetName().Version?.ToString(3) ?? "dev";
+        var buildKind = Strings.Get(_installedBuild ? "UpdateInstalledBuild" : "UpdatePortableBuild");
+        CurrentVersionText.Text = $"{string.Format(Strings.Get("UpdateCurrentVersion"), version)} · {buildKind}";
+        OpenReleasesBtn.IsVisible = !_installedBuild;
+        if (!_installedBuild)
+            UpdateStatusText.Text = Strings.Get("UpdatePortableHint");
 
         // First run (or key cleared): show the quick-start note and grow the
         // window so the whole form, including Save, stays visible without scrolling.
@@ -61,8 +67,27 @@ public partial class SettingsWindow : Window
         try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); } catch { }
     }
 
+    private void OpenReleases_Click(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo(UpdateService.ReleasesUrl) { UseShellExecute = true });
+        }
+        catch
+        {
+            UpdateStatusText.Text = Strings.Get("UpdateFailed");
+        }
+    }
+
     private async void CheckUpdate_Click(object? sender, RoutedEventArgs e)
     {
+        if (!_installedBuild)
+        {
+            UpdateStatusText.Text = Strings.Get("UpdatePortableHint");
+            OpenReleasesBtn.IsVisible = true;
+            return;
+        }
+
         CheckUpdateBtn.IsEnabled = false;
         UpdateStatusText.Text = Strings.Get("UpdateChecking");
 
