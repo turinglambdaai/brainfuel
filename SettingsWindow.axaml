@@ -1,7 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="BrainFuel.SettingsWindow"
-        Width="460" Height="560"
+        Width="460" Height="600"
         CanResize="False"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="True"
@@ -71,6 +71,24 @@
                             TickFrequency="0.05" IsSnapToTickEnabled="True"
                             HorizontalAlignment="Stretch"/>
                 </StackPanel>
+
+                <Border CornerRadius="10" Padding="12,10"
+                        Background="{DynamicResource HoverOverlay}"
+                        BorderBrush="{DynamicResource Separator}" BorderThickness="1">
+                    <Grid ColumnDefinitions="*, Auto" RowDefinitions="Auto, Auto" ColumnSpacing="12" RowSpacing="4">
+                        <StackPanel Grid.Row="0" Grid.Column="0" Spacing="2">
+                            <TextBlock Text="{DynamicResource UpdateSectionTitle}" FontWeight="Bold"/>
+                            <TextBlock x:Name="CurrentVersionText" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
+                        </StackPanel>
+                        <Button x:Name="CheckUpdateBtn" Grid.Row="0" Grid.Column="1"
+                                Content="{DynamicResource BtnCheckUpdates}"
+                                Click="CheckUpdate_Click" MinWidth="118"
+                                HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+                        <TextBlock x:Name="UpdateStatusText" Grid.Row="1" Grid.ColumnSpan="2"
+                                   FontSize="11" Foreground="{DynamicResource RingWeekly}"
+                                   TextWrapping="Wrap"/>
+                    </Grid>
+                </Border>
 
                 <StackPanel Spacing="4">
                     <TextBlock Text="{DynamicResource LblApiKey}"/>
