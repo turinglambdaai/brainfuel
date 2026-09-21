@@ -117,10 +117,28 @@
                     </ComboBox>
                 </StackPanel>
 
-                <StackPanel Spacing="4">
+                <StackPanel Spacing="6">
                     <TextBlock Text="{DynamicResource LblInterval}"/>
-                    <NumericUpDown x:Name="IntervalBox" Minimum="1" Maximum="60" Value="5"
-                                   Width="140" HorizontalAlignment="Left"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <NumericUpDown x:Name="IntervalBox"
+                                       Minimum="1" Maximum="60" Value="5" Increment="5" FormatString="0"
+                                       Width="140" HorizontalAlignment="Left"
+                                       ValueChanged="Interval_ValueChanged"/>
+                        <TextBlock Text="{DynamicResource UnitMinutes}" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextSecondary}"/>
+                    </StackPanel>
+                    <TextBlock Text="{DynamicResource IntervalInputHint}" FontSize="11"
+                               Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap"/>
+                    <Grid ColumnDefinitions="*,*,*,*,*,*" ColumnSpacing="6">
+                        <Button Grid.Column="0" Content="1" Click="IntervalPreset_Click" Padding="6,4"/>
+                        <Button Grid.Column="1" Content="5" Click="IntervalPreset_Click" Padding="6,4"/>
+                        <Button Grid.Column="2" Content="10" Click="IntervalPreset_Click" Padding="6,4"/>
+                        <Button Grid.Column="3" Content="15" Click="IntervalPreset_Click" Padding="6,4"/>
+                        <Button Grid.Column="4" Content="30" Click="IntervalPreset_Click" Padding="6,4"/>
+                        <Button Grid.Column="5" Content="60" Click="IntervalPreset_Click" Padding="6,4"/>
+                    </Grid>
+                    <TextBlock x:Name="IntervalStatusText" FontSize="11"
+                               Foreground="{DynamicResource RingWeekly}" TextWrapping="Wrap"/>
                 </StackPanel>
 
                 <StackPanel Spacing="6">
