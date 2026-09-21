@@ -39,6 +39,7 @@
             <ContextMenu>
                 <MenuItem Header="{DynamicResource MenuRefresh}" Click="Refresh_Click"/>
                 <MenuItem Header="{DynamicResource MenuSettings}" Click="Settings_Click"/>
+                <MenuItem x:Name="UpdateMenuItem" Header="{DynamicResource MenuCheckUpdates}" Click="Update_Click"/>
                 <Separator/>
                 <MenuItem Header="{DynamicResource MenuHide}" Click="Hide_Click"/>
                 <MenuItem Header="{DynamicResource MenuQuit}" Click="Quit_Click"/>
