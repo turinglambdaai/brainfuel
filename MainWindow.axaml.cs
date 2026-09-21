@@ -100,6 +100,37 @@ public partial class MainWindow : Window
 
     private void Settings_Click(object? sender, RoutedEventArgs e) => OpenSettings();
 
+    private async void Update_Click(object? sender, RoutedEventArgs e)
+    {
+        UpdateMenuItem.IsEnabled = false;
+        try
+        {
+            var result = await UpdateService.CheckDownloadAndRestartAsync(stage =>
+                Dispatcher.UIThread.Post(() => UpdateMenuItem.Header = stage switch
+                {
+                    ManualUpdateStage.Checking => Strings.Get("UpdateChecking"),
+                    ManualUpdateStage.Downloading => Strings.Get("UpdateDownloading"),
+                    ManualUpdateStage.Restarting => Strings.Get("UpdateRestarting"),
+                    _ => Strings.Get("MenuCheckUpdates"),
+                }));
+
+            UpdateMenuItem.Header = result switch
+            {
+                ManualUpdateResult.UpToDate => Strings.Get("UpdateUpToDate"),
+                ManualUpdateResult.NotInstalled => Strings.Get("UpdateInstalledOnly"),
+                ManualUpdateResult.Restarting => Strings.Get("UpdateRestarting"),
+                _ => Strings.Get("UpdateFailed"),
+            };
+
+            await System.Threading.Tasks.Task.Delay(3000);
+        }
+        finally
+        {
+            UpdateMenuItem.Header = Strings.Get("MenuCheckUpdates");
+            UpdateMenuItem.IsEnabled = true;
+        }
+    }
+
     private void Quit_Click(object? sender, RoutedEventArgs e) => Close();
 
     /// <summary>Hides the widget; polling and notifications keep running in the tray.</summary>
