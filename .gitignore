@@ -2,6 +2,10 @@
 bin/
 obj/
 publish/
+dist/
+
+# Packaging tools (private Inno Setup copy + its bootstrap installer)
+.tools/
 
 # IDE
 .vs/

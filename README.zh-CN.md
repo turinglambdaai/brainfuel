@@ -56,17 +56,21 @@ dotnet run
 
 ## 分发
 
-**方案 A — 下载预编译可执行文件**，见 [Releases](https://github.com/turinglambdaai/brainfuel/releases)。`release` 工作流为 `win-x64`、`osx-arm64`、`linux-x64` 构建自包含单文件可执行程序——目标机器无需安装 .NET。（在 [Actions 标签页](https://github.com/turinglambdaai/brainfuel/actions) 手动运行也会生成可下载的构建产物。）
+**方案 A — 从 [Releases](https://github.com/turinglambdaai/brainfuel/releases) 下载：**
+
+- **Windows 安装包** — `BrainFuel-Setup-<版本号>.exe`：per-user 安装（无需管理员/UAC），装到 `%LOCALAPPDATA%\Programs\BrainFuel`，带开始菜单快捷方式、可选桌面快捷方式与开机自启，卸载干净（用户数据 `%APPDATA%\BrainFuel` 保留）。
+- **便携版** — `win-x64`、`osx-arm64`、`linux-x64` 自包含单文件 zip，目标机器无需安装 .NET。
+
+（在 [Actions 标签页](https://github.com/turinglambdaai/brainfuel/actions) 手动运行也会生成可下载的构建产物。）
 
 **方案 B — 本地构建：**
 
 ```powershell
-./publish.ps1                 # win-x64（默认）
-./publish.ps1 osx-arm64       # macOS Apple Silicon
-./publish.ps1 linux-x64       # Linux
+./publish.ps1                          # 便携单文件 exe（默认 win-x64）
+./installer/build-installer.ps1        # Windows：发布 + 编译安装包
 ```
 
-输出位于 `publish/<rid>/`。
+`build-installer.ps1` 从 `BrainFuel.csproj` 读取版本号，发布 `win-x64` 后编译 `installer/BrainFuel.iss`。脚本会依次在 PATH、Program Files、`.tools\` 下查找 Inno Setup，找不到时自动下载一份私有副本（无需管理员）。输出：`dist/BrainFuel-Setup-<版本号>.exe`。
 
 ## 项目结构
 
@@ -88,6 +92,7 @@ brainfuel/
 │   └── UsageModels.cs        # 额度数据模型
 ├── ViewModels/
 │   └── MainViewModel.cs      # MVVM 视图模型
+├── installer/                # Inno Setup 脚本 + Windows 打包脚本
 ├── publish.ps1               # 本地自包含构建脚本
 └── BrainFuel.csproj          # 工程文件
 ```
