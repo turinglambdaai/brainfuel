@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Net.Http;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using BrainFuel.Services;
 
 namespace BrainFuel;
@@ -40,11 +41,14 @@ public partial class SettingsWindow : Window
         ThemeBox.SelectedIndex = (int)settings.ThemeMode;
         OpacitySlider.Value = settings.CardOpacity;
         LangBox.SelectedIndex = (int)settings.Language;
+        CurrentVersionText.Text = string.Format(
+            Strings.Get("UpdateCurrentVersion"),
+            typeof(SettingsWindow).Assembly.GetName().Version?.ToString(3) ?? "dev");
 
         // First run (or key cleared): show the quick-start note and grow the
         // window so the whole form, including Save, stays visible without scrolling.
         FirstRunPanel.IsVisible = !settings.IsValid;
-        if (!settings.IsValid) Height = 640;
+        if (!settings.IsValid) Height = 680;
 
         // Re-validate whenever the key or platform changes after a failed check.
         KeyBox.TextChanged += ResetValidation;
@@ -55,6 +59,36 @@ public partial class SettingsWindow : Window
     {
         var url = ConsoleUrls[Math.Clamp(PlatformBox.SelectedIndex, 0, ConsoleUrls.Length - 1)];
         try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); } catch { }
+    }
+
+    private async void CheckUpdate_Click(object? sender, RoutedEventArgs e)
+    {
+        CheckUpdateBtn.IsEnabled = false;
+        UpdateStatusText.Text = Strings.Get("UpdateChecking");
+
+        try
+        {
+            var result = await UpdateService.CheckDownloadAndRestartAsync(stage =>
+                Dispatcher.UIThread.Post(() => UpdateStatusText.Text = stage switch
+                {
+                    ManualUpdateStage.Checking => Strings.Get("UpdateChecking"),
+                    ManualUpdateStage.Downloading => Strings.Get("UpdateDownloading"),
+                    ManualUpdateStage.Restarting => Strings.Get("UpdateRestarting"),
+                    _ => Strings.Get("UpdateChecking"),
+                }));
+
+            UpdateStatusText.Text = result switch
+            {
+                ManualUpdateResult.UpToDate => Strings.Get("UpdateUpToDate"),
+                ManualUpdateResult.NotInstalled => Strings.Get("UpdateInstalledOnly"),
+                ManualUpdateResult.Restarting => Strings.Get("UpdateRestarting"),
+                _ => Strings.Get("UpdateFailed"),
+            };
+        }
+        finally
+        {
+            CheckUpdateBtn.IsEnabled = true;
+        }
     }
 
     private async void Save_Click(object? sender, RoutedEventArgs e)
