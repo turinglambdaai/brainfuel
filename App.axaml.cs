@@ -1,6 +1,4 @@
-using System.IO;
 using System.Threading;
-using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -18,6 +16,7 @@ public partial class App : Application
     public static MainViewModel? ViewModel { get; private set; }
 
     private static CancellationTokenSource? _instanceServerCts;
+    private static CancellationTokenSource? _updateCts;
     private static TrayIcon? _trayIcon;
 
     public override void Initialize()
@@ -44,7 +43,7 @@ public partial class App : Application
                 main.OpenSettings();
 
             InitTrayIcon(main);
-            desktop.ShutdownRequested += (_, _) => DisposeTray();
+            desktop.ShutdownRequested += (_, _) => StopBackgroundServicesAndDisposeTray();
 
             // Listen for "show" pokes from second-launch attempts, and bring this
             // window to the foreground when they arrive.
@@ -53,6 +52,11 @@ public partial class App : Application
                 onShow: () => Dispatcher.UIThread.Post(() =>
                     (desktop.MainWindow as MainWindow)?.EnsureVisible()),
                 _instanceServerCts.Token);
+
+            // Installed builds quietly check for updates. Development and legacy
+            // portable builds are detected by UpdateService and simply skip this.
+            _updateCts = new CancellationTokenSource();
+            _ = UpdateService.RunAutomaticUpdateLoopAsync(_updateCts.Token);
         }
 
         base.OnFrameworkInitializationCompleted();
@@ -95,7 +99,20 @@ public partial class App : Application
         _trayIcon.Clicked += (_, _) => main.EnsureVisible();
     }
 
-    private void DisposeTray()
+    private static void StopBackgroundServicesAndDisposeTray()
+    {
+        _instanceServerCts?.Cancel();
+        _instanceServerCts?.Dispose();
+        _instanceServerCts = null;
+
+        _updateCts?.Cancel();
+        _updateCts?.Dispose();
+        _updateCts = null;
+
+        DisposeTray();
+    }
+
+    private static void DisposeTray()
     {
         _trayIcon?.Dispose();
         _trayIcon = null;

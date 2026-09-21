@@ -38,8 +38,21 @@ public sealed class GlmUsageClient : IDisposable
         using var resp = await _http.GetAsync("/api/monitor/usage/quota/limit", ct);
         var body = await resp.Content.ReadAsStringAsync(ct);
 
-        // Always dump the raw payload so field mappings stay auditable.
-        try { File.WriteAllText(_debugPath, body); } catch { /* non-fatal */ }
+#if DEBUG
+        // Keep raw server payloads only in developer builds. Release builds should
+        // not continuously persist account-usage responses to disk.
+        try
+        {
+            var directory = Path.GetDirectoryName(_debugPath);
+            if (!string.IsNullOrWhiteSpace(directory))
+                Directory.CreateDirectory(directory);
+            File.WriteAllText(_debugPath, body);
+        }
+        catch
+        {
+            // Debug logging is non-fatal.
+        }
+#endif
 
         if (!resp.IsSuccessStatusCode)
             // Carry the status code so callers can tell "bad key" (401/403)
