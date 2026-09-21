@@ -100,34 +100,60 @@ public partial class MainWindow : Window
 
     private void Settings_Click(object? sender, RoutedEventArgs e) => OpenSettings();
 
+    private void SetUpdateUi(bool enabled, string menuText, string buttonText)
+    {
+        UpdateMenuItem.IsEnabled = enabled;
+        UpdateMenuItem.Header = menuText;
+        UpdateButton.IsEnabled = enabled;
+        UpdateButton.Content = buttonText;
+    }
+
     private async void Update_Click(object? sender, RoutedEventArgs e)
     {
-        UpdateMenuItem.IsEnabled = false;
+        SetUpdateUi(false, Strings.Get("UpdateChecking"), Strings.Get("UpdateCheckingShort"));
         try
         {
             var result = await UpdateService.CheckDownloadAndRestartAsync(stage =>
-                Dispatcher.UIThread.Post(() => UpdateMenuItem.Header = stage switch
+                Dispatcher.UIThread.Post(() =>
                 {
-                    ManualUpdateStage.Checking => Strings.Get("UpdateChecking"),
-                    ManualUpdateStage.Downloading => Strings.Get("UpdateDownloading"),
-                    ManualUpdateStage.Restarting => Strings.Get("UpdateRestarting"),
-                    _ => Strings.Get("MenuCheckUpdates"),
+                    var menuText = stage switch
+                    {
+                        ManualUpdateStage.Checking => Strings.Get("UpdateChecking"),
+                        ManualUpdateStage.Downloading => Strings.Get("UpdateDownloading"),
+                        ManualUpdateStage.Restarting => Strings.Get("UpdateRestarting"),
+                        _ => Strings.Get("MenuCheckUpdates"),
+                    };
+                    var buttonText = stage switch
+                    {
+                        ManualUpdateStage.Checking => Strings.Get("UpdateCheckingShort"),
+                        ManualUpdateStage.Downloading => Strings.Get("UpdateDownloadingShort"),
+                        ManualUpdateStage.Restarting => Strings.Get("UpdateRestartingShort"),
+                        _ => Strings.Get("BtnCheckUpdates"),
+                    };
+                    SetUpdateUi(false, menuText, buttonText);
                 }));
 
-            UpdateMenuItem.Header = result switch
+            var menuResult = result switch
             {
                 ManualUpdateResult.UpToDate => Strings.Get("UpdateUpToDate"),
                 ManualUpdateResult.NotInstalled => Strings.Get("UpdateInstalledOnly"),
                 ManualUpdateResult.Restarting => Strings.Get("UpdateRestarting"),
                 _ => Strings.Get("UpdateFailed"),
             };
+            var buttonResult = result switch
+            {
+                ManualUpdateResult.UpToDate => Strings.Get("UpdateUpToDateShort"),
+                ManualUpdateResult.NotInstalled => Strings.Get("UpdatePortableShort"),
+                ManualUpdateResult.Restarting => Strings.Get("UpdateRestartingShort"),
+                _ => Strings.Get("UpdateFailedShort"),
+            };
 
+            SetUpdateUi(false, menuResult, buttonResult);
             await System.Threading.Tasks.Task.Delay(3000);
         }
         finally
         {
-            UpdateMenuItem.Header = Strings.Get("MenuCheckUpdates");
-            UpdateMenuItem.IsEnabled = true;
+            SetUpdateUi(true, Strings.Get("MenuCheckUpdates"), Strings.Get("BtnCheckUpdates"));
         }
     }
 
