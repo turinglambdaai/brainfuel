@@ -3,20 +3,81 @@ name: release
 # Release model:
 # - portable ZIPs remain available for users who do not want an installation;
 # - Windows gets a Velopack installer plus full/delta update packages and feed;
-# - all build jobs upload Actions artifacts, and one final job publishes the
-#   GitHub Release to avoid concurrent jobs racing to mutate the same release.
+# - every binary artifact receives a GitHub/Sigstore build-provenance attestation;
+# - the final release contains a verified SHA256SUMS manifest;
+# - one final job publishes the GitHub Release only after all verification passes.
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to package, for example 0.3.5 (must match BrainFuel.csproj)'
+        required: false
+        type: string
+      publish:
+        description: 'Publish a GitHub Release and create the v<version> tag'
+        required: true
+        default: false
+        type: boolean
   push:
     tags:
       - 'v*'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  portable:
+  prepare:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      tag: ${{ steps.release.outputs.tag }}
+      publish: ${{ steps.release.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve and validate release version
+        id: release
+        shell: bash
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
+          REQUESTED_PUBLISH: ${{ inputs.publish }}
+        run: |
+          set -euo pipefail
+
+          project_version="$(sed -n 's:.*<Version>\([^<]*\)</Version>.*:\1:p' BrainFuel.csproj | head -n1)"
+          if [[ -z "$project_version" ]]; then
+            echo 'Unable to read <Version> from BrainFuel.csproj' >&2
+            exit 1
+          fi
+
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            version="${GITHUB_REF_NAME#v}"
+            publish=true
+          else
+            version="${REQUESTED_VERSION#v}"
+            if [[ -z "$version" ]]; then
+              version="$project_version"
+            fi
+            publish="${REQUESTED_PUBLISH:-false}"
+          fi
+
+          if [[ "$version" != "$project_version" ]]; then
+            echo "Requested/tag version $version does not match BrainFuel.csproj version $project_version" >&2
+            exit 1
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+          echo "publish=$publish" >> "$GITHUB_OUTPUT"
+          echo "Release version: $version; publish: $publish"
+
+  portable:
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     strategy:
       fail-fast: false
       matrix:
@@ -36,6 +97,7 @@ jobs:
         run: >-
           dotnet publish BrainFuel.csproj -c Release -r ${{ matrix.rid }}
           --self-contained true
+          -p:Version=${{ needs.prepare.outputs.version }}
           -p:PublishSingleFile=true
           -p:IncludeNativeLibrariesForSelfExtract=true
           -p:EnableCompressionInSingleFile=true
@@ -46,6 +108,11 @@ jobs:
         working-directory: publish
         run: zip -r "BrainFuel-${{ matrix.platform }}.zip" . -x '*.pdb'
 
+      - name: Attest portable build provenance
+        uses: actions/attest@v4
+        with:
+          subject-path: publish/BrainFuel-${{ matrix.platform }}.zip
+
       - name: Upload portable artifact
         uses: actions/upload-artifact@v4
         with:
@@ -54,7 +121,12 @@ jobs:
           if-no-files-found: error
 
   windows-updater:
+    needs: prepare
     runs-on: windows-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@v4
 
@@ -63,30 +135,50 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Resolve release version
-        shell: pwsh
-        run: |
-          if ($env:GITHUB_REF -like 'refs/tags/v*') {
-            $version = $env:GITHUB_REF_NAME.Substring(1)
-            "DOWNLOAD_PREVIOUS=true" | Out-File -FilePath $env:GITHUB_ENV -Append
-          } else {
-            [xml]$project = Get-Content BrainFuel.csproj
-            $version = $project.Project.PropertyGroup.Version | Select-Object -First 1
-            "DOWNLOAD_PREVIOUS=false" | Out-File -FilePath $env:GITHUB_ENV -Append
-          }
-          "BUILD_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
-          Write-Host "Packaging BrainFuel $version"
-
       - name: Build Velopack installer and update feed
         shell: pwsh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BUILD_VERSION: ${{ needs.prepare.outputs.version }}
+          PUBLISH_RELEASE: ${{ needs.prepare.outputs.publish }}
         run: |
-          if ($env:DOWNLOAD_PREVIOUS -eq 'true') {
+          if ($env:PUBLISH_RELEASE -eq 'true') {
             ./installer/build-velopack.ps1 -Version $env:BUILD_VERSION -DownloadPrevious
           } else {
             ./installer/build-velopack.ps1 -Version $env:BUILD_VERSION
           }
+
+      - name: Verify Windows release artifacts
+        shell: pwsh
+        env:
+          BUILD_VERSION: ${{ needs.prepare.outputs.version }}
+          PUBLISH_RELEASE: ${{ needs.prepare.outputs.publish }}
+        run: |
+          $required = @(
+            "dist/velopack/BrainFuel-$env:BUILD_VERSION-full.nupkg",
+            "dist/velopack/BrainFuel-win-Setup.exe",
+            "dist/velopack/releases.win.json"
+          )
+          foreach ($path in $required) {
+            if (-not (Test-Path $path -PathType Leaf)) {
+              throw "Required release artifact missing: $path"
+            }
+            if ((Get-Item $path).Length -le 0) {
+              throw "Required release artifact is empty: $path"
+            }
+          }
+
+          if ($env:PUBLISH_RELEASE -eq 'true') {
+            $delta = Get-ChildItem dist/velopack -Filter "BrainFuel-$env:BUILD_VERSION-delta.nupkg" | Select-Object -First 1
+            if (-not $delta) {
+              throw "Published releases must include a delta package for $env:BUILD_VERSION"
+            }
+          }
+
+      - name: Attest Windows build provenance
+        uses: actions/attest@v4
+        with:
+          subject-path: dist/velopack/*
 
       - name: Upload updater artifacts
         uses: actions/upload-artifact@v4
@@ -96,9 +188,13 @@ jobs:
           if-no-files-found: error
 
   publish-release:
-    if: startsWith(github.ref, 'refs/tags/')
-    needs: [portable, windows-updater]
+    if: needs.prepare.outputs.publish == 'true'
+    needs: [prepare, portable, windows-updater]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
     steps:
       - name: Download all release artifacts
         uses: actions/download-artifact@v4
@@ -107,8 +203,51 @@ jobs:
           path: release-assets
           merge-multiple: true
 
+      - name: Verify complete release set
+        shell: bash
+        env:
+          BUILD_VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          cd release-assets
+
+          required=(
+            "BrainFuel-windows-x64.zip"
+            "BrainFuel-macos-arm64.zip"
+            "BrainFuel-linux-x64.zip"
+            "BrainFuel-win-Setup.exe"
+            "BrainFuel-${BUILD_VERSION}-full.nupkg"
+            "BrainFuel-${BUILD_VERSION}-delta.nupkg"
+            "releases.win.json"
+          )
+
+          for file in "${required[@]}"; do
+            if [[ ! -s "$file" ]]; then
+              echo "Required release asset missing or empty: $file" >&2
+              exit 1
+            fi
+          done
+
+      - name: Generate and verify SHA-256 manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd release-assets
+          find . -maxdepth 1 -type f ! -name SHA256SUMS -printf '%f\0' \
+            | sort -z \
+            | xargs -0 sha256sum > SHA256SUMS
+          test -s SHA256SUMS
+          sha256sum --check SHA256SUMS
+
+      - name: Attest checksum manifest
+        uses: actions/attest@v4
+        with:
+          subject-path: release-assets/SHA256SUMS
+
       - name: Publish GitHub Release once
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          target_commitish: ${{ github.sha }}
           files: release-assets/*
           generate_release_notes: true

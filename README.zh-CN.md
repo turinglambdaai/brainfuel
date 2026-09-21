@@ -12,6 +12,7 @@
 - **嵌套额度环形图** — 外环 = 每周额度，内环 = 5 小时滚动窗口，带动画
 - **自动刷新** — 可点击的刷新按钮，并每隔几分钟自动刷新
 - **Windows 自动更新** — 安装版启动后自动检查 GitHub Releases；优先下载 Velopack 差分包，差分不可用时自动回退完整包；也可从卡片右键菜单或设置页手动检查并立即安装重启
+- **可验证发布** — v0.3.5 起每个正式 Release 自动附带 SHA-256 清单与 GitHub Artifact Attestation，可验证二进制确实来自本仓库 GitHub Actions
 - **浅色 / 深色 / 跟随系统主题** — Anthropic 风格配色，附带卡片透明度滑块，不遮挡桌面
 - **中英双语界面** — 中文 / English 切换
 - **开机自启** — 可选（Windows 注册表 / macOS LaunchAgent / Linux 自启）
@@ -64,11 +65,32 @@ dotnet run
 
 ## 分发
 
-从 [Releases](https://github.com/turinglambdaai/brainfuel/releases) 下载。
+只建议从本仓库的 [Releases](https://github.com/turinglambdaai/brainfuel/releases) 下载官方二进制。
 
 ### Windows 推荐下载
 
 **除非你明确需要便携版，否则优先下载 `BrainFuel-win-Setup.exe`。** 安装版是面向普通用户的默认分发方式，支持后台自动检查更新、可用时只下载很小的 delta 增量包、手动一键检查/下载安装/重启、正常卸载，以及在设置页显示清晰的版本与安装类型。
+
+### Windows SmartScreen 与文件验证
+
+BrainFuel 是免费开源项目，目前**不购买商业 Authenticode 代码签名证书**。因此即使文件来自官方 Release，Windows 仍可能显示 SmartScreen、`未知发布者` 或信誉警告。这不等同于文件校验失败；如果你希望确认下载内容，可以使用从 **v0.3.5** 开始提供的两套免费验证机制。
+
+每个正式 Release 都会附带 `SHA256SUMS`。在 PowerShell 中：
+
+```powershell
+Get-FileHash .\BrainFuel-win-Setup.exe -Algorithm SHA256
+Get-Content .\SHA256SUMS
+```
+
+第一条命令得到的 SHA-256 必须和 `SHA256SUMS` 中 `BrainFuel-win-Setup.exe` 对应条目完全一致。
+
+如果安装了 GitHub CLI，还可以验证由 GitHub Actions / Sigstore 生成的构建来源证明：
+
+```powershell
+gh attestation verify .\BrainFuel-win-Setup.exe --repo turinglambdaai/brainfuel
+```
+
+Portable ZIP 和 Velopack 包也可以用同样方式验证。Artifact Attestation 用于证明该文件摘要由本仓库的 GitHub Actions 工作流进行过证明，**它不是 Windows Authenticode 签名，因此不会消除 SmartScreen 提示**。更多安全说明见 [`SECURITY.md`](SECURITY.md)。
 
 ### 便携版 / 高级用途
 
@@ -90,7 +112,7 @@ dotnet run
 ./installer/build-velopack.ps1 -DownloadPrevious  # 有上一版 feed 时生成 delta
 ```
 
-仓库使用 `.config/dotnet-tools.json` 锁定与应用 SDK 相同版本的 `vpk`。GitHub Actions 在标签发布时会先下载上一版 Velopack 包用于生成 delta，再将所有平台的便携 ZIP 与 Windows 更新资产汇总后一次性发布，避免多个 job 同时修改同一个 Release。
+仓库使用 `.config/dotnet-tools.json` 锁定与应用 SDK 相同版本的 `vpk`。正式发布时，GitHub Actions 会验证版本号、生成三平台便携包和 Windows Velopack 资产、生成/验证 delta、对构建产物生成 GitHub Artifact Attestation、生成并自校验 `SHA256SUMS`，全部成功后才创建 Release。`release.yml` 同时支持标签触发和带版本号的手动发布，不再需要一次性的版本专用工作流。
 
 ## 项目结构
 
@@ -116,7 +138,8 @@ brainfuel/
 │   └── build-installer.ps1        # 旧 Inno Setup 打包（兼容/迁移参考）
 ├── .github/workflows/
 │   ├── ci.yml                     # 三平台编译 + Windows 更新包烟测
-│   └── release.yml                # 标签发布
+│   └── release.yml                # 发布 + 校验和 + provenance
+├── SECURITY.md                    # 二进制验证与安全报告说明
 └── BrainFuel.csproj
 ```
 

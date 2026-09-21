@@ -12,6 +12,7 @@ A tiny always-on-top desktop widget that monitors your **GLM Coding Plan** quota
 - **Nested quota rings** — outer ring = weekly allowance, inner ring = 5-hour rolling window
 - **Auto-refresh** — manual refresh plus configurable periodic refresh
 - **Windows automatic updates** — installed builds check GitHub Releases in the background, prefer Velopack delta packages, and fall back to a full package when required; users can also check and install immediately from the card menu or Settings
+- **Verifiable releases** — starting with v0.3.5, each official release includes a SHA-256 manifest and GitHub Artifact Attestations so downloaded binaries can be verified against this repository's GitHub Actions builds
 - **Light / Dark / System theme** — with adjustable card opacity
 - **Bilingual UI** — Chinese / English
 - **Start-on-login** — Windows registry / macOS LaunchAgent / Linux autostart
@@ -64,11 +65,32 @@ On first launch, paste your GLM Coding Plan key into Settings.
 
 ## Distribution
 
-Download from [Releases](https://github.com/turinglambdaai/brainfuel/releases).
+Only download official binaries from this repository's [Releases](https://github.com/turinglambdaai/brainfuel/releases) page.
 
 ### Recommended for Windows
 
 **Use `BrainFuel-win-Setup.exe` unless you specifically need a portable copy.** The installed build is the normal end-user distribution: it supports automatic background checks, tiny delta updates when available, one-click manual update/install/restart, normal uninstall behavior, and clear version/build information in Settings.
+
+### Windows SmartScreen and release verification
+
+BrainFuel is a free, open-source project and currently **does not purchase a commercial Authenticode code-signing certificate**. Windows may therefore show SmartScreen, **Unknown publisher**, or reputation warnings even for an authentic official release. If you want to verify what you downloaded, releases starting with **v0.3.5** provide two free verification mechanisms.
+
+Every official Release includes `SHA256SUMS`. In PowerShell:
+
+```powershell
+Get-FileHash .\BrainFuel-win-Setup.exe -Algorithm SHA256
+Get-Content .\SHA256SUMS
+```
+
+The SHA-256 shown by the first command must exactly match the `BrainFuel-win-Setup.exe` entry in `SHA256SUMS`.
+
+If the GitHub CLI is installed, you can also verify the GitHub Actions / Sigstore build-provenance attestation:
+
+```powershell
+gh attestation verify .\BrainFuel-win-Setup.exe --repo turinglambdaai/brainfuel
+```
+
+The same verification works for portable ZIPs and Velopack packages. Artifact Attestations establish that the artifact digest was attested by a GitHub Actions workflow associated with this repository. **They are not Windows Authenticode signatures and do not suppress SmartScreen warnings.** See [`SECURITY.md`](SECURITY.md) for more details.
 
 ### Portable / advanced use
 
@@ -90,7 +112,7 @@ Local builds:
 ./installer/build-velopack.ps1 -DownloadPrevious
 ```
 
-The repository pins the `vpk` CLI version in `.config/dotnet-tools.json` so the packaging tool matches the Velopack SDK. On tag releases, GitHub Actions downloads the previous Velopack release when available, generates the new full/delta feed, gathers all platform artifacts, and publishes the GitHub Release in one final job.
+The repository pins the `vpk` CLI version in `.config/dotnet-tools.json` so the packaging tool matches the Velopack SDK. For an official release, GitHub Actions validates the version, builds all portable and Windows Velopack assets, requires the delta package for published versions, creates GitHub Artifact Attestations for the built files, generates and verifies `SHA256SUMS`, and only then creates the Release. `release.yml` supports both tag-triggered publishing and versioned manual publishing, so one-off version-specific release workflows are no longer needed.
 
 ## Project Structure
 
@@ -116,7 +138,8 @@ brainfuel/
 │   └── build-installer.ps1        # legacy Inno Setup packaging reference
 ├── .github/workflows/
 │   ├── ci.yml
-│   └── release.yml
+│   └── release.yml                # release + checksums + provenance
+├── SECURITY.md                    # binary verification and security reporting
 └── BrainFuel.csproj
 ```
 
