@@ -1,10 +1,10 @@
 name: release
 
-# Builds self-contained single-file exes on GitHub's runners and ships them
-# via GitHub Releases — Windows users get a setup exe, everyone else downloads
-# their platform's zip and runs.
-#   - workflow_dispatch : manual run, uploads build artifacts to the Actions run.
-#   - push tag v*        : creates a GitHub Release with everything attached.
+# Release model:
+# - portable ZIPs remain available for users who do not want an installation;
+# - Windows gets a Velopack installer plus full/delta update packages and feed;
+# - all build jobs upload Actions artifacts, and one final job publishes the
+#   GitHub Release to avoid concurrent jobs racing to mutate the same release.
 on:
   workflow_dispatch:
   push:
@@ -15,7 +15,7 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  portable:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -32,9 +32,9 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Publish (${{ matrix.rid }})
+      - name: Publish portable (${{ matrix.rid }})
         run: >-
-          dotnet publish -c Release -r ${{ matrix.rid }}
+          dotnet publish BrainFuel.csproj -c Release -r ${{ matrix.rid }}
           --self-contained true
           -p:PublishSingleFile=true
           -p:IncludeNativeLibrariesForSelfExtract=true
@@ -42,26 +42,18 @@ jobs:
           -p:PublishTrimmed=false
           -o publish
 
-      - name: Package
+      - name: Package portable ZIP
         working-directory: publish
         run: zip -r "BrainFuel-${{ matrix.platform }}.zip" . -x '*.pdb'
 
-      - name: Upload artifact
+      - name: Upload portable artifact
         uses: actions/upload-artifact@v4
         with:
-          name: BrainFuel-${{ matrix.platform }}
+          name: release-portable-${{ matrix.platform }}
           path: publish/BrainFuel-${{ matrix.platform }}.zip
+          if-no-files-found: error
 
-      - name: Attach to Release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: publish/BrainFuel-${{ matrix.platform }}.zip
-          generate_release_notes: true
-
-  # Windows installer: publish win-x64 + compile installer/BrainFuel.iss with
-  # Inno Setup (auto-provisioned under .tools by the build script — no admin).
-  installer:
+  windows-updater:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -71,18 +63,52 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Build setup exe
+      - name: Resolve release version
         shell: pwsh
-        run: ./installer/build-installer.ps1
+        run: |
+          if ($env:GITHUB_REF -like 'refs/tags/v*') {
+            $version = $env:GITHUB_REF_NAME.Substring(1)
+            "DOWNLOAD_PREVIOUS=true" | Out-File -FilePath $env:GITHUB_ENV -Append
+          } else {
+            [xml]$project = Get-Content BrainFuel.csproj
+            $version = $project.Project.PropertyGroup.Version | Select-Object -First 1
+            "DOWNLOAD_PREVIOUS=false" | Out-File -FilePath $env:GITHUB_ENV -Append
+          }
+          "BUILD_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
+          Write-Host "Packaging BrainFuel $version"
 
-      - name: Upload artifact
+      - name: Build Velopack installer and update feed
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if ($env:DOWNLOAD_PREVIOUS -eq 'true') {
+            ./installer/build-velopack.ps1 -Version $env:BUILD_VERSION -DownloadPrevious
+          } else {
+            ./installer/build-velopack.ps1 -Version $env:BUILD_VERSION
+          }
+
+      - name: Upload updater artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: BrainFuel-windows-setup
-          path: dist/*.exe
+          name: release-windows-updater
+          path: dist/velopack/*
+          if-no-files-found: error
 
-      - name: Attach to Release
-        if: startsWith(github.ref, 'refs/tags/')
+  publish-release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [portable, windows-updater]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Publish GitHub Release once
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*.exe
+          files: release-assets/*
+          generate_release_notes: true

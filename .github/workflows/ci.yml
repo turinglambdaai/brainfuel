@@ -1,0 +1,59 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore BrainFuel.csproj
+
+      - name: Build
+        run: dotnet build BrainFuel.csproj -c Release --no-restore
+
+  package-windows-updater:
+    name: package Windows updater
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build Velopack package
+        shell: pwsh
+        run: ./installer/build-velopack.ps1
+
+      - name: Verify updater artifacts
+        shell: pwsh
+        run: |
+          $required = @(
+            'dist/velopack/releases.win.json'
+          )
+          foreach ($path in $required) {
+            if (-not (Test-Path $path)) { throw "Missing $path" }
+          }
+          if (-not (Get-ChildItem dist/velopack -Filter '*-full.nupkg')) { throw 'Missing full nupkg' }
+          if (-not (Get-ChildItem dist/velopack -Filter '*-Setup.exe')) { throw 'Missing Setup.exe' }

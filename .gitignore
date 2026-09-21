@@ -3,6 +3,7 @@ bin/
 obj/
 publish/
 dist/
+.velopack-releases/
 
 # Packaging tools (private Inno Setup copy + its bootstrap installer)
 .tools/

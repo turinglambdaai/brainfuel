@@ -1,6 +1,6 @@
 # BrainFuel
 
-A tiny always-on-top desktop widget that monitors your **GLM Coding Plan** quota — the 5-hour rolling window and the weekly allowance — so you don't get blindsided by a rate limit mid-session. Built with **Avalonia 12** / .NET 10. Cross-platform (Windows / macOS / Linux).
+A tiny always-on-top desktop widget that monitors your **GLM Coding Plan** quota — the 5-hour rolling window and weekly allowance — so you do not get blindsided by a rate limit mid-session. Built with **Avalonia 12** / .NET 10 for Windows, macOS, and Linux.
 
 ![C#](https://img.shields.io/badge/C%23-512BD4?logo=csharp&logoColor=white) [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
@@ -8,22 +8,37 @@ A tiny always-on-top desktop widget that monitors your **GLM Coding Plan** quota
 
 ## Features
 
-- **Guided first run** — the settings dialog opens automatically on first launch with a quick-start note, a console link to grab your GLM Coding Plan key, and on-save key validation (with a "save anyway" escape hatch for offline/restricted networks)
-- **Nested quota rings** — outer ring = weekly allowance, inner ring = 5-hour rolling window, animated
-- **Auto-refresh** — clickable refresh button plus automatic refresh every few minutes
-- **Light / Dark / System theme** — Anthropic-style palette, with a card opacity slider so it doesn't block your desktop
-- **Bilingual UI** — Chinese / English toggle
-- **Start-on-login** — optional autostart (Windows registry / macOS LaunchAgent / Linux autostart)
-- **Quota notifications** — optional desktop notification when a quota crosses an exhaustion threshold (default 80% used, configurable)
-- **Movable card** — right-click for refresh / settings / quit; drag to move (position remembered)
-- **System tray** — hide to tray keeps polling and notifications running; bring the widget back from the tray icon (or by launching the exe again). Only the tray/card "Quit" really exits
-- **Multi-monitor safe** — if a monitor is unplugged and the card ends up off-screen, it is pulled back onto a visible display automatically
+- **Guided first run** — settings opens automatically on first launch with a quick-start note, console link, and API-key validation
+- **Nested quota rings** — outer ring = weekly allowance, inner ring = 5-hour rolling window
+- **Auto-refresh** — manual refresh plus configurable periodic refresh
+- **Windows automatic updates** — installed builds check GitHub Releases in the background, prefer Velopack delta packages, and fall back to a full package when required; downloaded updates are applied on the next normal launch
+- **Light / Dark / System theme** — with adjustable card opacity
+- **Bilingual UI** — Chinese / English
+- **Start-on-login** — Windows registry / macOS LaunchAgent / Linux autostart
+- **Quota notifications** — configurable exhaustion threshold
+- **Movable card** — position is remembered
+- **System tray** — hide without stopping polling or notifications; relaunching the executable activates the running instance
+- **Multi-monitor safe** — an off-screen widget is moved back onto a visible display after monitor changes
 
 ## How It Works
 
-Reads quota from the GLM Coding Plan monitor endpoint (`GET /api/monitor/usage/quota/limit`) using your Coding Plan API key — the same call the official `glm-plan-usage` plugin makes. Two nested rings: outer = weekly, inner = 5-hour window. Clickable refresh button; auto-refresh every few minutes.
+BrainFuel reads quota data from the GLM Coding Plan monitor endpoint (`GET /api/monitor/usage/quota/limit`) using your Coding Plan API key. Settings and the key live under `%APPDATA%\BrainFuel\` (Windows), `~/.config/BrainFuel/` (Linux), or `~/Library/Application Support/BrainFuel/` (macOS).
 
-Settings & API key live under `%APPDATA%\BrainFuel\` (Windows) / `~/.config/BrainFuel/` (Linux) / `~/Library/Application Support/BrainFuel/` (macOS).
+Release builds no longer continuously persist the raw quota response to disk. Raw response logging is limited to Debug builds for troubleshooting.
+
+## Automatic Updates
+
+The installed Windows build uses Velopack. It checks for updates about 15 seconds after startup and then every six hours. When an update exists, it is downloaded in the background. Velopack uses delta packages when possible and automatically falls back to the full package when a delta is unavailable or unsuitable. The staged update is applied on the next normal launch instead of interrupting the current session.
+
+### Migrating from v0.2.x and earlier
+
+Older BrainFuel versions use the Inno Setup installer and do not contain the Velopack update engine, so they **cannot automatically upgrade themselves to the first Velopack-enabled release**. This is a one-time migration:
+
+1. Quit the old BrainFuel instance.
+2. Uninstall the old application. User data under `%APPDATA%\BrainFuel` is preserved.
+3. Download and run the new `*-Setup.exe` from Releases.
+
+Subsequent installed Windows releases update in-app. Portable ZIP builds remain manually replaceable, and the current macOS/Linux releases are still portable builds rather than auto-updating installations.
 
 ## Requirements
 
@@ -35,67 +50,59 @@ Settings & API key live under `%APPDATA%\BrainFuel\` (Windows) / `~/.config/Brai
 
 ## Quick Start
 
-### 1. Clone
-
 ```bash
 git clone https://github.com/turinglambdaai/brainfuel.git
 cd brainfuel
-```
-
-### 2. Run
-
-```bash
 dotnet run
 ```
 
-On first launch, paste your GLM Coding Plan key in the settings dialog.
+On first launch, paste your GLM Coding Plan key into Settings.
 
-> If `dotnet build`/`restore` can't reach nuget.org (restricted networks), restore from the local package cache instead:
-> ```bash
-> dotnet restore --ignore-failed-sources
-> ```
+> If `dotnet build`/`restore` cannot reach nuget.org on a restricted network, try `dotnet restore --ignore-failed-sources` when the required packages already exist in your local cache.
 
-## Distribute
+## Distribution
 
-**Option A — download from [Releases](https://github.com/turinglambdaai/brainfuel/releases):**
+Download from [Releases](https://github.com/turinglambdaai/brainfuel/releases):
 
-- **Windows installer** — `BrainFuel-Setup-<version>.exe`: a per-user setup (no admin/UAC) that installs into `%LOCALAPPDATA%\Programs\BrainFuel` with Start-menu / optional desktop shortcuts, an optional start-on-login task, and a clean uninstall entry. User data (`%APPDATA%\BrainFuel`) is kept on uninstall.
-- **Portable exes** — self-contained single-file zips for `win-x64`, `osx-arm64`, and `linux-x64`; no .NET install needed on the target.
+- **Windows installed build** — Velopack `*-Setup.exe`. Once installed, the app can update itself. Releases also contain `releases.win.json`, a full update package, and a delta package when one can be generated.
+- **Portable builds** — self-contained single-file ZIPs for `win-x64`, `osx-arm64`, and `linux-x64`. They do not require .NET on the target machine, but portable ZIPs do not auto-update.
 
-(A manual run from the [Actions tab](https://github.com/turinglambdaai/brainfuel/actions) also produces downloadable artifacts.)
-
-**Option B — build locally:**
+Local builds:
 
 ```powershell
-./publish.ps1                          # portable single-file exe (win-x64 default)
-./installer/build-installer.ps1        # Windows: publish + compile the setup exe
+./publish.ps1
+./installer/build-velopack.ps1
+./installer/build-velopack.ps1 -DownloadPrevious
 ```
 
-`build-installer.ps1` reads the version from `BrainFuel.csproj`, publishes `win-x64`, and compiles `installer/BrainFuel.iss`. It finds Inno Setup on PATH / in Program Files, or provisions a private copy under `.tools\` automatically (no admin needed). Output: `dist/BrainFuel-Setup-<version>.exe`.
+The repository pins the `vpk` CLI version in `.config/dotnet-tools.json` so the packaging tool matches the Velopack SDK. On tag releases, GitHub Actions downloads the previous Velopack release when available, generates the new full/delta feed, gathers all platform artifacts, and publishes the GitHub Release in one final job.
 
 ## Project Structure
 
-```
+```text
 brainfuel/
-├── App.axaml(.cs)            # Application definition / DI container
-├── Program.cs                # Entry point
-├── MainWindow.axaml(.cs)     # Main widget window (quota rings)
-├── NotificationWindow.axaml(.cs)  # Desktop notification window
-├── SettingsWindow.axaml(.cs) # Settings + API key dialog
+├── App.axaml(.cs)                 # application lifecycle / background services
+├── Program.cs                     # entry point / Velopack startup hook
+├── MainWindow.axaml(.cs)          # quota widget
+├── NotificationWindow.axaml(.cs)  # desktop notification window
+├── SettingsWindow.axaml(.cs)      # settings + API key dialog
 ├── Controls/
-│   └── UsageRing.cs          # Reusable quota-ring control
+│   └── UsageRing.cs
 ├── Services/
-│   ├── GlmUsageClient.cs     # GLM Coding Plan quota API client
-│   ├── SettingsService.cs    # Settings / API key persistence
-│   ├── AutoStartService.cs   # Start-on-login (Win/macOS/Linux)
-│   ├── SingleInstanceActivation.cs  # Single-instance guard
-│   ├── Strings.cs            # Localized strings
-│   └── UsageModels.cs        # Quota data models
-├── ViewModels/
-│   └── MainViewModel.cs      # MVVM view model
-├── installer/                # Inno Setup script + Windows build script
-├── publish.ps1               # Local self-contained build script
-└── BrainFuel.csproj          # Project file
+│   ├── GlmUsageClient.cs
+│   ├── UpdateService.cs           # background update checks/downloads
+│   ├── SettingsService.cs
+│   ├── AutoStartService.cs
+│   ├── SingleInstanceActivation.cs
+│   ├── Strings.cs
+│   └── UsageModels.cs
+├── installer/
+│   ├── build-velopack.ps1         # Windows installer + delta-update feed
+│   └── build-installer.ps1        # legacy Inno Setup packaging reference
+├── .github/workflows/
+│   ├── ci.yml
+│   └── release.yml
+└── BrainFuel.csproj
 ```
 
 ## License
