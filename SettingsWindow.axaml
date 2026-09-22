@@ -29,9 +29,20 @@
     <Grid RowDefinitions="Auto, *, Auto">
         <!-- header -->
         <StackPanel Grid.Row="0" Margin="24,20,24,8" Spacing="6">
-            <TextBlock Text="{DynamicResource SettingsTitle}" FontSize="18" FontWeight="Bold"/>
-            <TextBlock Text="{DynamicResource SettingsDesc}"
-                       Foreground="#FF9FA0A0" TextWrapping="Wrap"/>
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                <StackPanel Grid.Column="0" Spacing="4">
+                    <TextBlock Text="{DynamicResource SettingsTitle}" FontSize="18" FontWeight="Bold"/>
+                    <TextBlock Text="{DynamicResource SettingsDesc}"
+                               Foreground="#FF9FA0A0" TextWrapping="Wrap"/>
+                </StackPanel>
+                <Border Grid.Column="1" CornerRadius="8" Padding="8,4"
+                        Background="{DynamicResource HoverOverlay}"
+                        BorderBrush="{DynamicResource Separator}" BorderThickness="1"
+                        VerticalAlignment="Top">
+                    <TextBlock x:Name="HeaderVersionText" FontSize="11"
+                               Foreground="{DynamicResource TextSecondary}"/>
+                </Border>
+            </Grid>
             <!-- first run (or key cleared): quick-start note -->
             <Border x:Name="FirstRunPanel" IsVisible="False" CornerRadius="10" Padding="12,10"
                     Background="{DynamicResource HoverOverlay}"
@@ -141,7 +152,7 @@
                                Foreground="{DynamicResource RingWeekly}" TextWrapping="Wrap"/>
                 </StackPanel>
 
-                <StackPanel Spacing="6">
+                <StackPanel Spacing="4">
                     <CheckBox x:Name="WeeklyRemaining" Content="{DynamicResource ChkWeeklyRemaining}"/>
                     <CheckBox x:Name="HourlyRemaining" Content="{DynamicResource ChkHourlyRemaining}"/>
                 </StackPanel>
