@@ -12,7 +12,7 @@
         WindowDecorations="None"
         Topmost="False"
         Background="Transparent"
-        TransparencyLevelHint="AcrylicBlur"
+        TransparencyLevelHint="Transparent"
         WindowStartupLocation="Manual">
 
     <Window.Styles>
