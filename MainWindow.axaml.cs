@@ -25,6 +25,7 @@ public partial class MainWindow : Window
         _settings = settings;
         _vm = vm;
         DataContext = vm;
+        RefreshAboutMenuText();
         if (settings.WindowX is int x && settings.WindowY is int y)
         {
             var saved = new PixelPoint(x, y);
@@ -99,6 +100,15 @@ public partial class MainWindow : Window
     }
 
     private void Settings_Click(object? sender, RoutedEventArgs e) => OpenSettings();
+
+    private void About_Click(object? sender, RoutedEventArgs e) => OpenAbout();
+
+    private void RefreshAboutMenuText()
+    {
+        var version = typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "dev";
+        var label = Strings.Current == AppLanguage.Zh ? "关于 BrainFuel…" : "About BrainFuel…";
+        AboutMenuItem.Header = $"{label} · v{version}";
+    }
 
     private void SetUpdateUi(bool enabled, string menuText, string buttonText)
     {
@@ -177,7 +187,17 @@ public partial class MainWindow : Window
         if (_settings is null) return;
         var win = new SettingsWindow(_settings);
         win.ShowDialog(this);
-        win.Closed += (_, _) => _vm?.OnSettingsChanged();
+        win.Closed += (_, _) =>
+        {
+            _vm?.OnSettingsChanged();
+            RefreshAboutMenuText();
+        };
+    }
+
+    public void OpenAbout()
+    {
+        var win = new AboutWindow();
+        win.ShowDialog(this);
     }
 
     protected override void OnClosing(WindowClosingEventArgs e)
