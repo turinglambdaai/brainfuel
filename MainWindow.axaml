@@ -39,7 +39,8 @@
             CornerRadius="16"
             BorderBrush="{DynamicResource CardBorder}"
             BorderThickness="1"
-            PointerPressed="Card_PointerPressed">
+            PointerPressed="Card_PointerPressed"
+            PointerReleased="Card_PointerReleased">
         <Border.ContextMenu>
             <ContextMenu x:Name="CardMenu">
                 <MenuItem Header="{DynamicResource MenuRefresh}" Click="Refresh_Click"/>
