@@ -41,23 +41,6 @@
             BorderThickness="1"
             PointerPressed="Card_PointerPressed"
             PointerReleased="Card_PointerReleased">
-        <Border.ContextMenu>
-            <ContextMenu x:Name="CardMenu">
-                <MenuItem Header="{DynamicResource MenuRefresh}" Click="Refresh_Click"/>
-                <MenuItem Header="{DynamicResource MenuSettings}" Click="Settings_Click"/>
-                <MenuItem x:Name="UpdateMenuItem" Header="{DynamicResource MenuCheckUpdates}" Click="Update_Click"/>
-                <Separator/>
-                <MenuItem x:Name="TopmostMenuItem" Click="ToggleTopmost_Click"/>
-                <MenuItem x:Name="MoveNextDisplayMenuItem" Header="{DynamicResource MenuMoveNextDisplay}" Click="MoveNextDisplay_Click"/>
-                <MenuItem Header="{DynamicResource MenuMovePrimary}" Click="MovePrimary_Click"/>
-                <Separator/>
-                <MenuItem x:Name="AboutMenuItem" Header="About BrainFuel…" Click="About_Click"/>
-                <Separator/>
-                <MenuItem Header="{DynamicResource MenuHide}" Click="Hide_Click"/>
-                <MenuItem Header="{DynamicResource MenuQuit}" Click="Quit_Click"/>
-            </ContextMenu>
-        </Border.ContextMenu>
-
         <Grid>
             <Border Background="{DynamicResource CardBg}" Opacity="{Binding CardOpacity}" CornerRadius="16"/>
 
@@ -72,6 +55,22 @@
                     <Button x:Name="MenuButton" Grid.Column="1" Classes="ghost"
                             Click="OpenMenu_Click" ToolTip.Tip="{DynamicResource MenuMoreTip}"
                             VerticalAlignment="Top">
+                        <Button.ContextMenu>
+                            <ContextMenu x:Name="CardMenu">
+                                <MenuItem Header="{DynamicResource MenuRefresh}" Click="Refresh_Click"/>
+                                <MenuItem Header="{DynamicResource MenuSettings}" Click="Settings_Click"/>
+                                <MenuItem x:Name="UpdateMenuItem" Header="{DynamicResource MenuCheckUpdates}" Click="Update_Click"/>
+                                <Separator/>
+                                <MenuItem x:Name="TopmostMenuItem" Click="ToggleTopmost_Click"/>
+                                <MenuItem x:Name="MoveNextDisplayMenuItem" Header="{DynamicResource MenuMoveNextDisplay}" Click="MoveNextDisplay_Click"/>
+                                <MenuItem Header="{DynamicResource MenuMovePrimary}" Click="MovePrimary_Click"/>
+                                <Separator/>
+                                <MenuItem x:Name="AboutMenuItem" Header="About BrainFuel…" Click="About_Click"/>
+                                <Separator/>
+                                <MenuItem Header="{DynamicResource MenuHide}" Click="Hide_Click"/>
+                                <MenuItem Header="{DynamicResource MenuQuit}" Click="Quit_Click"/>
+                            </ContextMenu>
+                        </Button.ContextMenu>
                         <TextBlock Text="⋯" FontSize="18" LineHeight="16"
                                    Foreground="{DynamicResource TextSecondary}"/>
                     </Button>

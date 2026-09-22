@@ -105,13 +105,12 @@ public partial class MainWindow : Window
     {
         RefreshMenuState();
 
-        // CardMenu is attached to CardBorder, so Avalonia requires CardBorder to
-        // be the owner passed to Open(). Use PlacementTarget only to anchor the
-        // popup to the three-dot button. Passing MenuButton to Open() throws an
-        // ArgumentException and previously terminated the application.
+        // The application menu belongs only to the explicit three-dot button.
+        // The card itself deliberately has no ContextMenu, so right-clicking the
+        // quota surface does nothing and there is only one discoverable app menu.
         CardMenu.PlacementTarget = MenuButton;
         CardMenu.Placement = PlacementMode.BottomEdgeAlignedRight;
-        CardMenu.Open(CardBorder);
+        CardMenu.Open(MenuButton);
         e.Handled = true;
     }
 
