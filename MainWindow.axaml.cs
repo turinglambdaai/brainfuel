@@ -36,6 +36,7 @@ public partial class MainWindow : Window
 
         RefreshMenuState();
         Screens.Changed += OnScreensChanged;
+        ScalingChanged += OnScalingChanged;
         PositionChanged += OnPositionChanged;
 
         vm.OnNotify = (title, msg) => Dispatcher.UIThread.Post(() =>
@@ -48,6 +49,12 @@ public partial class MainWindow : Window
     {
         if (_placementReady && _settings is not null)
             WindowPlacementService.Capture(this, _settings);
+    }
+
+    private void OnScalingChanged(object? sender, EventArgs e)
+    {
+        if (_settings is null) return;
+        Dispatcher.UIThread.Post(() => WindowPlacementService.RepairAfterScreenChange(this, _settings));
     }
 
     private async void OnScreensChanged(object? sender, EventArgs e)
@@ -214,6 +221,7 @@ public partial class MainWindow : Window
             SettingsService.Save(_settings);
         }
         Screens.Changed -= OnScreensChanged;
+        ScalingChanged -= OnScalingChanged;
         PositionChanged -= OnPositionChanged;
         _vm?.Dispose();
         base.OnClosing(e);
