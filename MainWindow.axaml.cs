@@ -13,7 +13,7 @@ public partial class MainWindow : Window
 {
     private AppSettings? _settings;
     private MainViewModel? _vm;
-    private bool _placementReady;
+    private bool _userMoveInProgress;
 
     public MainWindow()
     {
@@ -28,24 +28,16 @@ public partial class MainWindow : Window
 
         Topmost = settings.AlwaysOnTop;
         Position = WindowPlacementService.Restore(this, settings);
-        _placementReady = true;
         WindowPlacementService.Capture(this, settings);
 
         RefreshMenuState();
         Screens.Changed += OnScreensChanged;
         ScalingChanged += OnScalingChanged;
-        PositionChanged += OnPositionChanged;
 
         vm.OnNotify = (title, msg) => Dispatcher.UIThread.Post(() =>
             new NotificationWindow().ShowNotification(title, msg));
 
         vm.Start();
-    }
-
-    private void OnPositionChanged(object? sender, PixelPointEventArgs e)
-    {
-        if (_placementReady && _settings is not null)
-            WindowPlacementService.Capture(this, _settings);
     }
 
     private void OnScalingChanged(object? sender, EventArgs e)
@@ -70,8 +62,21 @@ public partial class MainWindow : Window
 
     private void Card_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
-            BeginMoveDrag(e);
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+            return;
+
+        _userMoveInProgress = true;
+        BeginMoveDrag(e);
+    }
+
+    private void Card_PointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (!_userMoveInProgress || _settings is null)
+            return;
+
+        _userMoveInProgress = false;
+        WindowPlacementService.Capture(this, _settings);
+        SettingsService.Save(_settings);
     }
 
     private async void Refresh_Click(object? sender, RoutedEventArgs e)
@@ -221,7 +226,6 @@ public partial class MainWindow : Window
         }
         Screens.Changed -= OnScreensChanged;
         ScalingChanged -= OnScalingChanged;
-        PositionChanged -= OnPositionChanged;
         _vm?.Dispose();
         base.OnClosing(e);
     }
