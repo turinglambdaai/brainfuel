@@ -52,6 +52,7 @@ public static class WindowPlacementService
 
         settings.WindowX = window.Position.X;
         settings.WindowY = window.Position.Y;
+        settings.WindowScreenName = string.IsNullOrWhiteSpace(screen.DisplayName) ? null : screen.DisplayName;
         settings.WindowScreenX = screen.Bounds.X;
         settings.WindowScreenY = screen.Bounds.Y;
         settings.WindowScreenWidth = screen.Bounds.Width;
@@ -121,6 +122,8 @@ public static class WindowPlacementService
 
     private static Screen? FindSavedScreen(Window window, AppSettings settings)
     {
+        // Exact geometry is the strongest match and avoids ambiguity when two
+        // monitors expose the same model/display name.
         if (settings.WindowScreenX is int sx &&
             settings.WindowScreenY is int sy &&
             settings.WindowScreenWidth is int sw &&
@@ -132,6 +135,16 @@ public static class WindowPlacementService
                 if (b.X == sx && b.Y == sy && b.Width == sw && b.Height == sh)
                     return screen;
             }
+        }
+
+        // If the user rearranged displays or changed resolution, the OS-reported
+        // display name lets us keep the card on the same physical monitor.
+        if (!string.IsNullOrWhiteSpace(settings.WindowScreenName))
+        {
+            var named = window.Screens.All.FirstOrDefault(screen =>
+                string.Equals(screen.DisplayName, settings.WindowScreenName, StringComparison.Ordinal));
+            if (named is not null)
+                return named;
         }
 
         if (settings.WindowX is int x && settings.WindowY is int y)
