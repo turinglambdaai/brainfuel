@@ -1,57 +1,110 @@
 # BrainFuel
 
-一个常驻置顶的桌面小组件，用于监控你的 **GLM Coding Plan** 额度——包括 5 小时滚动窗口和每周额度，避免在开发过程中突然触发限流。基于 **Avalonia 12** / .NET 10 构建，支持 Windows / macOS / Linux。
+一个常驻置顶的桌面小组件，用于监控 **GLM Coding Plan** 的 5 小时滚动额度和每周额度。基于 **Avalonia 12 / .NET 10**，支持 Windows / macOS / Linux。
 
 ![C#](https://img.shields.io/badge/C%23-512BD4?logo=csharp&logoColor=white) [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 [English](README.md) · **中文**
 
+## 产品设计
+
+BrainFuel 从 v0.4.0 开始明确拆开两个完全不同的概念：
+
+- **额度数据**只属于主卡片。主卡片上的可见动作明确叫 **“刷新额度”**。
+- **应用级操作**统一放在右上角 **“⋯”应用菜单**与设置中：设置、检查软件更新、关于、隐藏、退出。
+
+这样主卡片只承担一个任务：看一眼额度，然后继续工作。
+
 ## 功能特性
 
-- **首次运行引导** — 首次启动自动打开设置窗：带快速上手说明、控制台取 Key 链接，保存时自动验证 Key（离线/受限网络可选「仍然保存」）
-- **嵌套额度环形图** — 外环 = 每周额度，内环 = 5 小时滚动窗口，带动画
-- **自动刷新** — 可点击的刷新按钮，并每隔几分钟自动刷新
-- **Windows 自动更新** — 安装版启动后自动检查 GitHub Releases；优先下载 Velopack 差分包，差分不可用时自动回退完整包；也可从卡片右键菜单或设置页手动检查并立即安装重启
-- **可验证发布** — v0.3.5 起每个正式 Release 自动附带 SHA-256 清单与 GitHub Artifact Attestation，可验证二进制确实来自本仓库 GitHub Actions
-- **浅色 / 深色 / 跟随系统主题** — Anthropic 风格配色，附带卡片透明度滑块，不遮挡桌面
-- **中英双语界面** — 中文 / English 切换
-- **开机自启** — 可选（Windows 注册表 / macOS LaunchAgent / Linux 自启）
-- **额度通知** — 额度达到耗尽阈值时可选桌面提醒（默认已用 80%，可配置）
-- **可拖动卡片** — 右键菜单可刷新 / 设置 / 检查更新 / 隐藏到托盘 / 退出；拖动可移动（位置会被记住）
-- **系统托盘** — 隐藏到托盘后台继续刷新与通知，托盘图标（或再次启动 exe）随时调出；托盘菜单「退出」才会真正退出
-- **多屏自适应** — 拔插显示器时若卡片落在已断开的屏幕外，会自动拉回主屏可见区域
+- **聚焦额度的主卡片** — 周额度 / 5 小时额度双环、百分比、重置时间、数据新鲜度
+- **明确的额度刷新** — 手动“刷新额度” + 可配置自动刷新
+- **结构化设置** — 常规 / 账户 / 通知 / 软件四个页面，不再是一条很长的表单
+- **首次运行引导** — 首次启动直接进入“账户”页，提供取 Key 链接并在 Key 发生变化时验证
+- **Windows 自动软件更新** — 安装版后台检查 GitHub Releases，优先使用 Velopack delta 小包
+- **清晰的版本信息** — 设置、关于窗口、主卡片应用菜单和托盘都能看到版本
+- **可验证发布** — 正式 Release 提供 `SHA256SUMS` 与 GitHub Artifact Attestation
+- **浅色 / 深色 / 跟随系统主题** — 支持卡片透明度
+- **中英双语界面**
+- **开机自启** — Windows / macOS / Linux
+- **额度通知** — 可配置耗尽阈值
+- **可拖动、多屏安全** — 记住位置，显示器变化后自动拉回可见区域
+- **系统托盘** — 隐藏卡片后额度轮询和通知继续工作
 
 ## 工作原理
 
-使用你的 Coding Plan API Key 调用 GLM Coding Plan 监控接口（`GET /api/monitor/usage/quota/limit`）读取额度——与官方 `glm-plan-usage` 插件的调用一致。两个嵌套环形：外环 = 每周额度，内环 = 5 小时窗口。可点击刷新按钮；每隔几分钟自动刷新。
+BrainFuel 使用你的 Coding Plan API Key 调用 GLM Coding Plan 监控接口：
 
-设置和 API Key 存放位置：`%APPDATA%\BrainFuel\`（Windows）/ `~/.config/BrainFuel/`（Linux）/ `~/Library/Application Support/BrainFuel/`（macOS）。Release 构建不会把原始额度响应持续写入磁盘；原始响应文件只用于 Debug 构建排查。
+`GET /api/monitor/usage/quota/limit`
 
-## 自动更新
+设置文件位于 `%APPDATA%\BrainFuel\`（Windows）、`~/.config/BrainFuel/`（Linux）或 `~/Library/Application Support/BrainFuel/`（macOS）。Release 构建不会持续把原始额度响应写入磁盘；原始响应日志只用于 Debug 排查。
 
-Windows 安装版使用 Velopack：启动约 15 秒后检查一次更新，此后每 6 小时检查一次。发现新版本后在后台下载；存在可用 delta 时只下载版本之间的差异，不适合使用 delta 时自动回退 full package。后台下载完成的更新会在下次正常启动时应用；用户主动点击 **检查更新** 时，则会下载、安装并自动重启到新版本。
+## 软件更新
 
-便携版刻意不做自更新。设置页会明确显示当前是 **Windows 安装版** 还是 **便携版**；便携版会直接提供 GitHub Releases 下载入口，更新方式是下载最新版 ZIP 后手动替换旧程序文件。
+**Windows 安装版**使用 Velopack。启动约 15 秒后检查一次软件更新，此后每 6 小时检查一次。发现新版本时后台下载；可用时优先下载 delta 差分包，否则回退完整包。
 
-### 从 v0.2.x 及更早版本迁移
+手动软件更新入口位于：
 
-旧版本使用 Inno Setup，并不包含 Velopack 更新引擎，因此 **无法从旧版本自动升级到首个 Velopack 版本**。这是唯一一次需要手工迁移：
+- 主卡片右上角 **⋯ → 检查软件更新…**
+- 系统托盘菜单
+- **设置 → 软件**
 
-1. 退出旧版 BrainFuel。
-2. 卸载旧版（用户数据 `%APPDATA%\BrainFuel` 会保留）。
-3. 从 Releases 下载并安装新的 `BrainFuel-win-Setup.exe`。
+它不会再和“刷新额度”并排出现，因此不会混淆“刷新额度数据”和“升级 BrainFuel”。
 
-之后的 Windows 安装版更新由应用自行完成。便携 ZIP 不属于安装版，因此继续采用手动替换；当前 macOS / Linux 发布也仍为便携包，暂不启用应用内更新。
+便携版刻意不做自更新，需要从 Releases 下载最新版 ZIP 后手动替换。
 
-## 环境要求
+## Windows 安装
 
-| 依赖 | 用途 / 版本 |
-|------|-------------|
-| [.NET 10 SDK](https://dotnet.microsoft.com/) | 运行时 / 构建目标 |
-| [Avalonia 12](https://avaloniaui.net/) | 跨平台 UI 框架 |
-| Windows / macOS / Linux | 支持的桌面平台 |
+### 推荐：一键 Setup
 
-## 快速开始
+普通用户优先下载：
+
+`BrainFuel-win-Setup.exe`
+
+Velopack 的 Setup 本身就是一键安装设计，不会加入冗长的“下一步、下一步”向导。v0.4.0 起我们保留这种速度，但加入 **BrainFuel 品牌安装 Splash**，不再完全是默认的普通安装体验。
+
+### 可选：MSI
+
+v0.4.0 起同时发布：
+
+`BrainFuel-win-Setup.msi`
+
+MSI 面向更喜欢传统 Windows Installer 流程的用户或管理员，包含欢迎页、MIT License 和安装完成说明，默认按当前用户安装。安装完成后，应用内自动更新方式与 Setup.exe 安装版一致。
+
+### SmartScreen 与文件验证
+
+BrainFuel 是免费开源项目，目前**不购买商业 Authenticode 代码签名证书**，因此 Windows 仍可能显示 SmartScreen 或“未知发布者”。
+
+每个正式 Release 都包含 `SHA256SUMS`：
+
+```powershell
+Get-FileHash .\BrainFuel-win-Setup.exe -Algorithm SHA256
+Get-Content .\SHA256SUMS
+```
+
+如果安装了 GitHub CLI，还可以验证 GitHub Actions / Sigstore 构建来源：
+
+```powershell
+gh attestation verify .\BrainFuel-win-Setup.exe --repo turinglambdaai/brainfuel
+```
+
+MSI、Portable ZIP 与 Velopack 包同样可以验证。Artifact Attestation 用于证明构建来源，**不是 Authenticode 签名，不会消除 SmartScreen**。更多说明见 [`SECURITY.md`](SECURITY.md)。
+
+## 官方发布文件
+
+只建议从本仓库 [Releases](https://github.com/turinglambdaai/brainfuel/releases) 下载。
+
+| 文件 | 用途 |
+|---|---|
+| `BrainFuel-win-Setup.exe` | **Windows 普通用户推荐** |
+| `BrainFuel-win-Setup.msi` | 传统 / 管理型 Windows 安装 |
+| `BrainFuel-windows-x64.zip` | Windows 便携版 |
+| `BrainFuel-macos-arm64.zip` | macOS 便携版 |
+| `BrainFuel-linux-x64.zip` | Linux 便携版 |
+
+便携包都是自包含版本，目标机器无需另外安装 .NET。目前 macOS 与 Linux 仍以便携包为主。
+
+## 从源码运行
 
 ```bash
 git clone https://github.com/turinglambdaai/brainfuel.git
@@ -59,87 +112,53 @@ cd brainfuel
 dotnet run
 ```
 
-首次启动时，在设置对话框中粘贴你的 GLM Coding Plan Key。
+首次启动时进入 **设置 → 账户**，粘贴 GLM Coding Plan Key。
 
-> 如果 `dotnet build`/`restore` 无法访问 nuget.org（受限网络），可改为从本地包缓存还原：`dotnet restore --ignore-failed-sources`。
+## 发布工程
 
-## 分发
-
-只建议从本仓库的 [Releases](https://github.com/turinglambdaai/brainfuel/releases) 下载官方二进制。
-
-### Windows 推荐下载
-
-**除非你明确需要便携版，否则优先下载 `BrainFuel-win-Setup.exe`。** 安装版是面向普通用户的默认分发方式，支持后台自动检查更新、可用时只下载很小的 delta 增量包、手动一键检查/下载安装/重启、正常卸载，以及在设置页显示清晰的版本与安装类型。
-
-### Windows SmartScreen 与文件验证
-
-BrainFuel 是免费开源项目，目前**不购买商业 Authenticode 代码签名证书**。因此即使文件来自官方 Release，Windows 仍可能显示 SmartScreen、`未知发布者` 或信誉警告。这不等同于文件校验失败；如果你希望确认下载内容，可以使用从 **v0.3.5** 开始提供的两套免费验证机制。
-
-每个正式 Release 都会附带 `SHA256SUMS`。在 PowerShell 中：
+Windows 本地打包：
 
 ```powershell
-Get-FileHash .\BrainFuel-win-Setup.exe -Algorithm SHA256
-Get-Content .\SHA256SUMS
+./installer/build-velopack.ps1
+./installer/build-velopack.ps1 -DownloadPrevious
 ```
 
-第一条命令得到的 SHA-256 必须和 `SHA256SUMS` 中 `BrainFuel-win-Setup.exe` 对应条目完全一致。
+打包脚本会生成：品牌化一键 Setup、可选 MSI、full package、可用时的 delta package，以及 Velopack 更新 feed。
 
-如果安装了 GitHub CLI，还可以验证由 GitHub Actions / Sigstore 生成的构建来源证明：
+正式 GitHub Actions Release 还会：
 
-```powershell
-gh attestation verify .\BrainFuel-win-Setup.exe --repo turinglambdaai/brainfuel
-```
-
-Portable ZIP 和 Velopack 包也可以用同样方式验证。Artifact Attestation 用于证明该文件摘要由本仓库的 GitHub Actions 工作流进行过证明，**它不是 Windows Authenticode 签名，因此不会消除 SmartScreen 提示**。更多安全说明见 [`SECURITY.md`](SECURITY.md)。
-
-### 便携版 / 高级用途
-
-以下 ZIP 继续保留，用于不方便安装或不希望写入系统安装信息的场景：
-
-- `BrainFuel-windows-x64.zip`
-- `BrainFuel-macos-arm64.zip`
-- `BrainFuel-linux-x64.zip`
-
-它们都是自包含版本，目标机器无需安装 .NET。便携版 **不会修改自身目录，也不会自动更新**；需要升级时，从 Releases 下载最新版 ZIP 并手动替换原文件即可。它更适合临时测试、无安装权限的公司电脑、U 盘/移动目录运行以及问题排查。
-
-目前 macOS 和 Linux 仍只提供便携版。
-
-本地构建：
-
-```powershell
-./publish.ps1                          # 便携单文件 exe（默认 win-x64）
-./installer/build-velopack.ps1         # Windows 安装版 + 更新 feed
-./installer/build-velopack.ps1 -DownloadPrevious  # 有上一版 feed 时生成 delta
-```
-
-仓库使用 `.config/dotnet-tools.json` 锁定与应用 SDK 相同版本的 `vpk`。正式发布时，GitHub Actions 会验证版本号、生成三平台便携包和 Windows Velopack 资产、生成/验证 delta、对构建产物生成 GitHub Artifact Attestation、生成并自校验 `SHA256SUMS`，全部成功后才创建 Release。`release.yml` 同时支持标签触发和带版本号的手动发布，不再需要一次性的版本专用工作流。
+- 构建 Windows / macOS / Linux 便携包；
+- 强制检查 Setup、MSI、full package、feed，以及正式发布时的 delta；
+- 为构建产物生成 GitHub Artifact Attestation；
+- 生成并反向校验 `SHA256SUMS`；
+- 只有全部通过后才创建正式 Release。
 
 ## 项目结构
 
 ```text
 brainfuel/
-├── App.axaml(.cs)                 # 应用生命周期 / 后台服务
-├── Program.cs                     # 入口 / Velopack 启动钩子
-├── MainWindow.axaml(.cs)          # 主组件窗口（额度环形图）
-├── NotificationWindow.axaml(.cs)  # 桌面通知窗口
-├── SettingsWindow.axaml(.cs)      # 设置 + API Key 对话框
-├── Controls/
-│   └── UsageRing.cs               # 可复用额度环形控件
+├── App.axaml(.cs)                 # 应用生命周期 / 托盘 / 后台服务
+├── MainWindow.axaml(.cs)          # 聚焦额度的主卡片 + 应用菜单
+├── SettingsWindow.axaml(.cs)      # 常规 / 账户 / 通知 / 软件
+├── AboutWindow.axaml(.cs)         # 版本 / 安装类型 / 项目链接
+├── NotificationWindow.axaml(.cs)  # 桌面通知
+├── Controls/UsageRing.cs
 ├── Services/
-│   ├── GlmUsageClient.cs          # GLM Coding Plan 额度 API 客户端
-│   ├── UpdateService.cs           # 后台检查 / 下载应用更新
-│   ├── SettingsService.cs         # 设置 / API Key 持久化
-│   ├── AutoStartService.cs        # 开机自启（Win/macOS/Linux）
-│   ├── SingleInstanceActivation.cs# 单实例守卫
-│   ├── Strings.cs                 # 本地化字符串
-│   └── UsageModels.cs             # 额度数据模型
+│   ├── GlmUsageClient.cs
+│   ├── UpdateService.cs
+│   ├── SettingsService.cs
+│   ├── AutoStartService.cs
+│   ├── SingleInstanceActivation.cs
+│   ├── Strings.cs
+│   └── UsageModels.cs
 ├── installer/
-│   ├── build-velopack.ps1         # Windows 安装版与差分更新打包
-│   └── build-installer.ps1        # 旧 Inno Setup 打包（兼容/迁移参考）
+│   ├── build-velopack.ps1         # 品牌 Setup + MSI + 更新 feed
+│   ├── welcome.md
+│   └── conclusion.md
 ├── .github/workflows/
-│   ├── ci.yml                     # 三平台编译 + Windows 更新包烟测
-│   └── release.yml                # 发布 + 校验和 + provenance
-├── SECURITY.md                    # 二进制验证与安全报告说明
+│   ├── ci.yml
+│   └── release.yml
+├── SECURITY.md
 └── BrainFuel.csproj
 ```
 

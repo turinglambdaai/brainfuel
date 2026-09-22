@@ -32,8 +32,6 @@ public partial class MainWindow : Window
             Position = IsOnAnyScreen(saved) ? saved : EnsureOnPrimary(saved);
         }
 
-        // A monitor got plugged/unplugged (or resolution changed): if the window
-        // is now stranded off-screen, pull it back onto a visible display.
         Screens.Changed += OnScreensChanged;
 
         vm.OnNotify = (title, msg) => Dispatcher.UIThread.Post(() =>
@@ -44,10 +42,6 @@ public partial class MainWindow : Window
 
     private async void OnScreensChanged(object? sender, EventArgs e)
     {
-        // Defer so the Screens list reflects the new topology before we test it.
-        // On Windows the list may still be stale right after the event fires, so
-        // re-check a few times over the next seconds — cheap and settles the
-        // "widget stranded on an unplugged monitor" case reliably.
         foreach (var delay in new[] { 100, 1000, 3000 })
         {
             await System.Threading.Tasks.Task.Delay(delay);
@@ -59,7 +53,6 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>True if a point lies inside any currently connected screen's bounds.</summary>
     private bool IsOnAnyScreen(PixelPoint p)
     {
         foreach (var s in Screens.All)
@@ -67,16 +60,12 @@ public partial class MainWindow : Window
         return false;
     }
 
-    /// <summary>
-    /// Clamps a point into the primary screen's working area so the window is
-    /// always reachable. Keeps the relative corner when possible.
-    /// </summary>
     private PixelPoint EnsureOnPrimary(PixelPoint p)
     {
         var primary = Screens.Primary;
         if (primary is null) return p;
         var wa = primary.WorkingArea;
-        int margin = 16;
+        const int margin = 16;
         int x = Math.Clamp(p.X, wa.X + margin, wa.Right - margin - 100);
         int y = Math.Clamp(p.Y, wa.Y + margin, wa.Bottom - margin - 40);
         return new PixelPoint(x, y);
@@ -90,7 +79,8 @@ public partial class MainWindow : Window
 
     private async void Refresh_Click(object? sender, RoutedEventArgs e)
     {
-        // Unconfigured: the only useful "refresh" is getting a key — route there.
+        // This action is intentionally quota-only. Software update lives in the
+        // app menu/settings so users never have to guess what "refresh" means.
         if (_settings is { IsValid: false })
         {
             OpenSettings();
@@ -98,6 +88,9 @@ public partial class MainWindow : Window
         }
         await (_vm?.RefreshAsync() ?? System.Threading.Tasks.Task.CompletedTask);
     }
+
+    private void OpenMenu_Click(object? sender, RoutedEventArgs e)
+        => CardMenu.Open(MenuButton);
 
     private void Settings_Click(object? sender, RoutedEventArgs e) => OpenSettings();
 
@@ -110,69 +103,45 @@ public partial class MainWindow : Window
         AboutMenuItem.Header = $"{label} · v{version}";
     }
 
-    private void SetUpdateUi(bool enabled, string menuText, string buttonText)
+    private void SetUpdateMenu(bool enabled, string text)
     {
         UpdateMenuItem.IsEnabled = enabled;
-        UpdateMenuItem.Header = menuText;
-        UpdateButton.IsEnabled = enabled;
-        UpdateButton.Content = buttonText;
+        UpdateMenuItem.Header = text;
     }
 
     private async void Update_Click(object? sender, RoutedEventArgs e)
     {
-        SetUpdateUi(false, Strings.Get("UpdateChecking"), Strings.Get("UpdateCheckingShort"));
+        SetUpdateMenu(false, Strings.Get("UpdateChecking"));
         try
         {
             var result = await UpdateService.CheckDownloadAndRestartAsync(stage =>
-                Dispatcher.UIThread.Post(() =>
+                Dispatcher.UIThread.Post(() => SetUpdateMenu(false, stage switch
                 {
-                    var menuText = stage switch
-                    {
-                        ManualUpdateStage.Checking => Strings.Get("UpdateChecking"),
-                        ManualUpdateStage.Downloading => Strings.Get("UpdateDownloading"),
-                        ManualUpdateStage.Restarting => Strings.Get("UpdateRestarting"),
-                        _ => Strings.Get("MenuCheckUpdates"),
-                    };
-                    var buttonText = stage switch
-                    {
-                        ManualUpdateStage.Checking => Strings.Get("UpdateCheckingShort"),
-                        ManualUpdateStage.Downloading => Strings.Get("UpdateDownloadingShort"),
-                        ManualUpdateStage.Restarting => Strings.Get("UpdateRestartingShort"),
-                        _ => Strings.Get("BtnCheckUpdates"),
-                    };
-                    SetUpdateUi(false, menuText, buttonText);
-                }));
+                    ManualUpdateStage.Checking => Strings.Get("UpdateChecking"),
+                    ManualUpdateStage.Downloading => Strings.Get("UpdateDownloading"),
+                    ManualUpdateStage.Restarting => Strings.Get("UpdateRestarting"),
+                    _ => Strings.Get("MenuCheckUpdates"),
+                })));
 
-            var menuResult = result switch
+            SetUpdateMenu(false, result switch
             {
                 ManualUpdateResult.UpToDate => Strings.Get("UpdateUpToDate"),
                 ManualUpdateResult.NotInstalled => Strings.Get("UpdateInstalledOnly"),
                 ManualUpdateResult.Restarting => Strings.Get("UpdateRestarting"),
                 _ => Strings.Get("UpdateFailed"),
-            };
-            var buttonResult = result switch
-            {
-                ManualUpdateResult.UpToDate => Strings.Get("UpdateUpToDateShort"),
-                ManualUpdateResult.NotInstalled => Strings.Get("UpdatePortableShort"),
-                ManualUpdateResult.Restarting => Strings.Get("UpdateRestartingShort"),
-                _ => Strings.Get("UpdateFailedShort"),
-            };
-
-            SetUpdateUi(false, menuResult, buttonResult);
+            });
             await System.Threading.Tasks.Task.Delay(3000);
         }
         finally
         {
-            SetUpdateUi(true, Strings.Get("MenuCheckUpdates"), Strings.Get("BtnCheckUpdates"));
+            SetUpdateMenu(true, Strings.Get("MenuCheckUpdates"));
         }
     }
 
     private void Quit_Click(object? sender, RoutedEventArgs e) => Close();
 
-    /// <summary>Hides the widget; polling and notifications keep running in the tray.</summary>
-    private void Hide_Click(object? sender, RoutedEventArgs e) => Hide();
+    public void Hide_Click(object? sender, RoutedEventArgs e) => Hide();
 
-    /// <summary>Restores the window (from hide/tray or a second launch) and guarantees it lands on a connected screen.</summary>
     public void EnsureVisible()
     {
         if (!IsOnAnyScreen(Position))
@@ -204,9 +173,6 @@ public partial class MainWindow : Window
     {
         if (_settings is not null)
         {
-            // Persist the current position only if it is still on a visible
-            // screen; otherwise keep whatever (valid) value was there before so
-            // a stranded window doesn't lock itself off-screen across restarts.
             var pos = IsOnAnyScreen(Position) ? Position : EnsureOnPrimary(Position);
             _settings.WindowX = pos.X;
             _settings.WindowY = pos.Y;

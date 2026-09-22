@@ -10,19 +10,18 @@ namespace BrainFuel;
 
 public partial class SettingsWindow : Window
 {
-    // API-key console per platform entry (index matches the PlatformBox combo).
     private static readonly string[] ConsoleUrls =
     {
-        "https://open.bigmodel.cn/usercenter/apikeys", // Zhipu (China)
-        "https://z.ai/manage-apikey/apikey-list",      // Z.ai (intl)
+        "https://open.bigmodel.cn/usercenter/apikeys",
+        "https://z.ai/manage-apikey/apikey-list",
     };
 
     private readonly AppSettings _settings;
     private readonly bool _installedBuild;
     private int _savedRefreshInterval;
     private bool _initializingInterval = true;
-    private bool _validated;    // key confirmed working in this dialog
-    private bool _saveAnyway;   // validation failed, user chose to save regardless
+    private bool _validated;
+    private bool _saveAnyway;
 
     public SettingsWindow() : this(new AppSettings()) { }
 
@@ -34,7 +33,7 @@ public partial class SettingsWindow : Window
 
         var version = typeof(SettingsWindow).Assembly.GetName().Version?.ToString(3) ?? "dev";
         Title = $"{Strings.Get("WinTitle")} · v{version}";
-        HeaderVersionText.Text = $"BrainFuel v{version}";
+        HeaderVersionText.Text = $"v{version}";
 
         KeyBox.Text = settings.ApiKey;
         PlatformBox.SelectedIndex =
@@ -55,16 +54,17 @@ public partial class SettingsWindow : Window
 
         var buildKind = Strings.Get(_installedBuild ? "UpdateInstalledBuild" : "UpdatePortableBuild");
         CurrentVersionText.Text = $"{string.Format(Strings.Get("UpdateCurrentVersion"), version)} · {buildKind}";
-        OpenReleasesBtn.IsVisible = !_installedBuild;
+        OpenReleasesBtn.IsVisible = true;
         if (!_installedBuild)
             UpdateStatusText.Text = Strings.Get("UpdatePortableHint");
 
-        // First run (or key cleared): show the quick-start note and grow the
-        // window so the whole form, including Save, stays visible without scrolling.
+        // First-run users land on Account, while returning users land on General.
         FirstRunPanel.IsVisible = !settings.IsValid;
-        if (!settings.IsValid) Height = 680;
+        SettingsTabs.SelectedIndex = settings.IsValid ? 0 : 1;
 
-        // Re-validate whenever the key or platform changes after a failed check.
+        // Existing saved credentials are considered accepted. Revalidation is
+        // required only when the user actually changes the key/platform.
+        _validated = settings.IsValid;
         KeyBox.TextChanged += ResetValidation;
         PlatformBox.SelectionChanged += ResetValidation;
     }
@@ -89,10 +89,8 @@ public partial class SettingsWindow : Window
 
     private void Interval_ValueChanged(object? sender, NumericUpDownValueChangedEventArgs e)
     {
-        if (_initializingInterval)
-            return;
-
-        RefreshIntervalStatus();
+        if (!_initializingInterval)
+            RefreshIntervalStatus();
     }
 
     private void IntervalPreset_Click(object? sender, RoutedEventArgs e)
@@ -116,7 +114,6 @@ public partial class SettingsWindow : Window
         if (!_installedBuild)
         {
             UpdateStatusText.Text = Strings.Get("UpdatePortableHint");
-            OpenReleasesBtn.IsVisible = true;
             return;
         }
 
@@ -153,9 +150,6 @@ public partial class SettingsWindow : Window
         CollectForm();
         var key = _settings.ApiKey;
 
-        // Validate the key on save so a typo or wrong platform is caught here,
-        // not as an anonymous "refresh failed" on the card. One more click on
-        // the relabeled button saves anyway (offline / restricted networks).
         if (!string.IsNullOrWhiteSpace(key) && !_validated && !_saveAnyway)
         {
             ValidateMsg.Text = "";
@@ -172,13 +166,11 @@ public partial class SettingsWindow : Window
             {
                 _saveAnyway = true;
                 ValidateMsg.Text = string.Format(Strings.Get("ValidateBadKey"), (int)ex.StatusCode);
-                ok = false;
             }
             catch
             {
                 _saveAnyway = true;
                 ValidateMsg.Text = Strings.Get("ValidateNetwork");
-                ok = false;
             }
             finally
             {

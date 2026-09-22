@@ -2,7 +2,7 @@ name: release
 
 # Release model:
 # - portable ZIPs remain available for users who do not want an installation;
-# - Windows gets a Velopack installer plus full/delta update packages and feed;
+# - Windows gets a branded one-click Setup, an optional MSI, full/delta update packages and feed;
 # - every binary artifact receives a GitHub/Sigstore build-provenance attestation;
 # - the final release contains a verified SHA256SUMS manifest;
 # - one final job publishes the GitHub Release only after all verification passes.
@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to package, for example 0.3.5 (must match BrainFuel.csproj)'
+        description: 'Version to package, for example 0.4.0 (must match BrainFuel.csproj)'
         required: false
         type: string
       publish:
@@ -34,7 +34,6 @@ jobs:
       publish: ${{ steps.release.outputs.publish }}
     steps:
       - uses: actions/checkout@v4
-
       - name: Resolve and validate release version
         id: release
         shell: bash
@@ -43,29 +42,23 @@ jobs:
           REQUESTED_PUBLISH: ${{ inputs.publish }}
         run: |
           set -euo pipefail
-
           project_version="$(sed -n 's:.*<Version>\([^<]*\)</Version>.*:\1:p' BrainFuel.csproj | head -n1)"
           if [[ -z "$project_version" ]]; then
             echo 'Unable to read <Version> from BrainFuel.csproj' >&2
             exit 1
           fi
-
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             version="${GITHUB_REF_NAME#v}"
             publish=true
           else
             version="${REQUESTED_VERSION#v}"
-            if [[ -z "$version" ]]; then
-              version="$project_version"
-            fi
+            if [[ -z "$version" ]]; then version="$project_version"; fi
             publish="${REQUESTED_PUBLISH:-false}"
           fi
-
           if [[ "$version" != "$project_version" ]]; then
             echo "Requested/tag version $version does not match BrainFuel.csproj version $project_version" >&2
             exit 1
           fi
-
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "tag=v$version" >> "$GITHUB_OUTPUT"
           echo "publish=$publish" >> "$GITHUB_OUTPUT"
@@ -82,17 +75,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { rid: win-x64,   platform: windows-x64 }
+          - { rid: win-x64, platform: windows-x64 }
           - { rid: osx-arm64, platform: macos-arm64 }
           - { rid: linux-x64, platform: linux-x64 }
     steps:
       - uses: actions/checkout@v4
-
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
-
       - name: Publish portable (${{ matrix.rid }})
         run: >-
           dotnet publish BrainFuel.csproj -c Release -r ${{ matrix.rid }}
@@ -103,16 +94,13 @@ jobs:
           -p:EnableCompressionInSingleFile=true
           -p:PublishTrimmed=false
           -o publish
-
       - name: Package portable ZIP
         working-directory: publish
         run: zip -r "BrainFuel-${{ matrix.platform }}.zip" . -x '*.pdb'
-
       - name: Attest portable build provenance
         uses: actions/attest@v4
         with:
           subject-path: publish/BrainFuel-${{ matrix.platform }}.zip
-
       - name: Upload portable artifact
         uses: actions/upload-artifact@v4
         with:
@@ -129,12 +117,10 @@ jobs:
       attestations: write
     steps:
       - uses: actions/checkout@v4
-
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
-
       - name: Build Velopack installer and update feed
         shell: pwsh
         env:
@@ -147,7 +133,6 @@ jobs:
           } else {
             ./installer/build-velopack.ps1 -Version $env:BUILD_VERSION
           }
-
       - name: Verify Windows release artifacts
         shell: pwsh
         env:
@@ -157,29 +142,21 @@ jobs:
           $required = @(
             "dist/velopack/BrainFuel-$env:BUILD_VERSION-full.nupkg",
             "dist/velopack/BrainFuel-win-Setup.exe",
+            "dist/velopack/BrainFuel-win-Setup.msi",
             "dist/velopack/releases.win.json"
           )
           foreach ($path in $required) {
-            if (-not (Test-Path $path -PathType Leaf)) {
-              throw "Required release artifact missing: $path"
-            }
-            if ((Get-Item $path).Length -le 0) {
-              throw "Required release artifact is empty: $path"
-            }
+            if (-not (Test-Path $path -PathType Leaf)) { throw "Required release artifact missing: $path" }
+            if ((Get-Item $path).Length -le 0) { throw "Required release artifact is empty: $path" }
           }
-
           if ($env:PUBLISH_RELEASE -eq 'true') {
             $delta = Get-ChildItem dist/velopack -Filter "BrainFuel-$env:BUILD_VERSION-delta.nupkg" | Select-Object -First 1
-            if (-not $delta) {
-              throw "Published releases must include a delta package for $env:BUILD_VERSION"
-            }
+            if (-not $delta) { throw "Published releases must include a delta package for $env:BUILD_VERSION" }
           }
-
       - name: Attest Windows build provenance
         uses: actions/attest@v4
         with:
           subject-path: dist/velopack/*
-
       - name: Upload updater artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -202,7 +179,6 @@ jobs:
           pattern: release-*
           path: release-assets
           merge-multiple: true
-
       - name: Verify complete release set
         shell: bash
         env:
@@ -210,40 +186,34 @@ jobs:
         run: |
           set -euo pipefail
           cd release-assets
-
           required=(
             "BrainFuel-windows-x64.zip"
             "BrainFuel-macos-arm64.zip"
             "BrainFuel-linux-x64.zip"
             "BrainFuel-win-Setup.exe"
+            "BrainFuel-win-Setup.msi"
             "BrainFuel-${BUILD_VERSION}-full.nupkg"
             "BrainFuel-${BUILD_VERSION}-delta.nupkg"
             "releases.win.json"
           )
-
           for file in "${required[@]}"; do
             if [[ ! -s "$file" ]]; then
               echo "Required release asset missing or empty: $file" >&2
               exit 1
             fi
           done
-
       - name: Generate and verify SHA-256 manifest
         shell: bash
         run: |
           set -euo pipefail
           cd release-assets
-          find . -maxdepth 1 -type f ! -name SHA256SUMS -printf '%f\0' \
-            | sort -z \
-            | xargs -0 sha256sum > SHA256SUMS
+          find . -maxdepth 1 -type f ! -name SHA256SUMS -printf '%f\0' | sort -z | xargs -0 sha256sum > SHA256SUMS
           test -s SHA256SUMS
           sha256sum --check SHA256SUMS
-
       - name: Attest checksum manifest
         uses: actions/attest@v4
         with:
           subject-path: release-assets/SHA256SUMS
-
       - name: Publish GitHub Release once
         uses: softprops/action-gh-release@v2
         with:
