@@ -8,6 +8,7 @@ namespace BrainFuel.Services;
 
 public enum DisplayStyle { Used, Remaining }
 public enum AppTheme { System, Light, Dark }
+public enum ApiKeyStorageState { None, Protected, PlaintextFallback, ProtectedUnavailable }
 
 public class AppSettings
 {
@@ -61,10 +62,12 @@ public static class SettingsService
     private static string SettingsPath => Path.Combine(AppDirectory, "settings.json");
     public static string DebugPath => Path.Combine(AppDirectory, "quota-debug.json");
 
-    public static bool ApiKeyIsProtected { get; private set; }
-    public static string ApiKeyStorageName => ApiKeyIsProtected
-        ? CredentialStore.BackendDisplayName
-        : "settings.json";
+    public static ApiKeyStorageState ApiKeyStorageState { get; private set; } = ApiKeyStorageState.None;
+    public static bool ApiKeyIsProtected => ApiKeyStorageState == ApiKeyStorageState.Protected;
+    public static string ApiKeyStorageName =>
+        ApiKeyStorageState is ApiKeyStorageState.Protected or ApiKeyStorageState.ProtectedUnavailable
+            ? CredentialStore.BackendDisplayName
+            : "settings.json";
 
     private static string BuildAppDirectory()
     {
@@ -97,18 +100,14 @@ public static class SettingsService
             settings = new AppSettings();
         }
 
-        // v0.4 and earlier were unconditionally Topmost. Preserve that behavior
-        // for existing users while making new installations non-intrusive by default.
         if (existingInstall && !hadAlwaysOnTopSetting)
             settings.AlwaysOnTop = true;
 
-        // An explicit false is a tombstone. Ignore (and opportunistically remove)
-        // any stale OS-store entry rather than resurrecting a key the user cleared.
         if (settings.ApiKeyConfigured == false)
         {
             settings.ApiKey = null;
             _lastPersistedApiKey = null;
-            ApiKeyIsProtected = false;
+            ApiKeyStorageState = ApiKeyStorageState.None;
             CredentialStore.TryDelete(AppDirectory);
             return settings;
         }
@@ -121,21 +120,37 @@ public static class SettingsService
             settings.ApiKey = protectedKey;
             settings.ApiKeyConfigured = true;
             _lastPersistedApiKey = protectedKey;
-            ApiKeyIsProtected = true;
+            ApiKeyStorageState = ApiKeyStorageState.Protected;
         }
         else if (!string.IsNullOrWhiteSpace(settings.ApiKey) &&
                  CredentialStore.TryWrite(AppDirectory, settings.ApiKey))
         {
             settings.ApiKeyConfigured = true;
             _lastPersistedApiKey = settings.ApiKey;
-            ApiKeyIsProtected = true;
+            ApiKeyStorageState = ApiKeyStorageState.Protected;
             Save(settings);
+        }
+        else if (settings.ApiKeyConfigured == true && string.IsNullOrWhiteSpace(settings.ApiKey))
+        {
+            // The settings marker says a protected credential exists, but the OS
+            // store could not be read right now (locked keychain, unavailable D-Bus,
+            // transient desktop-session failure, etc.). Preserve that fact instead
+            // of turning a temporary read failure into a destructive clear/downgrade.
+            settings.ApiKey = null;
+            _lastPersistedApiKey = null;
+            ApiKeyStorageState = ApiKeyStorageState.ProtectedUnavailable;
+        }
+        else if (!string.IsNullOrWhiteSpace(settings.ApiKey))
+        {
+            settings.ApiKeyConfigured = true;
+            _lastPersistedApiKey = settings.ApiKey;
+            ApiKeyStorageState = ApiKeyStorageState.PlaintextFallback;
         }
         else
         {
-            settings.ApiKeyConfigured = !string.IsNullOrWhiteSpace(settings.ApiKey);
-            _lastPersistedApiKey = settings.ApiKey;
-            ApiKeyIsProtected = false;
+            settings.ApiKeyConfigured = false;
+            _lastPersistedApiKey = null;
+            ApiKeyStorageState = ApiKeyStorageState.None;
         }
 
         return settings;
@@ -147,61 +162,75 @@ public static class SettingsService
         var key = settings.ApiKey?.Trim();
         settings.ApiKey = key;
 
-        bool protectedStored;
-        if (string.IsNullOrWhiteSpace(key))
+        bool omitPlaintextKey;
+        if (ApiKeyStorageState == ApiKeyStorageState.ProtectedUnavailable &&
+            settings.ApiKeyConfigured == true &&
+            string.IsNullOrWhiteSpace(key))
+        {
+            // An unrelated settings save while the system credential service is
+            // unavailable must preserve the protected-credential marker and never
+            // delete the OS-store item or write a plaintext replacement.
+            settings.ApiKeyConfigured = true;
+            omitPlaintextKey = true;
+        }
+        else if (string.IsNullOrWhiteSpace(key))
         {
             settings.ApiKeyConfigured = false;
-            // The tombstone above is authoritative even if OS-store deletion is
-            // temporarily unavailable; Load() will never resurrect the stale key.
             CredentialStore.TryDelete(AppDirectory);
             _lastPersistedApiKey = null;
-            ApiKeyIsProtected = false;
-            protectedStored = true; // no plaintext secret needs persistence
+            ApiKeyStorageState = ApiKeyStorageState.None;
+            omitPlaintextKey = true;
         }
-        else if (ApiKeyIsProtected && string.Equals(key, _lastPersistedApiKey, StringComparison.Ordinal))
+        else if (ApiKeyStorageState == ApiKeyStorageState.Protected &&
+                 string.Equals(key, _lastPersistedApiKey, StringComparison.Ordinal))
         {
-            // Critical: an unrelated settings change must not touch the keychain.
-            // This prevents a transient keyring outage from downgrading a protected
-            // credential back into plaintext settings.json.
+            // Unrelated settings changes do not touch the keychain. A transient
+            // secure-store outage can therefore never downgrade a protected key.
             settings.ApiKeyConfigured = true;
-            protectedStored = true;
+            omitPlaintextKey = true;
         }
         else if (CredentialStore.TryWrite(AppDirectory, key))
         {
             settings.ApiKeyConfigured = true;
             _lastPersistedApiKey = key;
-            ApiKeyIsProtected = true;
-            protectedStored = true;
+            ApiKeyStorageState = ApiKeyStorageState.Protected;
+            omitPlaintextKey = true;
         }
         else
         {
             // First-time save / actual key change with no usable secret service:
-            // preserve the user's credential rather than silently losing it, but
-            // disclose this fallback in Settings and restrict file permissions.
+            // preserve the credential rather than silently losing it, disclose the
+            // fallback in Settings, and restrict file permissions on Unix systems.
             settings.ApiKeyConfigured = true;
             _lastPersistedApiKey = key;
-            ApiKeyIsProtected = false;
-            protectedStored = false;
+            ApiKeyStorageState = ApiKeyStorageState.PlaintextFallback;
+            omitPlaintextKey = false;
         }
 
         var root = JsonSerializer.SerializeToNode(settings, JsonOpts)?.AsObject() ?? new JsonObject();
-        if (protectedStored)
+        if (omitPlaintextKey)
             root.Remove(nameof(AppSettings.ApiKey));
 
-        File.WriteAllText(SettingsPath, root.ToJsonString(JsonOpts));
-        HardenSettingsPermissions();
+        WriteSettingsAtomically(root.ToJsonString(JsonOpts));
     }
 
-    private static void HardenSettingsPermissions()
+    private static void WriteSettingsAtomically(string json)
+    {
+        var temp = SettingsPath + ".tmp";
+        File.WriteAllText(temp, json);
+        HardenFilePermissions(temp);
+        File.Move(temp, SettingsPath, overwrite: true);
+        HardenFilePermissions(SettingsPath);
+    }
+
+    private static void HardenFilePermissions(string path)
     {
         if (OperatingSystem.IsWindows())
             return;
 
         try
         {
-            File.SetUnixFileMode(
-                SettingsPath,
-                UnixFileMode.UserRead | UnixFileMode.UserWrite);
+            File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
         }
         catch
         {
