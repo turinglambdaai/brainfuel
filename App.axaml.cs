@@ -65,8 +65,8 @@ public partial class App : Application
 
     /// <summary>
     /// Keeps a tray presence so the widget can be hidden (polling keeps running)
-    /// and brought back later. The tray also exposes an explicit one-click online
-    /// update path for installed builds.
+    /// and brought back later. The tray also exposes explicit update and version
+    /// information paths for installed builds.
     /// </summary>
     private void InitTrayIcon(MainWindow main)
     {
@@ -87,6 +87,14 @@ public partial class App : Application
         var updateItem = new NativeMenuItem { Header = UpdateText("检查更新…", "Check for updates…") };
         updateItem.Click += async (_, _) => await RunManualUpdateAsync(updateItem);
         menu.Add(updateItem);
+
+        var version = asm.GetName().Version?.ToString(3) ?? "dev";
+        var aboutItem = new NativeMenuItem
+        {
+            Header = $"{UpdateText("关于 BrainFuel…", "About BrainFuel…")} · v{version}",
+        };
+        aboutItem.Click += (_, _) => Dispatcher.UIThread.Post(main.OpenAbout);
+        menu.Add(aboutItem);
 
         menu.Add(new NativeMenuItemSeparator());
 
