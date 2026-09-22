@@ -46,21 +46,75 @@ function initScrollAnimations() {
     document.querySelectorAll('.animate-on-scroll').forEach(el => observer.observe(el));
 }
 
-// Language switching (persisted to localStorage).
+// Language policy:
+// 1. A user's explicit choice always wins and is persisted.
+// 2. With no explicit choice, follow the browser/system locale on every visit.
+// 3. Chinese locales use Simplified Chinese; other known locales use English.
+// 4. If a locale cannot be detected at all, fall back to Chinese because the
+//    current primary audience is Chinese-speaking.
+//
+// The v2 key intentionally does not reuse the legacy `brainfuel_lang` key.
+// Older versions wrote the automatically detected language into that key on
+// first visit, so it cannot distinguish an explicit choice from auto-detection.
+const LANGUAGE_OVERRIDE_KEY = 'brainfuel_lang_override_v2';
+const LEGACY_LANGUAGE_KEY = 'brainfuel_lang';
+
 const translations = {
     en: 'English',
     zh: '简体中文'
 };
 
+const pageMetadata = {
+    en: {
+        title: 'BrainFuel — GLM Coding Plan quota monitor',
+        description: 'A tiny always-on-top desktop widget that monitors your GLM Coding Plan quota — the 5-hour rolling window and the weekly allowance. Cross-platform.'
+    },
+    zh: {
+        title: 'BrainFuel — GLM Coding Plan 配额监控器',
+        description: '一个轻量、始终置顶的跨平台桌面小部件，用于监控 GLM Coding Plan 的 5 小时滚动窗口与每周配额。'
+    }
+};
+
+function readLanguageOverride() {
+    try {
+        const saved = localStorage.getItem(LANGUAGE_OVERRIDE_KEY);
+        return saved === 'zh' || saved === 'en' ? saved : null;
+    } catch (_) {
+        return null;
+    }
+}
+
+function detectBrowserLanguage() {
+    const locale = (navigator.languages && navigator.languages[0]) || navigator.language || '';
+    if (!locale) return 'zh';
+    return String(locale).toLowerCase().startsWith('zh') ? 'zh' : 'en';
+}
+
 function initLanguageSwitcher() {
-    const savedLang = localStorage.getItem('brainfuel_lang');
-    const browserLang = navigator.language.startsWith('zh') ? 'zh' : 'en';
-    setLanguage(savedLang || browserLang);
+    try { localStorage.removeItem(LEGACY_LANGUAGE_KEY); } catch (_) { /* private mode */ }
+
+    const override = readLanguageOverride();
+    applyLanguage(override || detectBrowserLanguage(), false);
+
+    window.addEventListener('languagechange', () => {
+        if (!readLanguageOverride()) {
+            applyLanguage(detectBrowserLanguage(), false);
+        }
+    });
 }
 
 window.setLanguage = function (lang) {
-    localStorage.setItem('brainfuel_lang', lang);
-    document.documentElement.lang = lang;
+    if (lang !== 'zh' && lang !== 'en') return;
+    applyLanguage(lang, true);
+};
+
+function applyLanguage(lang, persist) {
+    if (persist) {
+        try { localStorage.setItem(LANGUAGE_OVERRIDE_KEY, lang); } catch (_) { /* private mode */ }
+    }
+
+    document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+    document.documentElement.dataset.language = lang;
 
     // Update translatable text.
     // - Leaf elements (no element children): set innerText directly.
@@ -83,7 +137,14 @@ window.setLanguage = function (lang) {
     if (currentLangLabel && translations[lang]) {
         currentLangLabel.innerText = translations[lang];
     }
-};
+
+    const metadata = pageMetadata[lang];
+    if (metadata) {
+        document.title = metadata.title;
+        const description = document.querySelector('meta[name="description"]');
+        if (description) description.setAttribute('content', metadata.description);
+    }
+}
 
 // Fetch the latest GitHub release and point each platform card at the right asset.
 // Falls back gracefully to the releases page if the API is unreachable.
@@ -120,7 +181,7 @@ async function initReleaseLinks() {
             }
         }
     } catch (err) {
-        // Network/CORS/ offline — keep the fallback href (releases page).
+        // Network/CORS/offline — keep the fallback href (releases page).
         console.warn('BrainFuel: could not fetch latest release, using fallback link.');
     }
 }
