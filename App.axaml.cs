@@ -36,7 +36,10 @@ public partial class App : Application
             main.Initialize(Settings, ViewModel);
             main.Show();
 
-            if (!Settings.IsValid)
+            // Only genuinely unconfigured installs get the first-run dialog.
+            // A known protected key that is temporarily unavailable is retried by
+            // normal quota refreshes and must not force the user to re-enter it.
+            if (!Settings.HasConfiguredCredential)
                 main.OpenSettings();
 
             InitTrayIcon(main);

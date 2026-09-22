@@ -22,6 +22,7 @@ public partial class SettingsWindow : Window
     private bool _initializingInterval = true;
     private bool _validated;
     private bool _saveAnyway;
+    private bool _forgetKeyRequested;
 
     public SettingsWindow() : this(new AppSettings()) { }
 
@@ -42,6 +43,7 @@ public partial class SettingsWindow : Window
         IntervalBox.Value = _savedRefreshInterval;
         WeeklyRemaining.IsChecked = settings.WeeklyDisplayStyle == DisplayStyle.Remaining;
         HourlyRemaining.IsChecked = settings.HourlyDisplayStyle == DisplayStyle.Remaining;
+        AlwaysOnTopBox.IsChecked = settings.AlwaysOnTop;
         AutoStartBox.IsChecked = AutoStartService.IsEnabled();
         NotifyBox.IsChecked = settings.NotifyEnabled;
         ThresholdBox.Value = Math.Clamp(settings.NotifyThreshold, 10, 99);
@@ -51,6 +53,8 @@ public partial class SettingsWindow : Window
 
         _initializingInterval = false;
         RefreshIntervalStatus();
+        RefreshCredentialStatus();
+        ForgetKeyBtn.IsVisible = settings.HasConfiguredCredential;
 
         var buildKind = Strings.Get(_installedBuild ? "UpdateInstalledBuild" : "UpdatePortableBuild");
         CurrentVersionText.Text = $"{string.Format(Strings.Get("UpdateCurrentVersion"), version)} · {buildKind}";
@@ -58,15 +62,37 @@ public partial class SettingsWindow : Window
         if (!_installedBuild)
             UpdateStatusText.Text = Strings.Get("UpdatePortableHint");
 
-        // First-run users land on Account, while returning users land on General.
-        FirstRunPanel.IsVisible = !settings.IsValid;
-        SettingsTabs.SelectedIndex = settings.IsValid ? 0 : 1;
+        FirstRunPanel.IsVisible = !settings.HasConfiguredCredential;
+        SettingsTabs.SelectedIndex = settings.HasConfiguredCredential ? 0 : 1;
 
-        // Existing saved credentials are considered accepted. Revalidation is
-        // required only when the user actually changes the key/platform.
         _validated = settings.IsValid;
         KeyBox.TextChanged += ResetValidation;
         PlatformBox.SelectionChanged += ResetValidation;
+    }
+
+    private void RefreshCredentialStatus()
+    {
+        CredentialStatusText.Text = SettingsService.ApiKeyStorageState switch
+        {
+            ApiKeyStorageState.Protected => string.Format(
+                Strings.Get("CredentialProtected"),
+                SettingsService.ApiKeyStorageName),
+            ApiKeyStorageState.ProtectedUnavailable => string.Format(
+                Strings.Get("CredentialUnavailable"),
+                SettingsService.ApiKeyStorageName),
+            ApiKeyStorageState.PlaintextFallback => Strings.Get("CredentialFallback"),
+            _ => string.Format(
+                Strings.Get("CredentialEmpty"),
+                CredentialStore.BackendDisplayName),
+        };
+    }
+
+    private void ForgetKey_Click(object? sender, RoutedEventArgs e)
+    {
+        _forgetKeyRequested = true;
+        KeyBox.Text = string.Empty;
+        ForgetKeyBtn.IsVisible = false;
+        CredentialStatusText.Text = Strings.Get("CredentialPendingClear");
     }
 
     private void ConsoleLink_Click(object? sender, RoutedEventArgs e)
@@ -187,10 +213,14 @@ public partial class SettingsWindow : Window
     private void CollectForm()
     {
         _settings.ApiKey = KeyBox.Text?.Trim();
+        if (_forgetKeyRequested && string.IsNullOrWhiteSpace(_settings.ApiKey))
+            _settings.ApiKeyConfigured = false;
+
         _settings.BaseDomain = PlatformBox.SelectedIndex == 1 ? "https://api.z.ai" : "https://open.bigmodel.cn";
         _settings.RefreshIntervalMinutes = Math.Clamp((int)(IntervalBox.Value ?? 5), 1, 60);
         _settings.WeeklyDisplayStyle = (WeeklyRemaining.IsChecked ?? false) ? DisplayStyle.Remaining : DisplayStyle.Used;
         _settings.HourlyDisplayStyle = (HourlyRemaining.IsChecked ?? false) ? DisplayStyle.Remaining : DisplayStyle.Used;
+        _settings.AlwaysOnTop = AlwaysOnTopBox.IsChecked ?? false;
         _settings.AutoStart = AutoStartBox.IsChecked ?? false;
         _settings.NotifyEnabled = NotifyBox.IsChecked ?? true;
         _settings.NotifyThreshold = (int)(ThresholdBox.Value ?? 80);

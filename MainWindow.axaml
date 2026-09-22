@@ -8,8 +8,9 @@
         Width="368" Height="226"
         CanResize="False"
         ShowInTaskbar="False"
+        ShowActivated="False"
         WindowDecorations="None"
-        Topmost="True"
+        Topmost="False"
         Background="Transparent"
         TransparencyLevelHint="AcrylicBlur"
         WindowStartupLocation="Manual">
@@ -38,12 +39,17 @@
             CornerRadius="16"
             BorderBrush="{DynamicResource CardBorder}"
             BorderThickness="1"
-            PointerPressed="Card_PointerPressed">
+            PointerPressed="Card_PointerPressed"
+            PointerReleased="Card_PointerReleased">
         <Border.ContextMenu>
             <ContextMenu x:Name="CardMenu">
                 <MenuItem Header="{DynamicResource MenuRefresh}" Click="Refresh_Click"/>
                 <MenuItem Header="{DynamicResource MenuSettings}" Click="Settings_Click"/>
                 <MenuItem x:Name="UpdateMenuItem" Header="{DynamicResource MenuCheckUpdates}" Click="Update_Click"/>
+                <Separator/>
+                <MenuItem x:Name="TopmostMenuItem" Click="ToggleTopmost_Click"/>
+                <MenuItem x:Name="MoveNextDisplayMenuItem" Header="{DynamicResource MenuMoveNextDisplay}" Click="MoveNextDisplay_Click"/>
+                <MenuItem Header="{DynamicResource MenuMovePrimary}" Click="MovePrimary_Click"/>
                 <Separator/>
                 <MenuItem x:Name="AboutMenuItem" Header="About BrainFuel…" Click="About_Click"/>
                 <Separator/>
@@ -56,7 +62,6 @@
             <Border Background="{DynamicResource CardBg}" Opacity="{Binding CardOpacity}" CornerRadius="16"/>
 
             <Grid Margin="16" RowDefinitions="Auto,*,Auto" RowSpacing="10">
-                <!-- Product header: brand and app-level menu stay visually separate from quota actions. -->
                 <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="1">
                         <TextBlock Text="BrainFuel" FontSize="15" FontWeight="SemiBold"
@@ -72,7 +77,6 @@
                     </Button>
                 </Grid>
 
-                <!-- Quota content only. Software lifecycle actions do not appear here. -->
                 <Grid Grid.Row="1" ColumnDefinitions="124,*" ColumnSpacing="14">
                     <ctl:UsageRing Grid.Column="0"
                                    Width="116" Height="116"
@@ -85,57 +89,42 @@
                                    HourlyProgress="{Binding HourlyProgress}"/>
 
                     <StackPanel Grid.Column="1" Spacing="7" VerticalAlignment="Center">
-                        <Border CornerRadius="10" Padding="10,8"
-                                Background="{DynamicResource HoverOverlay}">
+                        <Border CornerRadius="10" Padding="10,8" Background="{DynamicResource HoverOverlay}">
                             <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
                                 <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="6">
-                                    <Ellipse Width="6" Height="6" Fill="{DynamicResource RingHourly}"
-                                             VerticalAlignment="Center"/>
-                                    <TextBlock Text="{DynamicResource LblHourly}" FontSize="11"
-                                               Foreground="{DynamicResource TextSecondary}"/>
+                                    <Ellipse Width="6" Height="6" Fill="{DynamicResource RingHourly}" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{DynamicResource LblHourly}" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
                                 </StackPanel>
                                 <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding HourlyPercentText}"
-                                           FontSize="22" FontWeight="Bold"
-                                           Foreground="{DynamicResource TextPrimary}"/>
+                                           FontSize="22" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
                                 <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding HourlySubText}"
-                                           Margin="12,1,0,0" FontSize="10"
-                                           Foreground="{DynamicResource TextMuted}"/>
+                                           Margin="12,1,0,0" FontSize="10" Foreground="{DynamicResource TextMuted}"/>
                             </Grid>
                         </Border>
 
-                        <Border CornerRadius="10" Padding="10,8"
-                                Background="{DynamicResource HoverOverlay}">
+                        <Border CornerRadius="10" Padding="10,8" Background="{DynamicResource HoverOverlay}">
                             <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
                                 <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="6">
-                                    <Ellipse Width="6" Height="6" Fill="{DynamicResource RingWeekly}"
-                                             VerticalAlignment="Center"/>
-                                    <TextBlock Text="{DynamicResource LblWeekly}" FontSize="11"
-                                               Foreground="{DynamicResource TextSecondary}"/>
+                                    <Ellipse Width="6" Height="6" Fill="{DynamicResource RingWeekly}" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{DynamicResource LblWeekly}" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
                                 </StackPanel>
                                 <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding WeeklyPercentText}"
-                                           FontSize="22" FontWeight="Bold"
-                                           Foreground="{DynamicResource TextPrimary}"/>
+                                           FontSize="22" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
                                 <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding WeeklySubText}"
-                                           Margin="12,1,0,0" FontSize="10"
-                                           Foreground="{DynamicResource TextMuted}"/>
+                                           Margin="12,1,0,0" FontSize="10" Foreground="{DynamicResource TextMuted}"/>
                             </Grid>
                         </Border>
                     </StackPanel>
                 </Grid>
 
-                <!-- Footer is explicitly about quota-data freshness. -->
                 <Grid Grid.Row="2" ColumnDefinitions="*,Auto" ColumnSpacing="10">
-                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="5"
-                                VerticalAlignment="Center">
-                        <TextBlock Text="{DynamicResource QuotaDataStatus}" FontSize="10"
-                                   Foreground="{DynamicResource TextMuted}"/>
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                        <TextBlock Text="{DynamicResource QuotaDataStatus}" FontSize="10" Foreground="{DynamicResource TextMuted}"/>
                         <TextBlock Text="·" FontSize="10" Foreground="{DynamicResource TextMuted}"/>
-                        <TextBlock Text="{Binding RefreshAgoText}" FontSize="10"
-                                   Foreground="{DynamicResource TextSecondary}"/>
+                        <TextBlock Text="{Binding RefreshAgoText}" FontSize="10" Foreground="{DynamicResource TextSecondary}"/>
                     </StackPanel>
                     <Button Grid.Column="1" Classes="quotaAction" Click="Refresh_Click"
-                            Content="{DynamicResource BtnRefreshQuota}"
-                            ToolTip.Tip="{DynamicResource BtnRefreshQuota}"/>
+                            Content="{DynamicResource BtnRefreshQuota}" ToolTip.Tip="{DynamicResource BtnRefreshQuota}"/>
                 </Grid>
             </Grid>
         </Grid>

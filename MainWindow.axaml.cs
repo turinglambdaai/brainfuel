@@ -1,9 +1,9 @@
 using System;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Threading;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using BrainFuel.Services;
 using BrainFuel.ViewModels;
 
@@ -13,31 +13,37 @@ public partial class MainWindow : Window
 {
     private AppSettings? _settings;
     private MainViewModel? _vm;
+    private bool _userMoveInProgress;
 
     public MainWindow()
     {
         InitializeComponent();
     }
 
-    /// <summary>Wires up the view model and starts polling. Called once on startup.</summary>
     public void Initialize(AppSettings settings, MainViewModel vm)
     {
         _settings = settings;
         _vm = vm;
         DataContext = vm;
-        RefreshAboutMenuText();
-        if (settings.WindowX is int x && settings.WindowY is int y)
-        {
-            var saved = new PixelPoint(x, y);
-            Position = IsOnAnyScreen(saved) ? saved : EnsureOnPrimary(saved);
-        }
 
+        Topmost = settings.AlwaysOnTop;
+        Position = WindowPlacementService.Restore(this, settings);
+        WindowPlacementService.Capture(this, settings);
+
+        RefreshMenuState();
         Screens.Changed += OnScreensChanged;
+        ScalingChanged += OnScalingChanged;
 
         vm.OnNotify = (title, msg) => Dispatcher.UIThread.Post(() =>
             new NotificationWindow().ShowNotification(title, msg));
 
         vm.Start();
+    }
+
+    private void OnScalingChanged(object? sender, EventArgs e)
+    {
+        if (_settings is null) return;
+        Dispatcher.UIThread.Post(() => WindowPlacementService.RepairAfterScreenChange(this, _settings));
     }
 
     private async void OnScreensChanged(object? sender, EventArgs e)
@@ -47,60 +53,101 @@ public partial class MainWindow : Window
             await System.Threading.Tasks.Task.Delay(delay);
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
-                if (!IsOnAnyScreen(Position))
-                    Position = EnsureOnPrimary(Position);
+                if (_settings is null) return;
+                WindowPlacementService.RepairAfterScreenChange(this, _settings);
+                RefreshDisplayMenuState();
             });
         }
     }
 
-    private bool IsOnAnyScreen(PixelPoint p)
-    {
-        foreach (var s in Screens.All)
-            if (s.Bounds.Contains(p)) return true;
-        return false;
-    }
-
-    private PixelPoint EnsureOnPrimary(PixelPoint p)
-    {
-        var primary = Screens.Primary;
-        if (primary is null) return p;
-        var wa = primary.WorkingArea;
-        const int margin = 16;
-        int x = Math.Clamp(p.X, wa.X + margin, wa.Right - margin - 100);
-        int y = Math.Clamp(p.Y, wa.Y + margin, wa.Bottom - margin - 40);
-        return new PixelPoint(x, y);
-    }
-
     private void Card_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
-            BeginMoveDrag(e);
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+            return;
+
+        _userMoveInProgress = true;
+        BeginMoveDrag(e);
+    }
+
+    private void Card_PointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (!_userMoveInProgress || _settings is null)
+            return;
+
+        _userMoveInProgress = false;
+        WindowPlacementService.Capture(this, _settings);
+        SettingsService.Save(_settings);
     }
 
     private async void Refresh_Click(object? sender, RoutedEventArgs e)
     {
-        // This action is intentionally quota-only. Software update lives in the
-        // app menu/settings so users never have to guess what "refresh" means.
-        if (_settings is { IsValid: false })
+        // A known protected credential may only be temporarily unavailable. Let
+        // the view-model retry the system credential store instead of treating
+        // this as first-run configuration.
+        if (_settings is not null && !_settings.HasConfiguredCredential)
         {
             OpenSettings();
             return;
         }
+
         await (_vm?.RefreshAsync() ?? System.Threading.Tasks.Task.CompletedTask);
     }
 
     private void OpenMenu_Click(object? sender, RoutedEventArgs e)
-        => CardMenu.Open(MenuButton);
+    {
+        RefreshMenuState();
+        CardMenu.Open(MenuButton);
+    }
 
     private void Settings_Click(object? sender, RoutedEventArgs e) => OpenSettings();
-
     private void About_Click(object? sender, RoutedEventArgs e) => OpenAbout();
+
+    private void RefreshMenuState()
+    {
+        RefreshAboutMenuText();
+        RefreshTopmostMenuText();
+        RefreshDisplayMenuState();
+    }
 
     private void RefreshAboutMenuText()
     {
         var version = typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "dev";
         var label = Strings.Current == AppLanguage.Zh ? "关于 BrainFuel…" : "About BrainFuel…";
         AboutMenuItem.Header = $"{label} · v{version}";
+    }
+
+    private void RefreshTopmostMenuText()
+    {
+        if (_settings is null) return;
+        TopmostMenuItem.Header = Strings.Get(_settings.AlwaysOnTop ? "MenuTopmostOn" : "MenuTopmostOff");
+    }
+
+    private void RefreshDisplayMenuState()
+    {
+        MoveNextDisplayMenuItem.IsEnabled = Screens.All.Count > 1;
+    }
+
+    private void ToggleTopmost_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_settings is null) return;
+        _settings.AlwaysOnTop = !_settings.AlwaysOnTop;
+        Topmost = _settings.AlwaysOnTop;
+        RefreshTopmostMenuText();
+        SettingsService.Save(_settings);
+    }
+
+    private void MovePrimary_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_settings is null) return;
+        WindowPlacementService.MoveToPrimary(this, _settings);
+        SettingsService.Save(_settings);
+    }
+
+    private void MoveNextDisplay_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_settings is null) return;
+        WindowPlacementService.MoveToNextScreen(this, _settings);
+        SettingsService.Save(_settings);
     }
 
     private void SetUpdateMenu(bool enabled, string text)
@@ -139,13 +186,12 @@ public partial class MainWindow : Window
     }
 
     private void Quit_Click(object? sender, RoutedEventArgs e) => Close();
-
     public void Hide_Click(object? sender, RoutedEventArgs e) => Hide();
 
     public void EnsureVisible()
     {
-        if (!IsOnAnyScreen(Position))
-            Position = EnsureOnPrimary(Position);
+        if (_settings is not null)
+            WindowPlacementService.RepairAfterScreenChange(this, _settings);
         Show();
         WindowState = WindowState.Normal;
         Activate();
@@ -158,8 +204,10 @@ public partial class MainWindow : Window
         win.ShowDialog(this);
         win.Closed += (_, _) =>
         {
+            Topmost = _settings.AlwaysOnTop;
             _vm?.OnSettingsChanged();
-            RefreshAboutMenuText();
+            WindowPlacementService.RepairAfterScreenChange(this, _settings);
+            RefreshMenuState();
         };
     }
 
@@ -173,12 +221,11 @@ public partial class MainWindow : Window
     {
         if (_settings is not null)
         {
-            var pos = IsOnAnyScreen(Position) ? Position : EnsureOnPrimary(Position);
-            _settings.WindowX = pos.X;
-            _settings.WindowY = pos.Y;
+            WindowPlacementService.Capture(this, _settings);
             SettingsService.Save(_settings);
         }
         Screens.Changed -= OnScreensChanged;
+        ScalingChanged -= OnScalingChanged;
         _vm?.Dispose();
         base.OnClosing(e);
     }
