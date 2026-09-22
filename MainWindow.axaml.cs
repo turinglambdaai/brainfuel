@@ -1,9 +1,11 @@
 using System;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using BrainFuel.Services;
 using BrainFuel.ViewModels;
 
@@ -65,6 +67,12 @@ public partial class MainWindow : Window
         if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
             return;
 
+        // PointerPressed bubbles from child controls. Never start a window drag
+        // when the user is actually pressing one of the card's buttons.
+        if (e.Source is Visual source &&
+            source.GetSelfAndVisualAncestors().Any(visual => visual is Button))
+            return;
+
         _userMoveInProgress = true;
         BeginMoveDrag(e);
     }
@@ -96,7 +104,15 @@ public partial class MainWindow : Window
     private void OpenMenu_Click(object? sender, RoutedEventArgs e)
     {
         RefreshMenuState();
-        CardMenu.Open(MenuButton);
+
+        // CardMenu is attached to CardBorder, so Avalonia requires CardBorder to
+        // be the owner passed to Open(). Use PlacementTarget only to anchor the
+        // popup to the three-dot button. Passing MenuButton to Open() throws an
+        // ArgumentException and previously terminated the application.
+        CardMenu.PlacementTarget = MenuButton;
+        CardMenu.Placement = PlacementMode.BottomEdgeAlignedRight;
+        CardMenu.Open(CardBorder);
+        e.Handled = true;
     }
 
     private void Settings_Click(object? sender, RoutedEventArgs e) => OpenSettings();
