@@ -60,8 +60,8 @@ public partial class SettingsWindow : Window
         if (!_installedBuild)
             UpdateStatusText.Text = Strings.Get("UpdatePortableHint");
 
-        FirstRunPanel.IsVisible = !settings.IsValid;
-        SettingsTabs.SelectedIndex = settings.IsValid ? 0 : 1;
+        FirstRunPanel.IsVisible = !settings.HasConfiguredCredential;
+        SettingsTabs.SelectedIndex = settings.HasConfiguredCredential ? 0 : 1;
 
         // Existing saved credentials are considered accepted. Revalidation is
         // required only when the user actually changes the key/platform.
@@ -72,17 +72,19 @@ public partial class SettingsWindow : Window
 
     private void RefreshCredentialStatus()
     {
-        if (string.IsNullOrWhiteSpace(_settings.ApiKey))
+        CredentialStatusText.Text = SettingsService.ApiKeyStorageState switch
         {
-            CredentialStatusText.Text = string.Format(
+            ApiKeyStorageState.Protected => string.Format(
+                Strings.Get("CredentialProtected"),
+                SettingsService.ApiKeyStorageName),
+            ApiKeyStorageState.ProtectedUnavailable => string.Format(
+                Strings.Get("CredentialUnavailable"),
+                SettingsService.ApiKeyStorageName),
+            ApiKeyStorageState.PlaintextFallback => Strings.Get("CredentialFallback"),
+            _ => string.Format(
                 Strings.Get("CredentialEmpty"),
-                CredentialStore.BackendDisplayName);
-            return;
-        }
-
-        CredentialStatusText.Text = SettingsService.ApiKeyIsProtected
-            ? string.Format(Strings.Get("CredentialProtected"), SettingsService.ApiKeyStorageName)
-            : Strings.Get("CredentialFallback");
+                CredentialStore.BackendDisplayName),
+        };
     }
 
     private void ConsoleLink_Click(object? sender, RoutedEventArgs e)
