@@ -44,9 +44,43 @@ The same command can be used for the portable ZIP files and Velopack packages.
 
 A successful attestation verification establishes that the exact artifact digest was attested by a GitHub Actions workflow associated with this repository. It is not an Authenticode signature and therefore does not suppress Windows SmartScreen warnings.
 
-## API keys and sensitive data
+## API-key storage
 
-Never include your GLM Coding Plan API key, `settings.json`, screenshots containing credentials, or other secrets in an issue, discussion, log excerpt, or crash report.
+Starting with **v0.5.0**, BrainFuel no longer treats `settings.json` as the normal storage location for the GLM Coding Plan API key.
+
+BrainFuel prefers the operating system's per-user credential protection:
+
+| Platform | Preferred storage |
+| --- | --- |
+| Windows | DPAPI (`CurrentUser`) protected credential blob |
+| macOS | Login Keychain through `Security.framework` |
+| Linux | freedesktop Secret Service through `secret-tool` (for example GNOME Keyring / compatible providers) |
+
+`settings.json` contains a non-secret marker indicating whether a credential is configured, but the plaintext key is removed when protected storage succeeds.
+
+### Migration from older versions
+
+A key stored by v0.4.x or earlier may still exist in plaintext in `settings.json` before the first v0.5.0 launch. On load, BrainFuel attempts to move that key into the platform credential store. When migration succeeds, it rewrites `settings.json` without the plaintext key.
+
+### Secure-store failures
+
+The credential store can occasionally be unavailable — for example, a Linux Secret Service session may not be running or a macOS Keychain may be temporarily inaccessible. BrainFuel handles these cases conservatively:
+
+- an already-protected key is **not downgraded to plaintext** merely because the credential store is temporarily unavailable;
+- unrelated preference saves do not rewrite or delete an unchanged protected key;
+- the application keeps a configured-credential marker and retries protected-key access during later quota refreshes;
+- clearing a credential writes an explicit tombstone so a stale secure-store entry cannot be silently resurrected;
+- Settings shows the current storage state instead of claiming protection that is not available.
+
+If a user saves a **new or changed** key while no supported OS credential store is available, BrainFuel preserves usability by falling back to `settings.json` rather than silently losing the key. On Linux/macOS the settings file is restricted to the current user (`0600`) where the filesystem supports Unix permissions. This fallback is explicitly shown in Settings and should be considered less desirable than OS-protected storage.
+
+Settings writes are performed through a temporary file and atomic replacement to reduce the chance of a partially-written preferences file after a crash or power loss.
+
+## Sensitive data and diagnostics
+
+Never include your GLM Coding Plan API key, `settings.json`, `credentials.dat`, screenshots containing credentials, or other secrets in an issue, discussion, log excerpt, or crash report.
+
+Release builds do not continuously persist raw quota responses. Debug-only diagnostics should still be reviewed before sharing because service responses can contain account-specific information.
 
 ## Reporting a vulnerability
 
