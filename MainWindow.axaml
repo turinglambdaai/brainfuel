@@ -41,6 +41,8 @@
                 <MenuItem Header="{DynamicResource MenuSettings}" Click="Settings_Click"/>
                 <MenuItem x:Name="UpdateMenuItem" Header="{DynamicResource MenuCheckUpdates}" Click="Update_Click"/>
                 <Separator/>
+                <MenuItem x:Name="AboutMenuItem" Header="About BrainFuel…" Click="About_Click"/>
+                <Separator/>
                 <MenuItem Header="{DynamicResource MenuHide}" Click="Hide_Click"/>
                 <MenuItem Header="{DynamicResource MenuQuit}" Click="Quit_Click"/>
             </ContextMenu>
