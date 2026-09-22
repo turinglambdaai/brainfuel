@@ -51,6 +51,9 @@ public class AppSettings
 
     [JsonIgnore]
     public bool IsValid => !string.IsNullOrWhiteSpace(ApiKey) && !string.IsNullOrWhiteSpace(BaseDomain);
+
+    [JsonIgnore]
+    public bool HasConfiguredCredential => ApiKeyConfigured == true || !string.IsNullOrWhiteSpace(ApiKey);
 }
 
 public static class SettingsService
@@ -96,7 +99,6 @@ public static class SettingsService
         }
         catch
         {
-            // Corrupt/unreadable preferences must never prevent the widget starting.
             settings = new AppSettings();
         }
 
@@ -112,8 +114,6 @@ public static class SettingsService
             return settings;
         }
 
-        // OS secret storage takes precedence. If only a legacy plaintext key is
-        // present, migrate it and immediately rewrite settings.json without it.
         if (CredentialStore.TryRead(AppDirectory, out var protectedKey) &&
             !string.IsNullOrWhiteSpace(protectedKey))
         {
@@ -132,10 +132,8 @@ public static class SettingsService
         }
         else if (settings.ApiKeyConfigured == true && string.IsNullOrWhiteSpace(settings.ApiKey))
         {
-            // The settings marker says a protected credential exists, but the OS
-            // store could not be read right now (locked keychain, unavailable D-Bus,
-            // transient desktop-session failure, etc.). Preserve that fact instead
-            // of turning a temporary read failure into a destructive clear/downgrade.
+            // A protected credential is known to exist, but the OS store cannot
+            // be read right now. Preserve the marker and retry during quota refreshes.
             settings.ApiKey = null;
             _lastPersistedApiKey = null;
             ApiKeyStorageState = ApiKeyStorageState.ProtectedUnavailable;
@@ -156,6 +154,30 @@ public static class SettingsService
         return settings;
     }
 
+    /// <summary>
+    /// Re-reads a credential that was known to exist but was temporarily
+    /// unavailable (locked Keychain, unavailable Secret Service session, etc.).
+    /// This lets normal periodic/manual quota refresh recover without a restart.
+    /// </summary>
+    public static bool TryRefreshProtectedApiKey(AppSettings settings)
+    {
+        if (!string.IsNullOrWhiteSpace(settings.ApiKey))
+            return true;
+        if (settings.ApiKeyConfigured != true)
+            return false;
+
+        if (CredentialStore.TryRead(AppDirectory, out var key) && !string.IsNullOrWhiteSpace(key))
+        {
+            settings.ApiKey = key;
+            _lastPersistedApiKey = key;
+            ApiKeyStorageState = ApiKeyStorageState.Protected;
+            return true;
+        }
+
+        ApiKeyStorageState = ApiKeyStorageState.ProtectedUnavailable;
+        return false;
+    }
+
     public static void Save(AppSettings settings)
     {
         Directory.CreateDirectory(AppDirectory);
@@ -167,9 +189,6 @@ public static class SettingsService
             settings.ApiKeyConfigured == true &&
             string.IsNullOrWhiteSpace(key))
         {
-            // An unrelated settings save while the system credential service is
-            // unavailable must preserve the protected-credential marker and never
-            // delete the OS-store item or write a plaintext replacement.
             settings.ApiKeyConfigured = true;
             omitPlaintextKey = true;
         }
@@ -184,8 +203,6 @@ public static class SettingsService
         else if (ApiKeyStorageState == ApiKeyStorageState.Protected &&
                  string.Equals(key, _lastPersistedApiKey, StringComparison.Ordinal))
         {
-            // Unrelated settings changes do not touch the keychain. A transient
-            // secure-store outage can therefore never downgrade a protected key.
             settings.ApiKeyConfigured = true;
             omitPlaintextKey = true;
         }
@@ -198,9 +215,6 @@ public static class SettingsService
         }
         else
         {
-            // First-time save / actual key change with no usable secret service:
-            // preserve the credential rather than silently losing it, disclose the
-            // fallback in Settings, and restrict file permissions on Unix systems.
             settings.ApiKeyConfigured = true;
             _lastPersistedApiKey = key;
             ApiKeyStorageState = ApiKeyStorageState.PlaintextFallback;
