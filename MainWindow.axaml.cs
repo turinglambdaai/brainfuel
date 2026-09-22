@@ -20,15 +20,12 @@ public partial class MainWindow : Window
         InitializeComponent();
     }
 
-    /// <summary>Wires up the view model and starts polling. Called once on startup.</summary>
     public void Initialize(AppSettings settings, MainViewModel vm)
     {
         _settings = settings;
         _vm = vm;
         DataContext = vm;
 
-        // Existing users retain the old topmost behavior through settings
-        // migration. New users start non-topmost to avoid covering active work.
         Topmost = settings.AlwaysOnTop;
         Position = WindowPlacementService.Restore(this, settings);
         _placementReady = true;
@@ -59,8 +56,6 @@ public partial class MainWindow : Window
 
     private async void OnScreensChanged(object? sender, EventArgs e)
     {
-        // Display enumeration and WorkingArea can settle asynchronously on Windows
-        // after unplug/replug or a DPI/taskbar change. Re-evaluate a few times.
         foreach (var delay in new[] { 100, 1000, 3000 })
         {
             await System.Threading.Tasks.Task.Delay(delay);
@@ -81,11 +76,15 @@ public partial class MainWindow : Window
 
     private async void Refresh_Click(object? sender, RoutedEventArgs e)
     {
-        if (_settings is { IsValid: false })
+        // A known protected credential may only be temporarily unavailable. Let
+        // the view-model retry the system credential store instead of treating
+        // this as first-run configuration.
+        if (_settings is not null && !_settings.HasConfiguredCredential)
         {
             OpenSettings();
             return;
         }
+
         await (_vm?.RefreshAsync() ?? System.Threading.Tasks.Task.CompletedTask);
     }
 
