@@ -1,184 +1,69 @@
-<Window xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        x:Class="BrainFuel.SettingsWindow"
-        Width="460" Height="600"
-        CanResize="False"
-        WindowStartupLocation="CenterOwner"
-        ShowInTaskbar="True"
-        Topmost="True"
-        WindowDecorations="Full">
+<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="BrainFuel.SettingsWindow"
+        Width="540" Height="610" CanResize="False" WindowStartupLocation="CenterOwner" ShowInTaskbar="True" Topmost="True">
+  <Window.Styles>
+    <Style Selector="Button.link"><Setter Property="Background" Value="Transparent"/><Setter Property="BorderBrush" Value="Transparent"/><Setter Property="Padding" Value="0"/><Setter Property="MinWidth" Value="0"/><Setter Property="MinHeight" Value="0"/></Style>
+    <Style Selector="Button.link TextBlock"><Setter Property="Foreground" Value="{DynamicResource RingWeekly}"/></Style>
+    <Style Selector="Border.sectionCard"><Setter Property="CornerRadius" Value="12"/><Setter Property="Padding" Value="14"/><Setter Property="Background" Value="{DynamicResource HoverOverlay}"/><Setter Property="BorderBrush" Value="{DynamicResource Separator}"/><Setter Property="BorderThickness" Value="1"/></Style>
+  </Window.Styles>
 
-    <Window.Styles>
-        <!-- hyperlink-style button (console link under the API key box) -->
-        <Style Selector="Button.link">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="Padding" Value="0"/>
-            <Setter Property="MinWidth" Value="0"/>
-            <Setter Property="MinHeight" Value="0"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-        </Style>
-        <Style Selector="Button.link TextBlock">
-            <Setter Property="Foreground" Value="{DynamicResource RingWeekly}"/>
-        </Style>
-        <Style Selector="Button.link:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="Transparent"/>
-        </Style>
-    </Window.Styles>
-
-    <Grid RowDefinitions="Auto, *, Auto">
-        <!-- header -->
-        <StackPanel Grid.Row="0" Margin="24,20,24,8" Spacing="6">
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-                <StackPanel Grid.Column="0" Spacing="4">
-                    <TextBlock Text="{DynamicResource SettingsTitle}" FontSize="18" FontWeight="Bold"/>
-                    <TextBlock Text="{DynamicResource SettingsDesc}"
-                               Foreground="#FF9FA0A0" TextWrapping="Wrap"/>
-                </StackPanel>
-                <Border Grid.Column="1" CornerRadius="8" Padding="8,4"
-                        Background="{DynamicResource HoverOverlay}"
-                        BorderBrush="{DynamicResource Separator}" BorderThickness="1"
-                        VerticalAlignment="Top">
-                    <TextBlock x:Name="HeaderVersionText" FontSize="11"
-                               Foreground="{DynamicResource TextSecondary}"/>
-                </Border>
-            </Grid>
-            <!-- first run (or key cleared): quick-start note -->
-            <Border x:Name="FirstRunPanel" IsVisible="False" CornerRadius="10" Padding="12,10"
-                    Background="{DynamicResource HoverOverlay}"
-                    BorderBrush="{DynamicResource Separator}" BorderThickness="1">
-                <StackPanel Spacing="4">
-                    <TextBlock Text="{DynamicResource FirstRunTitle}" FontSize="13" FontWeight="Bold"
-                               Foreground="{DynamicResource TextPrimary}"/>
-                    <TextBlock Text="{DynamicResource FirstRunBody}" FontSize="12" TextWrapping="Wrap"
-                               Foreground="{DynamicResource TextSecondary}"/>
-                </StackPanel>
-            </Border>
-        </StackPanel>
-
-        <!-- form (right margin reserves space for the scrollbar) -->
-        <ScrollViewer Grid.Row="1" Margin="24,0" HorizontalScrollBarVisibility="Disabled">
-            <StackPanel Spacing="16" Margin="0,0,18,0">
-                <StackPanel Spacing="4">
-                    <TextBlock Text="{DynamicResource LblLanguage}"/>
-                    <ComboBox x:Name="LangBox" SelectedIndex="0" HorizontalAlignment="Stretch">
-                        <ComboBoxItem Content="中文"/>
-                        <ComboBoxItem Content="English"/>
-                    </ComboBox>
-                </StackPanel>
-
-                <StackPanel Spacing="4">
-                    <TextBlock Text="{DynamicResource LblTheme}"/>
-                    <ComboBox x:Name="ThemeBox" SelectedIndex="2" HorizontalAlignment="Stretch">
-                        <ComboBoxItem Content="{DynamicResource ThemeSystem}"/>
-                        <ComboBoxItem Content="{DynamicResource ThemeLight}"/>
-                        <ComboBoxItem Content="{DynamicResource ThemeDark}"/>
-                    </ComboBox>
-                </StackPanel>
-
-                <StackPanel Spacing="4">
-                    <TextBlock Text="{DynamicResource LblOpacity}"/>
-                    <Slider x:Name="OpacitySlider" Minimum="0.3" Maximum="1" Value="1"
-                            TickFrequency="0.05" IsSnapToTickEnabled="True"
-                            HorizontalAlignment="Stretch"/>
-                </StackPanel>
-
-                <Border CornerRadius="10" Padding="12,10"
-                        Background="{DynamicResource HoverOverlay}"
-                        BorderBrush="{DynamicResource Separator}" BorderThickness="1">
-                    <Grid ColumnDefinitions="*, Auto" RowDefinitions="Auto, Auto, Auto" ColumnSpacing="12" RowSpacing="4">
-                        <StackPanel Grid.Row="0" Grid.Column="0" Spacing="2">
-                            <TextBlock Text="{DynamicResource UpdateSectionTitle}" FontWeight="Bold"/>
-                            <TextBlock x:Name="CurrentVersionText" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
-                        </StackPanel>
-                        <Button x:Name="CheckUpdateBtn" Grid.Row="0" Grid.Column="1"
-                                Content="{DynamicResource BtnCheckUpdates}"
-                                Click="CheckUpdate_Click" MinWidth="118"
-                                HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
-                        <TextBlock x:Name="UpdateStatusText" Grid.Row="1" Grid.ColumnSpan="2"
-                                   FontSize="11" Foreground="{DynamicResource RingWeekly}"
-                                   TextWrapping="Wrap"/>
-                        <Button x:Name="OpenReleasesBtn" Grid.Row="2" Grid.ColumnSpan="2"
-                                Classes="link" IsVisible="False" Click="OpenReleases_Click"
-                                HorizontalAlignment="Left">
-                            <TextBlock Text="{DynamicResource UpdateOpenDownloads}"
-                                       TextDecorations="Underline" FontSize="11"/>
-                        </Button>
-                    </Grid>
-                </Border>
-
-                <StackPanel Spacing="4">
-                    <TextBlock Text="{DynamicResource LblApiKey}"/>
-                    <TextBox x:Name="KeyBox" PlaceholderText="{DynamicResource KeyPlaceholder}"
-                             PasswordChar="•" HorizontalAlignment="Stretch"/>
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Text="{DynamicResource KeyHint}" FontSize="11" TextWrapping="Wrap"
-                                   Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
-                        <Button x:Name="ConsoleLink" Classes="link" Click="ConsoleLink_Click">
-                            <TextBlock Text="{DynamicResource KeyOpenConsole}" TextDecorations="Underline" FontSize="11"/>
-                        </Button>
-                    </StackPanel>
-                </StackPanel>
-
-                <StackPanel Spacing="4">
-                    <TextBlock Text="{DynamicResource LblPlatform}"/>
-                    <ComboBox x:Name="PlatformBox" SelectedIndex="0" HorizontalAlignment="Stretch">
-                        <ComboBoxItem Content="{DynamicResource PlatformCn}"/>
-                        <ComboBoxItem Content="{DynamicResource PlatformIntl}"/>
-                    </ComboBox>
-                </StackPanel>
-
-                <StackPanel Spacing="6">
-                    <TextBlock Text="{DynamicResource LblInterval}"/>
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <NumericUpDown x:Name="IntervalBox"
-                                       Minimum="1" Maximum="60" Value="5" Increment="5" FormatString="0"
-                                       Width="140" HorizontalAlignment="Left"
-                                       ValueChanged="Interval_ValueChanged"/>
-                        <TextBlock Text="{DynamicResource UnitMinutes}" VerticalAlignment="Center"
-                                   Foreground="{DynamicResource TextSecondary}"/>
-                    </StackPanel>
-                    <TextBlock Text="{DynamicResource IntervalInputHint}" FontSize="11"
-                               Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap"/>
-                    <Grid ColumnDefinitions="*,*,*,*,*,*" ColumnSpacing="6">
-                        <Button Grid.Column="0" Content="1" Click="IntervalPreset_Click" Padding="6,4"/>
-                        <Button Grid.Column="1" Content="5" Click="IntervalPreset_Click" Padding="6,4"/>
-                        <Button Grid.Column="2" Content="10" Click="IntervalPreset_Click" Padding="6,4"/>
-                        <Button Grid.Column="3" Content="15" Click="IntervalPreset_Click" Padding="6,4"/>
-                        <Button Grid.Column="4" Content="30" Click="IntervalPreset_Click" Padding="6,4"/>
-                        <Button Grid.Column="5" Content="60" Click="IntervalPreset_Click" Padding="6,4"/>
-                    </Grid>
-                    <TextBlock x:Name="IntervalStatusText" FontSize="11"
-                               Foreground="{DynamicResource RingWeekly}" TextWrapping="Wrap"/>
-                </StackPanel>
-
-                <StackPanel Spacing="4">
-                    <CheckBox x:Name="WeeklyRemaining" Content="{DynamicResource ChkWeeklyRemaining}"/>
-                    <CheckBox x:Name="HourlyRemaining" Content="{DynamicResource ChkHourlyRemaining}"/>
-                </StackPanel>
-
-                <Border Height="1" Background="#22000000" Margin="0,4"/>
-
-                <CheckBox x:Name="AutoStartBox" Content="{DynamicResource ChkAutostart}"/>
-
-                <StackPanel Spacing="6">
-                    <CheckBox x:Name="NotifyBox" Content="{DynamicResource ChkNotify}"/>
-                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="24,0,0,0">
-                        <TextBlock Text="{DynamicResource LblThreshold}" VerticalAlignment="Center" FontSize="12"/>
-                        <NumericUpDown x:Name="ThresholdBox" Minimum="10" Maximum="99" Value="80" Width="140"/>
-                    </StackPanel>
-                </StackPanel>
-            </StackPanel>
-        </ScrollViewer>
-
-        <!-- footer -->
-        <Grid Grid.Row="2" ColumnDefinitions="*, Auto, Auto" Margin="24,8,24,20">
-            <TextBlock x:Name="ValidateMsg" Grid.Column="0" TextWrapping="Wrap" FontSize="12"
-                       VerticalAlignment="Center" Foreground="{DynamicResource RingWeekly}"/>
-            <Button Grid.Column="1" Content="{DynamicResource BtnCancel}" Click="Cancel_Click" Width="100"
-                    Margin="0,0,10,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
-            <Button x:Name="SaveBtn" Grid.Column="2" Content="{DynamicResource BtnSave}" Click="Save_Click" Width="100"
-                    Classes="accent" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
-        </Grid>
+  <Grid RowDefinitions="Auto,*,Auto">
+    <Grid Grid.Row="0" Margin="24,20,24,14" ColumnDefinitions="*,Auto">
+      <StackPanel Spacing="3"><TextBlock Text="BrainFuel" FontSize="20" FontWeight="Bold"/><TextBlock Text="{DynamicResource SettingsDesc}" FontSize="12" Foreground="{DynamicResource TextSecondary}"/></StackPanel>
+      <Border Grid.Column="1" CornerRadius="9" Padding="9,5" Background="{DynamicResource HoverOverlay}" BorderBrush="{DynamicResource Separator}" BorderThickness="1" VerticalAlignment="Top"><TextBlock x:Name="HeaderVersionText" FontSize="11" Foreground="{DynamicResource TextSecondary}"/></Border>
     </Grid>
+
+    <TabControl x:Name="SettingsTabs" Grid.Row="1" Margin="24,0">
+      <TabItem Header="{DynamicResource TabGeneral}">
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled"><StackPanel Spacing="12" Margin="2,14,12,12">
+          <Border Classes="sectionCard"><StackPanel Spacing="12">
+            <TextBlock Text="{DynamicResource SectionAppearance}" FontWeight="SemiBold"/>
+            <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="10">
+              <TextBlock Text="{DynamicResource LblLanguage}" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/><ComboBox x:Name="LangBox" Grid.Column="1"><ComboBoxItem Content="中文"/><ComboBoxItem Content="English"/></ComboBox>
+              <TextBlock Grid.Row="1" Text="{DynamicResource LblTheme}" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/><ComboBox x:Name="ThemeBox" Grid.Row="1" Grid.Column="1"><ComboBoxItem Content="{DynamicResource ThemeSystem}"/><ComboBoxItem Content="{DynamicResource ThemeLight}"/><ComboBoxItem Content="{DynamicResource ThemeDark}"/></ComboBox>
+              <TextBlock Grid.Row="2" Text="{DynamicResource LblOpacity}" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/><Slider x:Name="OpacitySlider" Grid.Row="2" Grid.Column="1" Minimum="0.3" Maximum="1" Value="1" TickFrequency="0.05" IsSnapToTickEnabled="True"/>
+            </Grid>
+          </StackPanel></Border>
+          <Border Classes="sectionCard"><StackPanel Spacing="10">
+            <TextBlock Text="{DynamicResource SectionQuotaDisplay}" FontWeight="SemiBold"/>
+            <StackPanel Orientation="Horizontal" Spacing="8"><TextBlock Text="{DynamicResource LblInterval}" Width="132" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/><NumericUpDown x:Name="IntervalBox" Minimum="1" Maximum="60" Value="5" Increment="5" FormatString="0" Width="120" ValueChanged="Interval_ValueChanged"/><TextBlock Text="{DynamicResource UnitMinutes}" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/></StackPanel>
+            <Grid ColumnDefinitions="132,*,*,*,*,*,*" ColumnSpacing="5"><TextBlock/><Button Grid.Column="1" Content="1" Click="IntervalPreset_Click" Padding="5,3"/><Button Grid.Column="2" Content="5" Click="IntervalPreset_Click" Padding="5,3"/><Button Grid.Column="3" Content="10" Click="IntervalPreset_Click" Padding="5,3"/><Button Grid.Column="4" Content="15" Click="IntervalPreset_Click" Padding="5,3"/><Button Grid.Column="5" Content="30" Click="IntervalPreset_Click" Padding="5,3"/><Button Grid.Column="6" Content="60" Click="IntervalPreset_Click" Padding="5,3"/></Grid>
+            <TextBlock x:Name="IntervalStatusText" Margin="140,0,0,0" FontSize="11" Foreground="{DynamicResource RingWeekly}" TextWrapping="Wrap"/>
+            <CheckBox x:Name="HourlyRemaining" Content="{DynamicResource ChkHourlyRemaining}"/><CheckBox x:Name="WeeklyRemaining" Content="{DynamicResource ChkWeeklyRemaining}"/>
+          </StackPanel></Border>
+          <Border Classes="sectionCard"><StackPanel Spacing="8"><TextBlock Text="{DynamicResource SectionStartup}" FontWeight="SemiBold"/><CheckBox x:Name="AutoStartBox" Content="{DynamicResource ChkAutostart}"/></StackPanel></Border>
+        </StackPanel></ScrollViewer>
+      </TabItem>
+
+      <TabItem Header="{DynamicResource TabAccount}">
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled"><StackPanel Spacing="12" Margin="2,14,12,12">
+          <Border x:Name="FirstRunPanel" IsVisible="False" Classes="sectionCard"><StackPanel Spacing="5"><TextBlock Text="{DynamicResource FirstRunTitle}" FontWeight="SemiBold"/><TextBlock Text="{DynamicResource FirstRunBody}" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}"/></StackPanel></Border>
+          <Border Classes="sectionCard"><StackPanel Spacing="12">
+            <StackPanel Spacing="3"><TextBlock Text="{DynamicResource SectionAccount}" FontWeight="SemiBold"/><TextBlock Text="{DynamicResource AccountDesc}" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}"/></StackPanel>
+            <StackPanel Spacing="5"><TextBlock Text="{DynamicResource LblApiKey}"/><TextBox x:Name="KeyBox" PlaceholderText="{DynamicResource KeyPlaceholder}" PasswordChar="•"/><StackPanel Orientation="Horizontal" Spacing="6"><TextBlock Text="{DynamicResource KeyHint}" FontSize="11" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/><Button x:Name="ConsoleLink" Classes="link" Click="ConsoleLink_Click"><TextBlock Text="{DynamicResource KeyOpenConsole}" TextDecorations="Underline" FontSize="11"/></Button></StackPanel></StackPanel>
+            <StackPanel Spacing="5"><TextBlock Text="{DynamicResource LblPlatform}"/><ComboBox x:Name="PlatformBox"><ComboBoxItem Content="{DynamicResource PlatformCn}"/><ComboBoxItem Content="{DynamicResource PlatformIntl}"/></ComboBox></StackPanel>
+          </StackPanel></Border>
+        </StackPanel></ScrollViewer>
+      </TabItem>
+
+      <TabItem Header="{DynamicResource TabNotifications}">
+        <StackPanel Spacing="12" Margin="2,14,12,12"><Border Classes="sectionCard"><StackPanel Spacing="12">
+          <StackPanel Spacing="3"><TextBlock Text="{DynamicResource SectionNotifications}" FontWeight="SemiBold"/><TextBlock Text="{DynamicResource NotificationsDesc}" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}"/></StackPanel>
+          <CheckBox x:Name="NotifyBox" Content="{DynamicResource ChkNotify}"/><Grid ColumnDefinitions="*,Auto" Margin="24,0,0,0"><TextBlock Text="{DynamicResource LblThreshold}" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/><NumericUpDown x:Name="ThresholdBox" Grid.Column="1" Minimum="10" Maximum="99" Value="80" Width="130"/></Grid>
+        </StackPanel></Border></StackPanel>
+      </TabItem>
+
+      <TabItem Header="{DynamicResource TabSoftware}">
+        <StackPanel Spacing="12" Margin="2,14,12,12">
+          <Border Classes="sectionCard"><StackPanel Spacing="12">
+            <StackPanel Spacing="3"><TextBlock Text="{DynamicResource UpdateSectionTitle}" FontWeight="SemiBold"/><TextBlock Text="{DynamicResource SoftwareDesc}" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}"/></StackPanel>
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12"><StackPanel Spacing="3" VerticalAlignment="Center"><TextBlock x:Name="CurrentVersionText" FontSize="12" Foreground="{DynamicResource TextSecondary}"/><TextBlock x:Name="UpdateStatusText" FontSize="11" Foreground="{DynamicResource RingWeekly}" TextWrapping="Wrap"/></StackPanel><Button x:Name="CheckUpdateBtn" Grid.Column="1" Content="{DynamicResource BtnCheckUpdates}" Click="CheckUpdate_Click" MinWidth="128"/></Grid>
+            <Button x:Name="OpenReleasesBtn" Classes="link" Click="OpenReleases_Click" HorizontalAlignment="Left"><TextBlock Text="{DynamicResource UpdateOpenDownloads}" TextDecorations="Underline" FontSize="11"/></Button>
+          </StackPanel></Border>
+          <Border Classes="sectionCard"><StackPanel Spacing="5"><TextBlock Text="{DynamicResource SoftwareTrustTitle}" FontWeight="SemiBold"/><TextBlock Text="{DynamicResource SoftwareTrustDesc}" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}"/></StackPanel></Border>
+        </StackPanel>
+      </TabItem>
+    </TabControl>
+
+    <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" Margin="24,12,24,20"><TextBlock x:Name="ValidateMsg" TextWrapping="Wrap" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource RingWeekly}"/><Button Grid.Column="1" Content="{DynamicResource BtnCancel}" Click="Cancel_Click" Width="104" Margin="0,0,10,0"/><Button x:Name="SaveBtn" Grid.Column="2" Content="{DynamicResource BtnSave}" Click="Save_Click" Width="112" Classes="accent"/></Grid>
+  </Grid>
 </Window>
