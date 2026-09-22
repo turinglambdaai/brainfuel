@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Net;
 using System.Net.Http;
+using System.Security.Authentication;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -35,33 +38,141 @@ public sealed class GlmUsageClient : IDisposable
 
     public async Task<UsageSnapshot> GetUsageAsync(CancellationToken ct = default)
     {
-        using var resp = await _http.GetAsync("/api/monitor/usage/quota/limit", ct);
-        var body = await resp.Content.ReadAsStringAsync(ct);
-
-#if DEBUG
-        // Keep raw server payloads only in developer builds. Release builds should
-        // not continuously persist account-usage responses to disk.
+        HttpResponseMessage resp;
         try
         {
-            var directory = Path.GetDirectoryName(_debugPath);
-            if (!string.IsNullOrWhiteSpace(directory))
-                Directory.CreateDirectory(directory);
-            File.WriteAllText(_debugPath, body);
+            resp = await _http.GetAsync("/api/monitor/usage/quota/limit", ct);
         }
-        catch
+        catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
         {
-            // Debug logging is non-fatal.
+            throw new UsageRequestException(UsageFailureKind.Timeout, "GLM quota request timed out", ex);
         }
+        catch (HttpRequestException ex)
+        {
+            throw ClassifyTransportFailure(ex);
+        }
+
+        using (resp)
+        {
+            var body = await resp.Content.ReadAsStringAsync(ct);
+
+#if DEBUG
+            // Keep raw server payloads only in developer builds. Release builds should
+            // not continuously persist account-usage responses to disk.
+            try
+            {
+                var directory = Path.GetDirectoryName(_debugPath);
+                if (!string.IsNullOrWhiteSpace(directory))
+                    Directory.CreateDirectory(directory);
+                File.WriteAllText(_debugPath, body);
+            }
+            catch
+            {
+                // Debug logging is non-fatal.
+            }
 #endif
 
-        if (!resp.IsSuccessStatusCode)
-            // Carry the status code so callers can tell "bad key" (401/403)
-            // from connectivity problems.
-            throw new HttpRequestException($"quota/limit HTTP {(int)resp.StatusCode}", null, resp.StatusCode);
+            if (!resp.IsSuccessStatusCode)
+                throw ClassifyHttpFailure(resp.StatusCode, body);
 
-        var parsed = JsonSerializer.Deserialize<QuotaLimitResponse>(body, JsonOpts);
-        var limits = parsed?.Data?.Limits ?? new List<RawLimit>();
-        return MapSnapshot(limits, parsed?.Data?.Level, body);
+            QuotaLimitResponse? parsed;
+            try
+            {
+                parsed = JsonSerializer.Deserialize<QuotaLimitResponse>(body, JsonOpts);
+            }
+            catch (JsonException ex)
+            {
+                throw new UsageRequestException(
+                    UsageFailureKind.InvalidResponse,
+                    "GLM quota response was not valid JSON",
+                    ex,
+                    resp.StatusCode);
+            }
+
+            if (parsed?.Data is null)
+            {
+                throw new UsageRequestException(
+                    UsageFailureKind.InvalidResponse,
+                    "GLM quota response did not contain a data object",
+                    statusCode: resp.StatusCode);
+            }
+
+            var limits = parsed.Data.Limits ?? new List<RawLimit>();
+            var snapshot = MapSnapshot(limits, parsed.Data.Level, body);
+
+            // A successful Coding Plan response is expected to expose at least one
+            // token quota. A successful HTTP response containing no token quota is
+            // much more useful to users as "this account has no Coding Plan" than
+            // as a mysterious empty card.
+            if (!snapshot.HasHourly && !snapshot.HasWeekly)
+            {
+                throw new UsageRequestException(
+                    UsageFailureKind.NoCodingPlan,
+                    "No Coding Plan token quota was present in the GLM response",
+                    statusCode: resp.StatusCode);
+            }
+
+            return snapshot;
+        }
+    }
+
+    private static UsageRequestException ClassifyHttpFailure(HttpStatusCode statusCode, string body)
+    {
+        var code = (int)statusCode;
+
+        if (code == 407)
+            return new UsageRequestException(UsageFailureKind.Proxy, $"GLM proxy authentication failed (HTTP {code})", statusCode: statusCode);
+
+        if (code == 429)
+            return new UsageRequestException(UsageFailureKind.RateLimited, $"GLM rate limit (HTTP {code})", statusCode: statusCode);
+
+        if (code == 402 || LooksLikeMissingPlan(body))
+            return new UsageRequestException(UsageFailureKind.NoCodingPlan, $"No Coding Plan quota (HTTP {code})", statusCode: statusCode);
+
+        if (code is 401 or 403 || LooksLikeAuthenticationFailure(body))
+            return new UsageRequestException(UsageFailureKind.Authentication, $"GLM authentication failed (HTTP {code})", statusCode: statusCode);
+
+        if (code >= 500)
+            return new UsageRequestException(UsageFailureKind.ServiceUnavailable, $"GLM service error (HTTP {code})", statusCode: statusCode);
+
+        return new UsageRequestException(UsageFailureKind.ServiceUnavailable, $"Unexpected GLM response (HTTP {code})", statusCode: statusCode);
+    }
+
+    private static UsageRequestException ClassifyTransportFailure(HttpRequestException ex)
+    {
+        if (HasInner<AuthenticationException>(ex) || ContainsAny(ex.Message, "ssl", "tls", "certificate", "证书"))
+            return new UsageRequestException(UsageFailureKind.Tls, "TLS/certificate connection failure", ex, ex.StatusCode);
+
+        if (ContainsAny(ex.Message, "proxy", "tunnel"))
+            return new UsageRequestException(UsageFailureKind.Proxy, "Proxy connection failure", ex, ex.StatusCode);
+
+        return new UsageRequestException(UsageFailureKind.Network, "Network connection failure", ex, ex.StatusCode);
+    }
+
+    private static bool LooksLikeMissingPlan(string body)
+    {
+        if (string.IsNullOrWhiteSpace(body)) return false;
+        var lower = body.ToLowerInvariant();
+        bool mentionsPlan = lower.Contains("coding plan") || lower.Contains("subscription") || lower.Contains("套餐") || lower.Contains("订阅");
+        bool saysMissing = lower.Contains("not found") || lower.Contains("not subscribed") || lower.Contains("no plan") ||
+                           lower.Contains("not activated") || lower.Contains("未开通") || lower.Contains("未订阅") || lower.Contains("不存在");
+        return mentionsPlan && saysMissing;
+    }
+
+    private static bool LooksLikeAuthenticationFailure(string body)
+    {
+        if (string.IsNullOrWhiteSpace(body)) return false;
+        return ContainsAny(body, "unauthorized", "invalid api key", "invalid key", "authorization", "authentication", "鉴权", "密钥无效", "key无效");
+    }
+
+    private static bool ContainsAny(string value, params string[] needles)
+        => needles.Any(needle => value.Contains(needle, StringComparison.OrdinalIgnoreCase));
+
+    private static bool HasInner<T>(Exception ex) where T : Exception
+    {
+        for (Exception? current = ex; current is not null; current = current.InnerException)
+            if (current is T) return true;
+        return false;
     }
 
     private static UsageSnapshot MapSnapshot(List<RawLimit> limits, string? level, string raw)
