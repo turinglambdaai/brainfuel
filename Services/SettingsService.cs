@@ -12,6 +12,12 @@ public enum AppTheme { System, Light, Dark }
 public class AppSettings
 {
     public string? ApiKey { get; set; }
+
+    // Nullable for migration: v0.4 and earlier do not have this marker. False is
+    // an explicit tombstone so a failed keychain deletion cannot resurrect a
+    // previously-cleared credential on the next launch.
+    public bool? ApiKeyConfigured { get; set; }
+
     public string BaseDomain { get; set; } = "https://open.bigmodel.cn";
     public int RefreshIntervalMinutes { get; set; } = 5;
 
@@ -48,6 +54,7 @@ public class AppSettings
 public static class SettingsService
 {
     private static readonly JsonSerializerOptions JsonOpts = new() { WriteIndented = true };
+    private static string? _lastPersistedApiKey;
 
     public static string AppDirectory { get; } = BuildAppDirectory();
     private static string SettingsPath => Path.Combine(AppDirectory, "settings.json");
@@ -69,7 +76,6 @@ public static class SettingsService
     public static AppSettings Load()
     {
         AppSettings settings = new();
-        string? json = null;
         bool existingInstall = false;
         bool hadAlwaysOnTopSetting = false;
 
@@ -78,7 +84,7 @@ public static class SettingsService
             if (File.Exists(SettingsPath))
             {
                 existingInstall = true;
-                json = File.ReadAllText(SettingsPath);
+                var json = File.ReadAllText(SettingsPath);
                 using var doc = JsonDocument.Parse(json);
                 hadAlwaysOnTopSetting = doc.RootElement.TryGetProperty(nameof(AppSettings.AlwaysOnTop), out _);
                 settings = JsonSerializer.Deserialize<AppSettings>(json, JsonOpts) ?? new AppSettings();
@@ -95,22 +101,39 @@ public static class SettingsService
         if (existingInstall && !hadAlwaysOnTopSetting)
             settings.AlwaysOnTop = true;
 
+        // An explicit false is a tombstone. Ignore (and opportunistically remove)
+        // any stale OS-store entry rather than resurrecting a key the user cleared.
+        if (settings.ApiKeyConfigured == false)
+        {
+            settings.ApiKey = null;
+            _lastPersistedApiKey = null;
+            ApiKeyIsProtected = false;
+            CredentialStore.TryDelete(AppDirectory);
+            return settings;
+        }
+
         // OS secret storage takes precedence. If only a legacy plaintext key is
         // present, migrate it and immediately rewrite settings.json without it.
         if (CredentialStore.TryRead(AppDirectory, out var protectedKey) &&
             !string.IsNullOrWhiteSpace(protectedKey))
         {
             settings.ApiKey = protectedKey;
+            settings.ApiKeyConfigured = true;
+            _lastPersistedApiKey = protectedKey;
             ApiKeyIsProtected = true;
         }
         else if (!string.IsNullOrWhiteSpace(settings.ApiKey) &&
                  CredentialStore.TryWrite(AppDirectory, settings.ApiKey))
         {
+            settings.ApiKeyConfigured = true;
+            _lastPersistedApiKey = settings.ApiKey;
             ApiKeyIsProtected = true;
             Save(settings);
         }
         else
         {
+            settings.ApiKeyConfigured = !string.IsNullOrWhiteSpace(settings.ApiKey);
+            _lastPersistedApiKey = settings.ApiKey;
             ApiKeyIsProtected = false;
         }
 
@@ -120,22 +143,46 @@ public static class SettingsService
     public static void Save(AppSettings settings)
     {
         Directory.CreateDirectory(AppDirectory);
+        var key = settings.ApiKey?.Trim();
+        settings.ApiKey = key;
 
         bool protectedStored;
-        if (string.IsNullOrWhiteSpace(settings.ApiKey))
+        if (string.IsNullOrWhiteSpace(key))
         {
-            protectedStored = CredentialStore.TryDelete(AppDirectory);
+            settings.ApiKeyConfigured = false;
+            // The tombstone above is authoritative even if OS-store deletion is
+            // temporarily unavailable; Load() will never resurrect the stale key.
+            CredentialStore.TryDelete(AppDirectory);
+            _lastPersistedApiKey = null;
+            ApiKeyIsProtected = false;
+            protectedStored = true; // no plaintext secret needs persistence
+        }
+        else if (ApiKeyIsProtected && string.Equals(key, _lastPersistedApiKey, StringComparison.Ordinal))
+        {
+            // Critical: an unrelated settings change must not touch the keychain.
+            // This prevents a transient keyring outage from downgrading a protected
+            // credential back into plaintext settings.json.
+            settings.ApiKeyConfigured = true;
+            protectedStored = true;
+        }
+        else if (CredentialStore.TryWrite(AppDirectory, key))
+        {
+            settings.ApiKeyConfigured = true;
+            _lastPersistedApiKey = key;
+            ApiKeyIsProtected = true;
+            protectedStored = true;
         }
         else
         {
-            protectedStored = CredentialStore.TryWrite(AppDirectory, settings.ApiKey);
+            // First-time save / actual key change with no usable secret service:
+            // preserve the user's credential rather than silently losing it, but
+            // disclose this fallback in Settings and restrict file permissions.
+            settings.ApiKeyConfigured = true;
+            _lastPersistedApiKey = key;
+            ApiKeyIsProtected = false;
+            protectedStored = false;
         }
 
-        ApiKeyIsProtected = protectedStored && !string.IsNullOrWhiteSpace(settings.ApiKey);
-
-        // Serialize normally for backward compatibility, then remove the API key
-        // whenever an OS-protected copy exists. If the platform secret service is
-        // unavailable, retain the old behavior rather than silently losing the key.
         var root = JsonSerializer.SerializeToNode(settings, JsonOpts)?.AsObject() ?? new JsonObject();
         if (protectedStored)
             root.Remove(nameof(AppSettings.ApiKey));
