@@ -121,9 +121,11 @@
                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
                         <TextBlock Text="{DynamicResource QuotaDataStatus}" FontSize="10" Foreground="{DynamicResource TextMuted}"/>
                         <TextBlock Text="·" FontSize="10" Foreground="{DynamicResource TextMuted}"/>
-                        <TextBlock Text="{Binding RefreshAgoText}" FontSize="10" Foreground="{DynamicResource TextSecondary}"/>
+                        <TextBlock Text="{Binding RefreshAgoText}" FontSize="10" Foreground="{DynamicResource TextSecondary}"
+                                   TextTrimming="CharacterEllipsis"/>
                     </StackPanel>
                     <Button Grid.Column="1" Classes="quotaAction" Click="Refresh_Click"
+                            IsEnabled="{Binding CanRefresh}"
                             Content="{DynamicResource BtnRefreshQuota}" ToolTip.Tip="{DynamicResource BtnRefreshQuota}"/>
                 </Grid>
             </Grid>
