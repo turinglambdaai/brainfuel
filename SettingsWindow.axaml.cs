@@ -42,6 +42,7 @@ public partial class SettingsWindow : Window
         IntervalBox.Value = _savedRefreshInterval;
         WeeklyRemaining.IsChecked = settings.WeeklyDisplayStyle == DisplayStyle.Remaining;
         HourlyRemaining.IsChecked = settings.HourlyDisplayStyle == DisplayStyle.Remaining;
+        AlwaysOnTopBox.IsChecked = settings.AlwaysOnTop;
         AutoStartBox.IsChecked = AutoStartService.IsEnabled();
         NotifyBox.IsChecked = settings.NotifyEnabled;
         ThresholdBox.Value = Math.Clamp(settings.NotifyThreshold, 10, 99);
@@ -51,6 +52,7 @@ public partial class SettingsWindow : Window
 
         _initializingInterval = false;
         RefreshIntervalStatus();
+        RefreshCredentialStatus();
 
         var buildKind = Strings.Get(_installedBuild ? "UpdateInstalledBuild" : "UpdatePortableBuild");
         CurrentVersionText.Text = $"{string.Format(Strings.Get("UpdateCurrentVersion"), version)} · {buildKind}";
@@ -58,7 +60,6 @@ public partial class SettingsWindow : Window
         if (!_installedBuild)
             UpdateStatusText.Text = Strings.Get("UpdatePortableHint");
 
-        // First-run users land on Account, while returning users land on General.
         FirstRunPanel.IsVisible = !settings.IsValid;
         SettingsTabs.SelectedIndex = settings.IsValid ? 0 : 1;
 
@@ -67,6 +68,21 @@ public partial class SettingsWindow : Window
         _validated = settings.IsValid;
         KeyBox.TextChanged += ResetValidation;
         PlatformBox.SelectionChanged += ResetValidation;
+    }
+
+    private void RefreshCredentialStatus()
+    {
+        if (string.IsNullOrWhiteSpace(_settings.ApiKey))
+        {
+            CredentialStatusText.Text = string.Format(
+                Strings.Get("CredentialEmpty"),
+                CredentialStore.BackendDisplayName);
+            return;
+        }
+
+        CredentialStatusText.Text = SettingsService.ApiKeyIsProtected
+            ? string.Format(Strings.Get("CredentialProtected"), SettingsService.ApiKeyStorageName)
+            : Strings.Get("CredentialFallback");
     }
 
     private void ConsoleLink_Click(object? sender, RoutedEventArgs e)
@@ -191,6 +207,7 @@ public partial class SettingsWindow : Window
         _settings.RefreshIntervalMinutes = Math.Clamp((int)(IntervalBox.Value ?? 5), 1, 60);
         _settings.WeeklyDisplayStyle = (WeeklyRemaining.IsChecked ?? false) ? DisplayStyle.Remaining : DisplayStyle.Used;
         _settings.HourlyDisplayStyle = (HourlyRemaining.IsChecked ?? false) ? DisplayStyle.Remaining : DisplayStyle.Used;
+        _settings.AlwaysOnTop = AlwaysOnTopBox.IsChecked ?? false;
         _settings.AutoStart = AutoStartBox.IsChecked ?? false;
         _settings.NotifyEnabled = NotifyBox.IsChecked ?? true;
         _settings.NotifyThreshold = (int)(ThresholdBox.Value ?? 80);
