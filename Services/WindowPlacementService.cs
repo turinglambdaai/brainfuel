@@ -19,7 +19,9 @@ public static class WindowPlacementService
 
     public static PixelPoint Restore(Window window, AppSettings settings)
     {
-        var target = FindSavedScreen(window, settings) ?? window.Screens.Primary ?? window.Screens.All.FirstOrDefault();
+        var target = FindSavedScreenIdentity(window, settings)
+                     ?? window.Screens.Primary
+                     ?? window.Screens.All.FirstOrDefault();
         if (target is null)
             return window.Position;
 
@@ -63,27 +65,55 @@ public static class WindowPlacementService
 
     public static void RepairAfterScreenChange(Window window, AppSettings settings)
     {
-        var currentScreen = FindBestIntersectingScreen(window);
-        if (currentScreen is not null && IsSufficientlyVisible(window, currentScreen))
+        if (settings.WindowRelativeX is double rx && settings.WindowRelativeY is double ry)
         {
-            // The display still exists but its work area may have changed because
-            // of DPI, resolution, orientation, taskbar or dock changes.
-            window.Position = ClampFullyVisible(window, currentScreen, window.Position);
+            var intendedScreen = FindSavedScreenIdentity(window, settings);
+            if (intendedScreen is not null)
+            {
+                var currentScreen = FindBestIntersectingScreen(window);
+                if (currentScreen is null || !SameScreen(currentScreen, intendedScreen))
+                {
+                    // The OS may have temporarily relocated the window while a
+                    // display was being rearranged. Honor the user's saved display
+                    // identity rather than accepting that transient relocation.
+                    window.Position = PositionFromRelative(window, intendedScreen, rx, ry);
+                }
+                else
+                {
+                    window.Position = ClampFullyVisible(window, intendedScreen, window.Position);
+                }
+
+                Capture(window, settings);
+                return;
+            }
+
+            // The intended physical display is genuinely gone. Move to primary at
+            // the same relative position, then Capture so reconnecting the old
+            // display later does not unexpectedly pull the card back.
+            var primary = window.Screens.Primary ?? window.Screens.All.FirstOrDefault();
+            if (primary is null)
+                return;
+
+            window.Position = PositionFromRelative(window, primary, rx, ry);
             Capture(window, settings);
             return;
         }
 
-        // The display carrying the widget disappeared. Preserve the latest
-        // relative position and move to primary. We intentionally do not jump
-        // back automatically if that external display is reconnected later.
-        var primary = window.Screens.Primary ?? window.Screens.All.FirstOrDefault();
-        if (primary is null)
+        // Legacy placement that has not yet been migrated to a relative position.
+        var visibleScreen = FindBestIntersectingScreen(window);
+        if (visibleScreen is not null && IsSufficientlyVisible(window, visibleScreen))
+        {
+            window.Position = ClampFullyVisible(window, visibleScreen, window.Position);
+            Capture(window, settings);
             return;
+        }
 
-        var rx = Math.Clamp(settings.WindowRelativeX ?? 1.0, 0, 1);
-        var ry = Math.Clamp(settings.WindowRelativeY ?? 0.0, 0, 1);
-        window.Position = PositionFromRelative(window, primary, rx, ry);
-        Capture(window, settings);
+        var fallback = window.Screens.Primary ?? window.Screens.All.FirstOrDefault();
+        if (fallback is not null)
+        {
+            window.Position = PositionFromRelative(window, fallback, 1.0, 0.0);
+            Capture(window, settings);
+        }
     }
 
     public static void MoveToPrimary(Window window, AppSettings settings)
@@ -120,10 +150,10 @@ public static class WindowPlacementService
         Capture(window, settings);
     }
 
-    private static Screen? FindSavedScreen(Window window, AppSettings settings)
+    private static Screen? FindSavedScreenIdentity(Window window, AppSettings settings)
     {
-        // Exact geometry is the strongest match and avoids ambiguity when two
-        // monitors expose the same model/display name.
+        // Exact geometry is strongest and avoids ambiguity when two monitors expose
+        // the same model/display name.
         if (settings.WindowScreenX is int sx &&
             settings.WindowScreenY is int sy &&
             settings.WindowScreenWidth is int sw &&
@@ -137,20 +167,30 @@ public static class WindowPlacementService
             }
         }
 
-        // If the user rearranged displays or changed resolution, the OS-reported
-        // display name lets us keep the card on the same physical monitor.
+        // A display name usually survives display rearrangement and resolution/DPI
+        // changes. If multiple identical monitors share a name, prefer the one
+        // whose dimensions are closest to the previously saved display.
         if (!string.IsNullOrWhiteSpace(settings.WindowScreenName))
         {
-            var named = window.Screens.All.FirstOrDefault(screen =>
-                string.Equals(screen.DisplayName, settings.WindowScreenName, StringComparison.Ordinal));
+            var named = window.Screens.All
+                .Where(screen => string.Equals(screen.DisplayName, settings.WindowScreenName, StringComparison.Ordinal))
+                .OrderBy(screen => GeometryDistance(screen.Bounds, settings))
+                .FirstOrDefault();
             if (named is not null)
                 return named;
         }
 
-        if (settings.WindowX is int x && settings.WindowY is int y)
-            return window.Screens.ScreenFromPoint(new PixelPoint(x, y));
-
         return null;
+    }
+
+    private static long GeometryDistance(PixelRect bounds, AppSettings settings)
+    {
+        long distance = 0;
+        if (settings.WindowScreenWidth is int width)
+            distance += Math.Abs((long)bounds.Width - width);
+        if (settings.WindowScreenHeight is int height)
+            distance += Math.Abs((long)bounds.Height - height);
+        return distance;
     }
 
     private static Screen? FindBestIntersectingScreen(Window window)
