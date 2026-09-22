@@ -14,6 +14,7 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     private readonly DispatcherTimer _relativeTimer;
     private GlmUsageClient? _client;
     private UsageSnapshot? _last;
+    private UsageFailureKind? _failureKind;
     private bool _inError;
     private bool _hourlyAlerted;
     private bool _weeklyAlerted;
@@ -43,44 +44,66 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
 
     public async Task RefreshAsync()
     {
-        // If a protected credential was temporarily unavailable at startup,
-        // every normal quota refresh is also a chance to recover it. No restart
-        // or manual re-entry is needed once the OS credential service returns.
-        if (string.IsNullOrWhiteSpace(_settings.ApiKey) && _settings.ApiKeyConfigured == true)
-        {
-            if (SettingsService.TryRefreshProtectedApiKey(_settings))
-            {
-                _client?.Dispose();
-                _client = CreateClient();
-            }
-        }
-
-        if (string.IsNullOrWhiteSpace(_settings.ApiKey))
-        {
-            _last = null;
-            _inError = false;
-            ApplySnapshot();
+        // Manual clicks and the periodic timer can arrive close together. Treat a
+        // refresh as a single-flight operation so the same key never creates a
+        // burst of duplicate quota requests.
+        if (IsRefreshing)
             return;
-        }
 
+        IsRefreshing = true;
         try
         {
-            if (_client is null) _client = CreateClient();
-            var snap = await _client.GetUsageAsync();
-            _last = snap;
-            _inError = false;
+            // If a protected credential was temporarily unavailable at startup,
+            // every normal quota refresh is also a chance to recover it. No restart
+            // or manual re-entry is needed once the OS credential service returns.
+            if (string.IsNullOrWhiteSpace(_settings.ApiKey) && _settings.ApiKeyConfigured == true)
+            {
+                if (SettingsService.TryRefreshProtectedApiKey(_settings))
+                {
+                    _client?.Dispose();
+                    _client = CreateClient();
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(_settings.ApiKey))
+            {
+                _last = null;
+                _failureKind = null;
+                _inError = false;
+                return;
+            }
+
+            try
+            {
+                if (_client is null) _client = CreateClient();
+                var snap = await _client.GetUsageAsync();
+                _last = snap;
+                _failureKind = null;
+                _inError = false;
+            }
+            catch (UsageRequestException ex)
+            {
+                _failureKind = ex.Kind;
+                _inError = true;
+            }
+            catch
+            {
+                _failureKind = UsageFailureKind.Unknown;
+                _inError = true;
+            }
         }
-        catch
+        finally
         {
-            _inError = true;
+            IsRefreshing = false;
+            ApplySnapshot();
         }
-        ApplySnapshot();
     }
 
     public void OnSettingsChanged()
     {
         _client?.Dispose();
         _client = CreateClient();
+        _failureKind = null;
         _refreshTimer.Interval = TimeSpan.FromMinutes(Math.Max(1, _settings.RefreshIntervalMinutes));
         CardOpacity = _settings.CardOpacity;
         UpdateTexts();
@@ -141,14 +164,14 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         WeeklySubText = snap?.WeeklyResetAt is { } wr ? FutureWords(wr) : Strings.Get("None");
         HourlySubText = snap?.HourlyResetAt is { } hr ? FutureWords(hr) : Strings.Get("None");
 
-        if (string.IsNullOrWhiteSpace(_settings.ApiKey) && _settings.ApiKeyConfigured == true)
+        if (IsRefreshing)
+            RefreshAgoText = Strings.Get("Refreshing");
+        else if (string.IsNullOrWhiteSpace(_settings.ApiKey) && _settings.ApiKeyConfigured == true)
             RefreshAgoText = Strings.Get("CredentialUnavailableCard");
         else if (!_settings.IsValid)
             RefreshAgoText = Strings.Get("NotConfigured");
         else if (_inError)
-            RefreshAgoText = snap is null
-                ? Strings.Get("RefreshFailed")
-                : Strings.Get("RefreshFailedAt", snap.FetchedAt.LocalDateTime.ToString("HH:mm"));
+            RefreshAgoText = UsageFailureText.Card(_failureKind ?? UsageFailureKind.Unknown);
         else if (snap is null)
             RefreshAgoText = Strings.Get("Refreshing");
         else
@@ -197,6 +220,21 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     private double _cardOpacity = 1.0;
     public bool IsError { get => _isError; set => Set(ref _isError, value); }
     private bool _isError;
+
+    public bool IsRefreshing
+    {
+        get => _isRefreshing;
+        private set
+        {
+            if (_isRefreshing == value) return;
+            _isRefreshing = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsRefreshing)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CanRefresh)));
+            UpdateTexts();
+        }
+    }
+    private bool _isRefreshing;
+    public bool CanRefresh => !IsRefreshing;
 
     public event PropertyChangedEventHandler? PropertyChanged;
     private void Set<T>(ref T field, T value, [CallerMemberName] string? name = null)
