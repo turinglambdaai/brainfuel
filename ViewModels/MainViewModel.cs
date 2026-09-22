@@ -18,7 +18,6 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     private bool _hourlyAlerted;
     private bool _weeklyAlerted;
 
-    /// <summary>UI hook to surface a desktop notification (title, message).</summary>
     public Action<string, string>? OnNotify { get; set; }
 
     public MainViewModel(AppSettings settings)
@@ -44,8 +43,18 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
 
     public async Task RefreshAsync()
     {
-        // Unconfigured: skip the pointless 401 round-trip; the card shows a
-        // "not configured, click to set up" state instead of an error.
+        // If a protected credential was temporarily unavailable at startup,
+        // every normal quota refresh is also a chance to recover it. No restart
+        // or manual re-entry is needed once the OS credential service returns.
+        if (string.IsNullOrWhiteSpace(_settings.ApiKey) && _settings.ApiKeyConfigured == true)
+        {
+            if (SettingsService.TryRefreshProtectedApiKey(_settings))
+            {
+                _client?.Dispose();
+                _client = CreateClient();
+            }
+        }
+
         if (string.IsNullOrWhiteSpace(_settings.ApiKey))
         {
             _last = null;
@@ -53,6 +62,7 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
             ApplySnapshot();
             return;
         }
+
         try
         {
             if (_client is null) _client = CreateClient();
@@ -73,7 +83,7 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         _client = CreateClient();
         _refreshTimer.Interval = TimeSpan.FromMinutes(Math.Max(1, _settings.RefreshIntervalMinutes));
         CardOpacity = _settings.CardOpacity;
-        UpdateTexts(); // re-localize dynamic strings immediately (e.g. after language change)
+        UpdateTexts();
         _ = RefreshAsync();
     }
 
@@ -83,7 +93,6 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     private void ApplySnapshot()
     {
         var snap = _last;
-        // Ring follows the chosen display style so the ring and the number always agree.
         double weeklyUsed = snap?.WeeklyUsedPct ?? 0;
         WeeklyProgress = (_settings.WeeklyDisplayStyle == DisplayStyle.Remaining ? 100 - weeklyUsed : weeklyUsed) / 100.0;
 
@@ -132,7 +141,9 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         WeeklySubText = snap?.WeeklyResetAt is { } wr ? FutureWords(wr) : Strings.Get("None");
         HourlySubText = snap?.HourlyResetAt is { } hr ? FutureWords(hr) : Strings.Get("None");
 
-        if (!_settings.IsValid)
+        if (string.IsNullOrWhiteSpace(_settings.ApiKey) && _settings.ApiKeyConfigured == true)
+            RefreshAgoText = Strings.Get("CredentialUnavailableCard");
+        else if (!_settings.IsValid)
             RefreshAgoText = Strings.Get("NotConfigured");
         else if (_inError)
             RefreshAgoText = snap is null
@@ -167,7 +178,6 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         return Strings.Get("DaysLater", (int)Math.Round(d.TotalDays));
     }
 
-    // ---- bindable properties ----
     public double WeeklyProgress { get => _weeklyProgress; set => Set(ref _weeklyProgress, value); }
     private double _weeklyProgress;
     public double HourlyProgress { get => _hourlyProgress; set => Set(ref _hourlyProgress, value); }
