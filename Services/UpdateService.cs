@@ -31,7 +31,7 @@ public enum ManualUpdateResult
 /// </summary>
 public static class UpdateService
 {
-    private const string RepositoryUrl = "https://github.com/turinglambdaai/brainfuel";
+    public const string RepositoryUrl = "https://github.com/turinglambdaai/brainfuel";
     public const string ReleasesUrl = RepositoryUrl + "/releases/latest";
 
     private static readonly TimeSpan InitialDelay = TimeSpan.FromSeconds(15);
