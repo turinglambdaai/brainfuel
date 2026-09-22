@@ -31,7 +31,10 @@ public partial class SettingsWindow : Window
         InitializeComponent();
         _settings = settings;
         _installedBuild = UpdateService.IsInstalledBuild();
-        Title = Strings.Get("WinTitle");
+
+        var version = typeof(SettingsWindow).Assembly.GetName().Version?.ToString(3) ?? "dev";
+        Title = $"{Strings.Get("WinTitle")} · v{version}";
+        HeaderVersionText.Text = $"BrainFuel v{version}";
 
         KeyBox.Text = settings.ApiKey;
         PlatformBox.SelectedIndex =
@@ -50,7 +53,6 @@ public partial class SettingsWindow : Window
         _initializingInterval = false;
         RefreshIntervalStatus();
 
-        var version = typeof(SettingsWindow).Assembly.GetName().Version?.ToString(3) ?? "dev";
         var buildKind = Strings.Get(_installedBuild ? "UpdateInstalledBuild" : "UpdatePortableBuild");
         CurrentVersionText.Text = $"{string.Format(Strings.Get("UpdateCurrentVersion"), version)} · {buildKind}";
         OpenReleasesBtn.IsVisible = !_installedBuild;
