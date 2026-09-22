@@ -1,6 +1,5 @@
 using System;
 using System.Diagnostics;
-using System.Net.Http;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
@@ -188,22 +187,27 @@ public partial class SettingsWindow : Window
                 await probe.GetUsageAsync();
                 ok = true;
             }
-            catch (HttpRequestException ex) when (ex.StatusCode is not null)
+            catch (UsageRequestException ex)
             {
-                _saveAnyway = true;
-                ValidateMsg.Text = string.Format(Strings.Get("ValidateBadKey"), (int)ex.StatusCode);
+                _saveAnyway = UsageFailureText.AllowsSaveAnyway(ex.Kind);
+                ValidateMsg.Text = UsageFailureText.Validation(ex.Kind);
             }
             catch
             {
                 _saveAnyway = true;
-                ValidateMsg.Text = Strings.Get("ValidateNetwork");
+                ValidateMsg.Text = UsageFailureText.Validation(UsageFailureKind.Unknown);
             }
             finally
             {
                 SaveBtn.IsEnabled = true;
-                SaveBtn.Content = Strings.Get(ok ? "BtnSave" : "ValidateSaveAnyway");
+                SaveBtn.Content = Strings.Get(ok
+                    ? "BtnSave"
+                    : _saveAnyway ? "ValidateSaveAnyway" : "BtnSave");
             }
-            if (!ok) return;
+
+            if (!ok)
+                return;
+
             _validated = true;
         }
 

@@ -54,7 +54,14 @@
           <Border x:Name="FirstRunPanel" IsVisible="False" Classes="sectionCard"><StackPanel Spacing="5"><TextBlock Text="{DynamicResource FirstRunTitle}" FontWeight="SemiBold"/><TextBlock Text="{DynamicResource FirstRunBody}" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}"/></StackPanel></Border>
           <Border Classes="sectionCard"><StackPanel Spacing="12">
             <StackPanel Spacing="3"><TextBlock Text="{DynamicResource SectionAccount}" FontWeight="SemiBold"/><TextBlock Text="{DynamicResource AccountDesc}" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}"/></StackPanel>
-            <StackPanel Spacing="5"><TextBlock Text="{DynamicResource LblApiKey}"/><TextBox x:Name="KeyBox" PlaceholderText="{DynamicResource KeyPlaceholder}" PasswordChar="•"/><StackPanel Orientation="Horizontal" Spacing="6"><TextBlock Text="{DynamicResource KeyHint}" FontSize="11" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/><Button x:Name="ConsoleLink" Classes="link" Click="ConsoleLink_Click"><TextBlock Text="{DynamicResource KeyOpenConsole}" TextDecorations="Underline" FontSize="11"/></Button></StackPanel></StackPanel>
+            <StackPanel Spacing="5">
+              <TextBlock Text="{DynamicResource LblApiKey}"/>
+              <TextBox x:Name="KeyBox" PlaceholderText="{DynamicResource KeyPlaceholder}" PasswordChar="•"/>
+              <TextBlock Text="{DynamicResource KeyHint}" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}"/>
+              <Button x:Name="ConsoleLink" Classes="link" Click="ConsoleLink_Click" HorizontalAlignment="Left">
+                <TextBlock Text="{DynamicResource KeyOpenConsole}" TextDecorations="Underline" FontSize="11"/>
+              </Button>
+            </StackPanel>
             <StackPanel Spacing="5"><TextBlock Text="{DynamicResource LblPlatform}"/><ComboBox x:Name="PlatformBox"><ComboBoxItem Content="{DynamicResource PlatformCn}"/><ComboBoxItem Content="{DynamicResource PlatformIntl}"/></ComboBox></StackPanel>
           </StackPanel></Border>
           <Border Classes="sectionCard"><StackPanel Spacing="7">
