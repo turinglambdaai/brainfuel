@@ -1,6 +1,6 @@
 # BrainFuel
 
-A small, always-on-top desktop widget for monitoring **GLM Coding Plan** quota — the 5-hour rolling window and weekly allowance — without interrupting your work. Built with **Avalonia 12 / .NET 10** for Windows, macOS, and Linux.
+A small desktop widget for monitoring **GLM Coding Plan** quota — the 5-hour rolling window and weekly allowance — without interrupting your work. Built with **Avalonia 12 / .NET 10** for Windows, macOS, and Linux.
 
 ![C#](https://img.shields.io/badge/C%23-512BD4?logo=csharp&logoColor=white) [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
@@ -8,32 +8,66 @@ A small, always-on-top desktop widget for monitoring **GLM Coding Plan** quota �
 
 ## Product model
 
-BrainFuel deliberately separates two concepts that should never be confused:
+BrainFuel deliberately separates concepts that should not be confused:
 
 - **Quota data** lives on the main card. The visible action is explicitly **Refresh quota**.
-- **Application lifecycle** lives in the top-right **⋯ app menu** and Settings: Settings, software updates, About, hide, and quit.
+- **Application lifecycle** lives in the top-right **⋯ app menu** and Settings: Settings, software updates, display movement, About, hide, and quit.
+- **Desktop behavior** is user-controlled. New installs do not force the card above every application; **Keep on top** is optional.
 
-This keeps the widget focused on one job: glance at quota and get back to work.
+The goal is simple: glance at quota and get back to work.
 
 ## Features
 
 - **Focused quota card** — nested weekly / 5-hour rings, clear percentages, reset timing, and data freshness
 - **Explicit quota refresh** — manual **Refresh quota** plus configurable automatic refresh
+- **Secure API-key storage** — Windows DPAPI, macOS Keychain, and Linux Secret Service when available; legacy plaintext keys are migrated automatically
 - **Structured Settings** — General / Account / Notifications / Software tabs instead of one long form
+- **Non-intrusive desktop behavior** — new installs start non-topmost and do not steal focus; Keep on top is an explicit preference
+- **Monitor-aware placement** — remembers the physical display plus relative position, handles DPI/resolution/taskbar changes, and recovers when an external display disappears
+- **Display controls** — app menu can move the card to the primary or next display
 - **Guided first run** — first launch opens directly to Account with setup guidance and API-key validation
 - **Windows automatic software updates** — installed builds check GitHub Releases in the background and prefer small Velopack delta packages
-- **Visible version information** — Settings, About, widget app menu, and tray all expose the running version
+- **Visible version information** — Settings, About, widget app menu, and tray expose the running version
 - **Verifiable releases** — official builds include `SHA256SUMS` and GitHub Artifact Attestations
 - **Light / Dark / System theme** — with adjustable card opacity
 - **Bilingual UI** — Chinese / English
 - **Start on login** — Windows registry / macOS LaunchAgent / Linux autostart
 - **Quota notifications** — configurable exhaustion threshold
-- **Movable, multi-monitor-safe card** — position is remembered and recovered after display topology changes
 - **System tray** — hide the widget without stopping quota polling or notifications
 
-## How it works
+## Desktop and multi-monitor behavior
 
-BrainFuel reads quota data from the GLM Coding Plan monitor endpoint (`GET /api/monitor/usage/quota/limit`) using your Coding Plan API key. Settings live under `%APPDATA%\BrainFuel\` on Windows, `~/.config/BrainFuel/` on Linux, or `~/Library/Application Support/BrainFuel/` on macOS.
+BrainFuel stores the card's position relative to the **working area** of the display rather than depending only on absolute desktop pixels.
+
+The v0.5 behavior is intentionally conservative:
+
+- a new install starts near the **upper-right of the primary display**, with an edge margin;
+- dragging the card remembers the display and relative position;
+- if that display is unplugged, the card moves to the **primary display at the same relative position**;
+- reconnecting the old display does **not** unexpectedly pull the card away from the screen where you are currently working;
+- display rearrangement, resolution/orientation changes, DPI scaling changes, and taskbar/dock changes keep the complete card inside a usable working area;
+- **⋯ → Move to next display / Move to primary display** provides an explicit recovery path;
+- **Keep on top** is off by default for new installs so normal work windows can cover BrainFuel. Users upgrading from versions that were always-on-top keep their previous behavior until they change the preference.
+
+BrainFuel also starts with `ShowActivated=false`, so an automatic launch does not intentionally steal keyboard focus. Restoring it from the tray or launching it again is an explicit user action and brings it forward.
+
+## API-key storage
+
+BrainFuel reads quota data from the GLM Coding Plan monitor endpoint (`GET /api/monitor/usage/quota/limit`) using your Coding Plan API key.
+
+From **v0.5.0**, the key is normally kept outside `settings.json`:
+
+| Platform | Preferred credential storage |
+|---|---|
+| Windows | DPAPI, protected for the current Windows user |
+| macOS | Login Keychain |
+| Linux | freedesktop Secret Service via `secret-tool` |
+
+On the first v0.5 launch, an older plaintext key is migrated automatically when the platform credential store is available. If an already-protected credential store is temporarily unavailable, BrainFuel does not downgrade the key to plaintext and retries access during later quota refreshes.
+
+If a **new or changed** key must be saved while no supported system secret store is available, BrainFuel falls back to the local settings file rather than losing the credential. Settings clearly shows this state, and Unix settings files are restricted to the current user where supported. See [`SECURITY.md`](SECURITY.md) for the detailed threat/edge-case model.
+
+Non-secret preferences live under `%APPDATA%\BrainFuel\` on Windows, `~/.config/BrainFuel/` on Linux, or `~/Library/Application Support/BrainFuel/` on macOS.
 
 Release builds do not continuously persist raw quota responses to disk. Raw response logging is limited to Debug builds for troubleshooting.
 
@@ -57,7 +91,7 @@ The Setup installer is fast and intentionally avoids a long wizard. Starting wit
 
 ### Optional: MSI
 
-v0.4.0 also publishes:
+BrainFuel also publishes:
 
 `BrainFuel-win-Setup.msi`
 
@@ -129,12 +163,14 @@ Official GitHub Actions releases additionally:
 ```text
 brainfuel/
 ├── App.axaml(.cs)                 # application lifecycle / tray / background services
-├── MainWindow.axaml(.cs)          # focused quota widget + app menu
+├── MainWindow.axaml(.cs)          # focused quota widget + desktop/app menu behavior
 ├── SettingsWindow.axaml(.cs)      # General / Account / Notifications / Software
 ├── AboutWindow.axaml(.cs)         # version / build / project links
 ├── NotificationWindow.axaml(.cs)  # desktop notification window
 ├── Controls/UsageRing.cs
 ├── Services/
+│   ├── CredentialStore.cs         # DPAPI / Keychain / Linux Secret Service
+│   ├── WindowPlacementService.cs  # monitor-aware relative placement
 │   ├── GlmUsageClient.cs
 │   ├── UpdateService.cs
 │   ├── SettingsService.cs
