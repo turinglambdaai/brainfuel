@@ -25,8 +25,9 @@ public class AppSettings
     public int? WindowX { get; set; }
     public int? WindowY { get; set; }
 
-    // v0.5+: monitor-aware placement. Screen bounds identify the last display;
-    // relative values preserve the position when DPI/resolution/work-area changes.
+    // v0.5+: monitor-aware placement. Display name plus bounds identify the last
+    // display; relative values preserve position when layout/DPI/resolution changes.
+    public string? WindowScreenName { get; set; }
     public int? WindowScreenX { get; set; }
     public int? WindowScreenY { get; set; }
     public int? WindowScreenWidth { get; set; }
