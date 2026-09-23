@@ -34,6 +34,7 @@
     <Border x:Name="CardBorder"
             BorderBrush="{DynamicResource CardBorder}"
             BorderThickness="1"
+            ToolTip.Tip="{Binding StatusTooltip}"
             PointerPressed="Card_PointerPressed">
         <Border.ContextMenu>
             <ContextMenu>

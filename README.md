@@ -15,8 +15,9 @@ A tiny always-on-top desktop widget that monitors your **GLM Coding Plan** quota
 - **Bilingual UI** — Chinese / English toggle
 - **Start-on-login** — optional autostart (Windows registry / macOS LaunchAgent / Linux autostart)
 - **Quota notifications** — optional desktop notification when a quota crosses an exhaustion threshold (default 80% used, configurable)
-- **Movable card** — right-click for refresh / settings / quit; drag to move (position remembered)
-- **System tray** — hide to tray keeps polling and notifications running; bring the widget back from the tray icon (or by launching the exe again). Only the tray/card "Quit" really exits
+- **Movable card** — right-click for refresh / settings / hide / quit; drag to move (position remembered)
+- **Tray-resident lifecycle** — closing the card (X button / Alt+F4 / system menu) just hides it to the tray: polling and notifications keep running, and a brief toast points you at the tray icon. Bring the widget back by clicking the tray icon (or by launching the exe again). Only the tray/card "Quit" really exits the process
+- **Readable failures** — a rejected key or unreachable network shows the actual reason on the card's refresh line ("Failed · HTTP 401", the server's own message, …); hover the card for likely causes and the log path
 - **Multi-monitor safe** — if a monitor is unplugged and the card ends up off-screen, it is pulled back onto a visible display automatically
 
 ## How It Works
@@ -24,6 +25,15 @@ A tiny always-on-top desktop widget that monitors your **GLM Coding Plan** quota
 Reads quota from the GLM Coding Plan monitor endpoint (`GET /api/monitor/usage/quota/limit`) using your Coding Plan API key — the same call the official `glm-plan-usage` plugin makes. Two nested rings: outer = weekly, inner = 5-hour window. Clickable refresh button; auto-refresh every few minutes.
 
 Settings & API key live under `%APPDATA%\BrainFuel\` (Windows) / `~/.config/BrainFuel/` (Linux) / `~/Library/Application Support/BrainFuel/` (macOS).
+
+## Troubleshooting
+
+**Filled in the key but no quota shows.** Look at the card's refresh line — it states the actual failure ("Failed · HTTP 401", "Failed · token expired or incorrect", timeout, …); hovering the card adds likely causes. The two usual suspects:
+
+- **Key/platform mismatch** — a Zhipu (bigmodel.cn) key selected as "Z.ai international" (or vice versa) is rejected by the gateway. Both gateways report bad keys as HTTP 200 with an error body, so versions before 0.2.1 looked "successful but empty"; 0.2.1 onwards this surfaces as an explicit failure.
+- **Plan without Coding-Plan usage** — if the account has no such quota, the endpoint returns no token limits; the card says so instead of showing `--`.
+
+Every failure is appended to `brainfuel.log` next to `settings.json` (path shown in the card tooltip), and the raw API response is kept in `quota-debug.json` in the same folder.
 
 ## Requirements
 
@@ -86,6 +96,7 @@ brainfuel/
 │   └── UsageRing.cs          # Reusable quota-ring control
 ├── Services/
 │   ├── GlmUsageClient.cs     # GLM Coding Plan quota API client
+│   ├── AppLog.cs             # Rolling error log next to the settings file
 │   ├── SettingsService.cs    # Settings / API key persistence
 │   ├── AutoStartService.cs   # Start-on-login (Win/macOS/Linux)
 │   ├── SingleInstanceActivation.cs  # Single-instance guard

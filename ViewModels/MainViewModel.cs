@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel;
+using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Avalonia.Threading;
@@ -15,6 +16,8 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     private GlmUsageClient? _client;
     private UsageSnapshot? _last;
     private bool _inError;
+    private string? _errorShort;   // compact reason for the refresh line
+    private string? _errorDetail;  // full reason for the tooltip / log
     private bool _hourlyAlerted;
     private bool _weeklyAlerted;
 
@@ -50,6 +53,7 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         {
             _last = null;
             _inError = false;
+            _errorShort = _errorDetail = null;
             ApplySnapshot();
             return;
         }
@@ -59,13 +63,37 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
             var snap = await _client.GetUsageAsync();
             _last = snap;
             _inError = false;
+            _errorShort = _errorDetail = null;
         }
-        catch
+        catch (Exception ex)
         {
+            (_errorShort, _errorDetail) = DescribeError(ex);
             _inError = true;
+            AppLog.Error($"refresh failed: {_errorDetail}");
         }
         ApplySnapshot();
     }
+
+    /// <summary>
+    /// Turns a fetch failure into (compact line reason, full tooltip reason).
+    /// The gateways report bad keys as HTTP 200 + code/msg envelopes, so the
+    /// server message is the most useful thing we can show.
+    /// </summary>
+    private static (string Short, string Detail) DescribeError(Exception ex) => ex switch
+    {
+        QuotaDataException q when !string.IsNullOrWhiteSpace(q.ServerMessage)
+            => (Shorten(q.ServerMessage!), $"{q.Message}: {q.ServerMessage}"),
+        QuotaDataException q => (Strings.Get("ErrNoQuotaData"), q.Message),
+        HttpRequestException h when h.StatusCode is not null
+            => ($"HTTP {(int)h.StatusCode}", h.Message),
+        TaskCanceledException => (Strings.Get("ErrTimeout"), "request timed out"),
+        HttpRequestException h => (Strings.Get("ErrNetwork"), h.Message),
+        _ => (Strings.Get("RefreshFailed"), ex.Message),
+    };
+
+    // The refresh line sits in ~150 px; keep the reason inside that.
+    private static string Shorten(string s, int max = 14) =>
+        s.Length <= max ? s : s[..(max - 1)] + "…";
 
     public void OnSettingsChanged()
     {
@@ -135,13 +163,18 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         if (!_settings.IsValid)
             RefreshAgoText = Strings.Get("NotConfigured");
         else if (_inError)
-            RefreshAgoText = snap is null
-                ? Strings.Get("RefreshFailed")
-                : Strings.Get("RefreshFailedAt", snap.FetchedAt.LocalDateTime.ToString("HH:mm"));
+            // Keep the reason on the card itself: "refresh failed" alone was
+            // undiagnosable for users whose key was rejected with HTTP 200.
+            RefreshAgoText = Strings.Get("RefreshFailedWhy", _errorShort ?? Strings.Get("RefreshFailed"));
         else if (snap is null)
             RefreshAgoText = Strings.Get("Refreshing");
         else
             RefreshAgoText = PastWords(snap.FetchedAt);
+
+        // Hover detail: full reason + likely causes + where the log lives.
+        StatusTooltip = _inError
+            ? Strings.Get("ErrTooltip", _errorDetail ?? string.Empty, AppLog.LogPath)
+            : null;
 
         IsError = _inError;
     }
@@ -183,6 +216,8 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     private string _hourlySubText = "5 小时";
     public string RefreshAgoText { get => _refreshAgoText; set => Set(ref _refreshAgoText, value); }
     private string _refreshAgoText = "刷新中…";
+    public string? StatusTooltip { get => _statusTooltip; set => Set(ref _statusTooltip, value); }
+    private string? _statusTooltip;
     public double CardOpacity { get => _cardOpacity; set => Set(ref _cardOpacity, value); }
     private double _cardOpacity = 1.0;
     public bool IsError { get => _isError; set => Set(ref _isError, value); }

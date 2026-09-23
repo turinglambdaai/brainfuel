@@ -77,6 +77,16 @@ public partial class SettingsWindow : Window
                 await probe.GetUsageAsync();
                 ok = true;
             }
+            catch (QuotaDataException ex)
+            {
+                // Both gateways reject a bad key as HTTP 200 + code/msg envelope,
+                // so this is the common "typo / wrong platform" path.
+                _saveAnyway = true;
+                ValidateMsg.Text = string.IsNullOrWhiteSpace(ex.ServerMessage)
+                    ? string.Format(Strings.Get("ValidateNoData"), AppLog.LogPath)
+                    : string.Format(Strings.Get("ValidateRejected"), ex.ServerMessage);
+                ok = false;
+            }
             catch (HttpRequestException ex) when (ex.StatusCode is not null)
             {
                 _saveAnyway = true;

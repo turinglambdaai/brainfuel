@@ -13,6 +13,7 @@ public partial class MainWindow : Window
 {
     private AppSettings? _settings;
     private MainViewModel? _vm;
+    private bool _quitRequested;
 
     public MainWindow()
     {
@@ -100,7 +101,14 @@ public partial class MainWindow : Window
 
     private void Settings_Click(object? sender, RoutedEventArgs e) => OpenSettings();
 
-    private void Quit_Click(object? sender, RoutedEventArgs e) => Close();
+    /// <summary>The one real exit path: closes the window past the close-interception below.</summary>
+    public void Quit()
+    {
+        _quitRequested = true;
+        Close();
+    }
+
+    private void Quit_Click(object? sender, RoutedEventArgs e) => Quit();
 
     /// <summary>Hides the widget; polling and notifications keep running in the tray.</summary>
     private void Hide_Click(object? sender, RoutedEventArgs e) => Hide();
@@ -130,11 +138,29 @@ public partial class MainWindow : Window
             // Persist the current position only if it is still on a visible
             // screen; otherwise keep whatever (valid) value was there before so
             // a stranded window doesn't lock itself off-screen across restarts.
+            // Runs on every path (hide included) so a later crash can't lose it.
             var pos = IsOnAnyScreen(Position) ? Position : EnsureOnPrimary(Position);
             _settings.WindowX = pos.X;
             _settings.WindowY = pos.Y;
             SettingsService.Save(_settings);
         }
+
+        // Lifecycle contract: the card is a *view* onto a background monitor,
+        // so "close" (X button / Alt+F4 / system menu) means "collapse to tray" —
+        // polling and notifications keep running. The process only ends via an
+        // explicit Quit (tray menu / card menu). OS and application shutdown
+        // must never be intercepted.
+        if (!_quitRequested &&
+            e.CloseReason is WindowCloseReason.WindowClosing or WindowCloseReason.Undefined)
+        {
+            e.Cancel = true;
+            Hide();
+            // The app has no taskbar button; without a hint, "close" reads as
+            // "the program is gone". Point at the tray once, briefly.
+            _vm?.OnNotify?.Invoke(Strings.Get("HiddenTitle"), Strings.Get("HiddenBody"));
+            return;
+        }
+
         Screens.Changed -= OnScreensChanged;
         _vm?.Dispose();
         base.OnClosing(e);
