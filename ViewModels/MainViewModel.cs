@@ -85,11 +85,13 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
             {
                 _failureKind = ex.Kind;
                 _inError = true;
+                AppLog.Error($"refresh failed ({ex.Kind}): {ex.Message}");
             }
-            catch
+            catch (Exception ex)
             {
                 _failureKind = UsageFailureKind.Unknown;
                 _inError = true;
+                AppLog.Error($"refresh failed (Unknown): {ex.Message}");
             }
         }
         finally
@@ -177,6 +179,13 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         else
             RefreshAgoText = PastWords(snap.FetchedAt);
 
+        // Hover detail: the long-form explanation (same text the settings
+        // dialog shows on validation) plus where the rolling log lives.
+        StatusTooltip = _inError
+            ? UsageFailureText.Validation(_failureKind ?? UsageFailureKind.Unknown)
+                + "\n" + Strings.Get("ErrLogAt", AppLog.LogPath)
+            : null;
+
         IsError = _inError;
     }
 
@@ -216,6 +225,8 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     private string _hourlySubText = "5 小时";
     public string RefreshAgoText { get => _refreshAgoText; set => Set(ref _refreshAgoText, value); }
     private string _refreshAgoText = "刷新中…";
+    public string? StatusTooltip { get => _statusTooltip; set => Set(ref _statusTooltip, value); }
+    private string? _statusTooltip;
     public double CardOpacity { get => _cardOpacity; set => Set(ref _cardOpacity, value); }
     private double _cardOpacity = 1.0;
     public bool IsError { get => _isError; set => Set(ref _isError, value); }

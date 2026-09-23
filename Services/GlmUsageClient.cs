@@ -32,7 +32,12 @@ public sealed class GlmUsageClient : IDisposable
         var root = baseDomain.TrimEnd('/') + "/";
         _http = new HttpClient { BaseAddress = new Uri(root), Timeout = TimeSpan.FromSeconds(15) };
         _http.DefaultRequestHeaders.Add("Accept-Language", "en-US,en");
-        _http.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", apiKey ?? string.Empty);
+        // Tolerate pasted keys carrying a "Bearer " prefix; both gateways expect
+        // the raw key and would otherwise reject the request.
+        var key = (apiKey ?? string.Empty).Trim();
+        if (key.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            key = key["Bearer ".Length..].Trim();
+        _http.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", key);
         _debugPath = debugPath;
     }
 
@@ -89,6 +94,13 @@ public sealed class GlmUsageClient : IDisposable
                     resp.StatusCode);
             }
 
+            // HTTP 200 does not mean success here: both gateways report rejected
+            // keys as 200 + {"code":…,"msg":…,"success":false}. Without this the
+            // envelope falls through to "no data object" and gets classified as
+            // an unrecognizable response instead of an authentication failure.
+            if (parsed?.IsErrorEnvelope == true)
+                throw ClassifyErrorEnvelope(parsed, body, resp.StatusCode);
+
             if (parsed?.Data is null)
             {
                 throw new UsageRequestException(
@@ -114,6 +126,29 @@ public sealed class GlmUsageClient : IDisposable
 
             return snapshot;
         }
+    }
+
+    /// <summary>
+    /// Classifies an HTTP 200 error envelope. Reuses the body heuristics used
+    /// for non-200 responses, then falls back to the envelope's own code.
+    /// </summary>
+    private static UsageRequestException ClassifyErrorEnvelope(QuotaLimitResponse parsed, string body, HttpStatusCode statusCode)
+    {
+        var code = parsed.ErrorCode;
+        var described = $"GLM error envelope (code {code ?? "?"}): {parsed.ErrorMsg ?? "<no message>"}";
+
+        if (LooksLikeAuthenticationFailure(parsed.ErrorMsg ?? string.Empty) ||
+            LooksLikeAuthenticationFailure(body) ||
+            code is "401" or "403" or "1001")
+            return new UsageRequestException(UsageFailureKind.Authentication, described, statusCode: statusCode);
+
+        if (LooksLikeMissingPlan(body))
+            return new UsageRequestException(UsageFailureKind.NoCodingPlan, described, statusCode: statusCode);
+
+        if (code == "429")
+            return new UsageRequestException(UsageFailureKind.RateLimited, described, statusCode: statusCode);
+
+        return new UsageRequestException(UsageFailureKind.InvalidResponse, described, statusCode: statusCode);
     }
 
     private static UsageRequestException ClassifyHttpFailure(HttpStatusCode statusCode, string body)
