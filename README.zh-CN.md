@@ -11,7 +11,7 @@
 BrainFuel 明确拆开几个不同概念：
 
 - **额度数据**只属于主卡片。主卡片上的可见动作明确叫 **“刷新额度”**。
-- **应用级操作**统一放在右上角 **“⋯”应用菜单**与设置中：设置、检查软件更新、跨屏移动、关于、隐藏、退出。
+- **应用级操作**统一放在右上角 **“⋯”应用菜单**与设置中：设置、检查软件更新、跨屏移动、关于、隐藏、退出。关闭卡片（X 按钮 / Alt+F4 / 系统菜单）同样只是“隐藏”：会弹一条气泡提示卡片去了托盘，只有显式**退出**才会结束进程——监控不会随窗口一起消失。
 - **桌面行为由用户决定**。新安装不会强制压在所有应用上方；“置顶显示”是可选能力。
 
 目标很简单：看一眼额度，然后继续工作。
@@ -33,7 +33,8 @@ BrainFuel 明确拆开几个不同概念：
 - **中英双语界面**
 - **开机自启** — Windows / macOS / Linux
 - **额度通知** — 可配置耗尽阈值
-- **系统托盘** — 隐藏卡片后额度轮询和通知继续工作
+- **系统托盘** — 隐藏卡片（关闭 / Alt+F4 同样生效）后额度轮询和通知继续工作
+- **可读的额度失败信息** — 卡片新鲜度行直接给出失败类别（Key 无效/平台不匹配、网络、代理、超时、无套餐等）；悬停卡片可见完整指引与日志路径
 
 ## 桌面与多屏行为
 
@@ -77,7 +78,7 @@ BrainFuel 使用你的 Coding Plan API Key 调用 GLM Coding Plan 监控接口�
 
 如果用户在系统安全存储不可用时**新建或更换** Key，为了不把用户输入直接丢掉，BrainFuel 会回退到本地 `settings.json`。在 Linux/macOS 上，如果文件系统支持，会把权限限制为当前用户 `0600`，同时设置页会明确提示这个回退状态。完整安全模型见 [`SECURITY.md`](SECURITY.md)。
 
-非敏感设置文件位于 `%APPDATA%\BrainFuel\`（Windows）、`~/.config/BrainFuel/`（Linux）或 `~/Library/Application Support/BrainFuel/`（macOS）。Release 构建不会持续把原始额度响应写入磁盘；原始响应日志只用于 Debug 排查。
+非敏感设置文件位于 `%APPDATA%\BrainFuel\`（Windows）、`~/.config/BrainFuel/`（Linux）或 `~/Library/Application Support/BrainFuel/`（macOS）。Release 构建不会持续把原始额度响应写入磁盘；原始响应日志只用于 Debug 排查。额度**失败记录**（类别 + 服务端消息，绝不含 Key 或原始报文）会滚动追加到 `settings.json` 同目录的 `brainfuel.log`，卡片失败悬停提示中会给出该路径，便于事后排查“填了 Key 却刷不出额度”。
 
 ## 软件更新
 
@@ -185,6 +186,7 @@ brainfuel/
 │   ├── CredentialStore.cs         # DPAPI / Keychain / Linux Secret Service
 │   ├── WindowPlacementService.cs  # 多屏相对定位与恢复
 │   ├── GlmUsageClient.cs
+│   ├── AppLog.cs                 # 滚动错误日志（不含 Key/原始报文）
 │   ├── UpdateService.cs
 │   ├── SettingsService.cs
 │   ├── AutoStartService.cs

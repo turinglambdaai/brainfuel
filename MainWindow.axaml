@@ -39,6 +39,7 @@
             CornerRadius="16"
             BorderBrush="{DynamicResource CardBorder}"
             BorderThickness="1"
+            ToolTip.Tip="{Binding StatusTooltip}"
             PointerPressed="Card_PointerPressed"
             PointerReleased="Card_PointerReleased">
         <Grid>

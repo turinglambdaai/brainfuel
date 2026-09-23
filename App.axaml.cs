@@ -27,6 +27,8 @@ public partial class App : Application
         Settings = SettingsService.Load();
         ApplyTheme(Settings.ThemeMode);
         Strings.ApplyLanguage(Settings.Language);
+        AppLog.Info($"BrainFuel {typeof(App).Assembly.GetName().Version?.ToString(3)} starting" +
+                    $" (data dir: {SettingsService.AppDirectory}, base domain: {Settings.BaseDomain})");
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
@@ -89,7 +91,7 @@ public partial class App : Application
         menu.Add(new NativeMenuItemSeparator());
 
         var quitItem = new NativeMenuItem { Header = Strings.Get("TrayQuit") };
-        quitItem.Click += (_, _) => main.Close();
+        quitItem.Click += (_, _) => main.Quit();
         menu.Add(quitItem);
 
         _trayIcon = new TrayIcon

@@ -11,7 +11,7 @@ A small desktop widget for monitoring **GLM Coding Plan** quota — the 5-hour r
 BrainFuel deliberately separates concepts that should not be confused:
 
 - **Quota data** lives on the main card. The visible action is explicitly **Refresh quota**.
-- **Application lifecycle** lives in the top-right **⋯ app menu** and Settings: Settings, software updates, display movement, About, hide, and quit.
+- **Application lifecycle** lives in the top-right **⋯ app menu** and Settings: Settings, software updates, display movement, About, hide, and quit. Closing the card (X button / Alt+F4 / system menu) is also just "hide": a transient toast points at the tray, and only the explicit **Quit** ends the process — monitoring never dies with the window.
 - **Desktop behavior** is user-controlled. New installs do not force the card above every application; **Keep on top** is optional.
 
 The goal is simple: glance at quota and get back to work.
@@ -33,7 +33,8 @@ The goal is simple: glance at quota and get back to work.
 - **Bilingual UI** — Chinese / English
 - **Start on login** — Windows registry / macOS LaunchAgent / Linux autostart
 - **Quota notifications** — configurable exhaustion threshold
-- **System tray** — hide the widget without stopping quota polling or notifications
+- **System tray** — hide the widget (also via close / Alt+F4) without stopping quota polling or notifications
+- **Readable quota failures** — the card's freshness line names the failure category (bad key/platform mismatch, network, proxy, timeout, no plan…); hovering the card shows the full guidance and the log path
 
 ## Desktop and multi-monitor behavior
 
@@ -69,7 +70,7 @@ If a **new or changed** key must be saved while no supported system secret store
 
 Non-secret preferences live under `%APPDATA%\BrainFuel\` on Windows, `~/.config/BrainFuel/` on Linux, or `~/Library/Application Support/BrainFuel/` on macOS.
 
-Release builds do not continuously persist raw quota responses to disk. Raw response logging is limited to Debug builds for troubleshooting.
+Release builds do not continuously persist raw quota responses to disk. Raw response logging is limited to Debug builds for troubleshooting. Quota *failures* (category + server message, never the key or raw payload) are appended to a rolling `brainfuel.log` beside `settings.json` so "the key is set but nothing refreshes" can be diagnosed after the fact; the path is shown in the card's failure tooltip.
 
 ## Software updates
 
@@ -172,6 +173,7 @@ brainfuel/
 │   ├── CredentialStore.cs         # DPAPI / Keychain / Linux Secret Service
 │   ├── WindowPlacementService.cs  # monitor-aware relative placement
 │   ├── GlmUsageClient.cs
+│   ├── AppLog.cs                 # rolling errors-only log (no keys/payloads)
 │   ├── UpdateService.cs
 │   ├── SettingsService.cs
 │   ├── AutoStartService.cs

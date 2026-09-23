@@ -16,6 +16,7 @@ public partial class MainWindow : Window
     private AppSettings? _settings;
     private MainViewModel? _vm;
     private bool _userMoveInProgress;
+    private bool _quitRequested;
 
     public MainWindow()
     {
@@ -200,7 +201,14 @@ public partial class MainWindow : Window
         }
     }
 
-    private void Quit_Click(object? sender, RoutedEventArgs e) => Close();
+    /// <summary>The one real exit path: closes the window past the close-interception below.</summary>
+    public void Quit()
+    {
+        _quitRequested = true;
+        Close();
+    }
+
+    private void Quit_Click(object? sender, RoutedEventArgs e) => Quit();
     public void Hide_Click(object? sender, RoutedEventArgs e) => Hide();
 
     public void EnsureVisible()
@@ -239,6 +247,23 @@ public partial class MainWindow : Window
             WindowPlacementService.Capture(this, _settings);
             SettingsService.Save(_settings);
         }
+
+        // Lifecycle contract: the card is a *view* onto a background monitor,
+        // so a close request (X button / Alt+F4 / system menu) means "collapse
+        // to tray" — polling, alerts and updates keep running. The process only
+        // ends through an explicit Quit (tray menu / card menu). OS shutdown and
+        // application shutdown must never be intercepted.
+        if (!_quitRequested &&
+            e.CloseReason is WindowCloseReason.WindowClosing or WindowCloseReason.Undefined)
+        {
+            e.Cancel = true;
+            Hide();
+            // The app has no taskbar button; without a hint, "close" reads as
+            // "the program is gone". Point at the tray once, briefly.
+            _vm?.OnNotify?.Invoke(Strings.Get("HiddenTitle"), Strings.Get("HiddenBody"));
+            return;
+        }
+
         Screens.Changed -= OnScreensChanged;
         ScalingChanged -= OnScalingChanged;
         _vm?.Dispose();

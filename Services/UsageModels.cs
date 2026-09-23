@@ -29,6 +29,35 @@ public class QuotaLimitResponse
 {
     [JsonPropertyName("data")]
     public QuotaLimitData? Data { get; set; }
+
+    // Error envelope: both gateways answer rejected keys with HTTP 200 +
+    // {"code":1001,"msg":"…","success":false} (observed 2026-09 against
+    // open.bigmodel.cn and api.z.ai). Kept as raw JsonElement because `code`
+    // appears as both number and string in the wild.
+    [JsonPropertyName("code")]
+    public JsonElement? Code { get; set; }
+
+    [JsonPropertyName("msg")]
+    public string? Msg { get; set; }
+
+    [JsonPropertyName("message")]
+    public string? Message { get; set; }
+
+    [JsonPropertyName("success")]
+    public JsonElement? Success { get; set; }
+
+    public string? ErrorMsg => Msg ?? Message;
+
+    public string? ErrorCode => Code switch
+    {
+        { ValueKind: JsonValueKind.Number } n => n.ToString(),
+        { ValueKind: JsonValueKind.String } s => s.GetString(),
+        _ => null,
+    };
+
+    public bool IsErrorEnvelope =>
+        (Success is { ValueKind: JsonValueKind.True or JsonValueKind.False } s && !s.GetBoolean())
+        || (ErrorCode is { } c && c != "0" && c != "200");
 }
 
 public class QuotaLimitData
