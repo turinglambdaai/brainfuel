@@ -9,6 +9,7 @@ namespace BrainFuel.Services;
 public enum DisplayStyle { Used, Remaining }
 public enum AppTheme { System, Light, Dark }
 public enum ApiKeyStorageState { None, Protected, PlaintextFallback, ProtectedUnavailable }
+public enum CardSizeMode { Standard, Compact }
 
 public class AppSettings
 {
@@ -48,6 +49,7 @@ public class AppSettings
     public AppTheme ThemeMode { get; set; } = AppTheme.Dark;
     public double CardOpacity { get; set; } = 1.0;
     public AppLanguage Language { get; set; } = AppLanguage.Zh;
+    public CardSizeMode SizeMode { get; set; } = CardSizeMode.Standard;
 
     [JsonIgnore]
     public bool IsValid => !string.IsNullOrWhiteSpace(ApiKey) && !string.IsNullOrWhiteSpace(BaseDomain);
@@ -58,7 +60,15 @@ public class AppSettings
 
 public static class SettingsService
 {
-    private static readonly JsonSerializerOptions JsonOpts = new() { WriteIndented = true };
+    // Enum values are written as strings ("Dark", "Compact") and *both* strings
+    // and legacy numeric values are accepted on read. Without the converter a
+    // hand-edited settings.json containing "ThemeMode": "Dark" fails to parse
+    // and the whole file silently resets to defaults.
+    internal static readonly JsonSerializerOptions JsonOpts = new()
+    {
+        WriteIndented = true,
+        Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() },
+    };
     private static string? _lastPersistedApiKey;
 
     public static string AppDirectory { get; } = BuildAppDirectory();
@@ -97,8 +107,12 @@ public static class SettingsService
                 settings = JsonSerializer.Deserialize<AppSettings>(json, JsonOpts) ?? new AppSettings();
             }
         }
-        catch
+        catch (Exception ex)
         {
+            // Corrupt or unmappable settings: fall back to defaults, but leave a
+            // trace — otherwise every preference (position, theme, threshold)
+            // silently disappears and looks like a bug elsewhere.
+            AppLog.Error($"settings.json load failed, using defaults: {ex.Message}");
             settings = new AppSettings();
         }
 

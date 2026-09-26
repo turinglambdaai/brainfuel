@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
@@ -23,6 +24,8 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     private bool _inError;
     private bool _hourlyAlerted;
     private bool _weeklyAlerted;
+    private readonly QuotaBurnTracker _hourlyBurn = new();
+    private readonly QuotaBurnTracker _weeklyBurn = new();
 
     public Action<string, string>? OnNotify { get; set; }
 
@@ -85,6 +88,11 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
                 _last = snap;
                 _failureKind = null;
                 _inError = false;
+
+                // Feed the burn-rate estimators only from real observations;
+                // a reset inside the tracker drops stale-window samples.
+                if (snap.HasHourly) _hourlyBurn.AddSample(snap.FetchedAt, snap.HourlyUsedPct);
+                if (snap.HasWeekly) _weeklyBurn.AddSample(snap.FetchedAt, snap.WeeklyUsedPct);
             }
             catch (UsageRequestException ex)
             {
@@ -160,16 +168,32 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         if (snap?.HasHourly == true && h >= thr && !_hourlyAlerted)
         {
             _hourlyAlerted = true;
-            OnNotify(Strings.Get("NotifyHourlyTitle"), Strings.Get("NotifyUsed", Math.Round(h)));
+            OnNotify(Strings.Get("NotifyHourlyTitle"), FunBody("NotifyHourlyBody", h, _hourlyBurn, h));
         }
         if (h < thr - 5) _hourlyAlerted = false;
 
         if (snap?.HasWeekly == true && w >= thr && !_weeklyAlerted)
         {
             _weeklyAlerted = true;
-            OnNotify(Strings.Get("NotifyWeeklyTitle"), Strings.Get("NotifyUsed", Math.Round(w)));
+            OnNotify(Strings.Get("NotifyWeeklyTitle"), FunBody("NotifyWeeklyBody", w, _weeklyBurn, w));
         }
         if (w < thr - 5) _weeklyAlerted = false;
+    }
+
+    /// <summary>One of three flavor lines, plus a burn-rate projection when available.</summary>
+    private static string FunBody(string keyPrefix, double usedPct, QuotaBurnTracker burn, double usedForProjection)
+    {
+        var body = Strings.Get($"{keyPrefix}{Random.Shared.Next(1, 4)}", Math.Round(usedPct));
+        if (burn.ProjectHoursToExhaustion(usedForProjection, DateTimeOffset.Now) is { } hours)
+            body += Strings.Get("NotifyBurnSuffix", FormatSpan(hours));
+        return body;
+    }
+
+    private static string FormatSpan(double hours)
+    {
+        if (hours < 1) return Strings.Get("MinutesLater", (int)Math.Ceiling(hours * 60));
+        if (hours < 48) return Strings.Get("HoursLater", Math.Round(hours));
+        return Strings.Get("DaysLater", Math.Round(hours / 24));
     }
 
     private void UpdateTexts()
@@ -187,6 +211,10 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         WeeklySubText = snap?.WeeklyResetAt is { } wr ? FutureWords(wr) : Strings.Get("None");
         HourlySubText = snap?.HourlyResetAt is { } hr ? FutureWords(hr) : Strings.Get("None");
 
+        HourlySeverity = snap?.HasHourly == true ? Severity.FromUsedPct(hourlyUsed) : SeverityLevel.Calm;
+        WeeklySeverity = snap?.HasWeekly == true ? Severity.FromUsedPct(weeklyUsed) : SeverityLevel.Calm;
+        UpdateMini(snap, hourlyUsed, weeklyUsed);
+
         if (IsRefreshing)
             RefreshAgoText = Strings.Get("Refreshing");
         else if (string.IsNullOrWhiteSpace(_settings.ApiKey) && _settings.ApiKeyConfigured == true)
@@ -200,14 +228,68 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         else
             RefreshAgoText = PastWords(snap.FetchedAt);
 
-        // Hover detail: the long-form explanation (same text the settings
-        // dialog shows on validation) plus where the rolling log lives.
+        // Hover detail: failures show the long-form explanation (same text the
+        // settings dialog shows) plus the log path; success shows per-window
+        // numbers with burn-rate projections.
         StatusTooltip = _inError
             ? UsageFailureText.Validation(_failureKind ?? UsageFailureKind.Unknown)
                 + "\n" + Strings.Get("ErrLogAt", AppLog.LogPath)
-            : null;
+            : snap is null ? null : BuildSuccessTooltip(snap);
 
         IsError = _inError;
+    }
+
+    /// <summary>Mini card tracks whichever window is closer to exhaustion.</summary>
+    private void UpdateMini(UsageSnapshot? snap, double hourlyUsed, double weeklyUsed)
+    {
+        bool hasH = snap?.HasHourly == true;
+        bool hasW = snap?.HasWeekly == true;
+        if (!hasH && !hasW)
+        {
+            MiniPercentText = "--";
+            MiniProgress = 0;
+            MiniSeverity = SeverityLevel.Calm;
+            MiniLabelText = Strings.Get("LblHourly");
+            return;
+        }
+
+        bool pickHourly = hasH && (!hasW || hourlyUsed >= weeklyUsed);
+        double used = pickHourly ? hourlyUsed : weeklyUsed;
+        bool remaining = pickHourly
+            ? _settings.HourlyDisplayStyle == DisplayStyle.Remaining
+            : _settings.WeeklyDisplayStyle == DisplayStyle.Remaining;
+
+        MiniPercentText = FormatPct(remaining ? 100 - used : used, true);
+        MiniProgress = used / 100.0;
+        MiniSeverity = Severity.FromUsedPct(used);
+        MiniLabelText = Strings.Get(pickHourly ? "LblHourly" : "LblWeekly");
+    }
+
+    private string BuildSuccessTooltip(UsageSnapshot snap)
+    {
+        var lines = new System.Collections.Generic.List<string>();
+        if (snap.HasHourly)
+        {
+            var line = Strings.Get("TipHourly", Math.Round(snap.HourlyUsedPct));
+            if (snap.HourlyResetAt is { } r) line += " · " + FutureWords(r);
+            lines.Add(line);
+            AppendBurn(lines, _hourlyBurn, snap.HourlyUsedPct);
+        }
+        if (snap.HasWeekly)
+        {
+            var line = Strings.Get("TipWeekly", Math.Round(snap.WeeklyUsedPct));
+            if (snap.WeeklyResetAt is { } r) line += " · " + FutureWords(r);
+            lines.Add(line);
+            AppendBurn(lines, _weeklyBurn, snap.WeeklyUsedPct);
+        }
+        lines.Add(Strings.Get("TipSizeHint"));
+        return string.Join("\n", lines);
+    }
+
+    private static void AppendBurn(List<string> lines, QuotaBurnTracker burn, double usedPct)
+    {
+        if (burn.ProjectHoursToExhaustion(usedPct, DateTimeOffset.Now) is { } hours && burn.RatePctPerHour is { } rate)
+            lines.Add(Strings.Get("TipBurn", Math.Round(rate), FormatSpan(hours)));
     }
 
     private static string FormatPct(double value, bool? has)
@@ -248,6 +330,22 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     private string _refreshAgoText = "刷新中…";
     public string? StatusTooltip { get => _statusTooltip; set => Set(ref _statusTooltip, value); }
     private string? _statusTooltip;
+
+    // Severity drives the code-behind recolor (ring, dots, percent text).
+    public SeverityLevel HourlySeverity { get => _hourlySeverity; set => Set(ref _hourlySeverity, value); }
+    private SeverityLevel _hourlySeverity;
+    public SeverityLevel WeeklySeverity { get => _weeklySeverity; set => Set(ref _weeklySeverity, value); }
+    private SeverityLevel _weeklySeverity;
+
+    // Mini card (compact mode): one ring, the more urgent window.
+    public string MiniPercentText { get => _miniPercentText; set => Set(ref _miniPercentText, value); }
+    private string _miniPercentText = "--";
+    public double MiniProgress { get => _miniProgress; set => Set(ref _miniProgress, value); }
+    private double _miniProgress;
+    public SeverityLevel MiniSeverity { get => _miniSeverity; set => Set(ref _miniSeverity, value); }
+    private SeverityLevel _miniSeverity;
+    public string MiniLabelText { get => _miniLabelText; set => Set(ref _miniLabelText, value); }
+    private string _miniLabelText = "5 小时";
     public double CardOpacity { get => _cardOpacity; set => Set(ref _cardOpacity, value); }
     private double _cardOpacity = 1.0;
     public bool IsError { get => _isError; set => Set(ref _isError, value); }
