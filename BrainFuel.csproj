@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\tray.ico</ApplicationIcon>
-    <Version>0.5.6</Version>
+    <Version>0.5.7</Version>
     <Product>BrainFuel</Product>
     <Description>Desktop widget for GLM Coding Plan quota</Description>
     <Authors>TuringLambdaAI</Authors>

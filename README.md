@@ -19,6 +19,7 @@ The goal is simple: glance at quota and get back to work.
 ## Features
 
 - **Focused quota card** — nested weekly / 5-hour rings, clear percentages, reset timing, and data freshness
+- **Mini mode** — double-click the card (or use the ⋯ menu) to collapse it into a one-ring mini card tracking whichever window is closer to exhaustion
 - **Explicit quota refresh** — manual **Refresh quota** plus configurable automatic refresh
 - **Secure API-key storage** — Windows DPAPI, macOS Keychain, and Linux Secret Service when available; legacy plaintext keys are migrated automatically
 - **Structured Settings** — General / Account / Notifications / Software tabs instead of one long form
@@ -35,6 +36,8 @@ The goal is simple: glance at quota and get back to work.
 - **Quota notifications** — configurable exhaustion threshold
 - **System tray** — hide the widget (also via close / Alt+F4) without stopping quota polling or notifications
 - **Readable quota failures** — the card's freshness line names the failure category (bad key/platform mismatch, network, proxy, timeout, no plan…); hovering the card shows the full guidance and the log path
+- **Burn-rate intelligence** — hovering the card shows each window's consumption speed and a projected time-to-empty; threshold notifications append the projection ("At the current burn rate, ~2 h to empty") with a bit of personality
+- **Urgency-aware visuals** — rings, dots and percentages shift to amber at 75% used and red at 90%, in both standard and mini cards
 
 ## Desktop and multi-monitor behavior
 

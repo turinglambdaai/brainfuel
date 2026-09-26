@@ -1,9 +1,12 @@
 using System;
+using System.ComponentModel;
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Media;
+using Avalonia.Media.Immutable;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using BrainFuel.Services;
@@ -13,6 +16,10 @@ namespace BrainFuel;
 
 public partial class MainWindow : Window
 {
+    // Quota-urgency accents, applied over the theme palette in code-behind.
+    private static readonly ImmutableSolidColorBrush AmberBrush = new(Color.Parse("#F5A623"));
+    private static readonly ImmutableSolidColorBrush RedBrush = new(Color.Parse("#E5484D"));
+
     private AppSettings? _settings;
     private MainViewModel? _vm;
     private bool _userMoveInProgress;
@@ -34,14 +41,52 @@ public partial class MainWindow : Window
         WindowPlacementService.Capture(this, settings);
 
         RefreshMenuState();
+        ApplySizeMode();
+        ApplySeverityColors();
+
         Screens.Changed += OnScreensChanged;
         ScalingChanged += OnScalingChanged;
+        vm.PropertyChanged += OnVmPropertyChanged;
 
         vm.OnNotify = (title, msg) => Dispatcher.UIThread.Post(() =>
             new NotificationWindow().ShowNotification(title, msg));
 
         vm.Start();
     }
+
+    private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(MainViewModel.HourlySeverity)
+            or nameof(MainViewModel.WeeklySeverity) or nameof(MainViewModel.MiniSeverity))
+        {
+            ApplySeverityColors();
+        }
+    }
+
+    private void ApplySeverityColors()
+    {
+        if (_vm is null) return;
+        HourlyDot.Fill = SeverityBrush(_vm.HourlySeverity, "RingHourly");
+        HourlyPctText.Foreground = SeverityBrush(_vm.HourlySeverity, "TextPrimary");
+        WeeklyDot.Fill = SeverityBrush(_vm.WeeklySeverity, "RingWeekly");
+        WeeklyPctText.Foreground = SeverityBrush(_vm.WeeklySeverity, "TextPrimary");
+        StandardRing.HourlyBrush = SeverityBrush(_vm.HourlySeverity, "RingHourly");
+        StandardRing.WeeklyBrush = SeverityBrush(_vm.WeeklySeverity, "RingWeekly");
+        var miniBrush = SeverityBrush(_vm.MiniSeverity, "RingWeekly");
+        MiniRing.WeeklyBrush = miniBrush;
+        MiniPctText.Foreground = _vm.MiniSeverity == SeverityLevel.Calm
+            ? SeverityBrush(SeverityLevel.Calm, "TextPrimary")
+            : miniBrush;
+    }
+
+    private IBrush SeverityBrush(SeverityLevel level, string calmResourceKey) => level switch
+    {
+        SeverityLevel.Red => RedBrush,
+        SeverityLevel.Amber => AmberBrush,
+        _ => this.TryGetResource(calmResourceKey, ActualThemeVariant, out var value) && value is IBrush brush
+            ? brush
+            : AmberBrush, // unreachable in practice; keeps the switch exhaustive
+    };
 
     private void OnScalingChanged(object? sender, EventArgs e)
     {
@@ -73,6 +118,13 @@ public partial class MainWindow : Window
         if (e.Source is Visual source &&
             source.GetSelfAndVisualAncestors().Any(visual => visual is Button))
             return;
+
+        // Double-click toggles the card between standard and mini sizes.
+        if (e.ClickCount >= 2)
+        {
+            ToggleSizeMode();
+            return;
+        }
 
         _userMoveInProgress = true;
         BeginMoveDrag(e);
@@ -106,14 +158,40 @@ public partial class MainWindow : Window
     {
         RefreshMenuState();
 
-        // The application menu belongs only to the explicit three-dot button.
-        // The card itself deliberately has no ContextMenu, so right-clicking the
-        // quota surface does nothing and there is only one discoverable app menu.
-        CardMenu.PlacementTarget = MenuButton;
-        CardMenu.Placement = PlacementMode.BottomEdgeAlignedRight;
-        CardMenu.Open(MenuButton);
+        // The application menu belongs only to the explicit three-dot button
+        // (standard card or mini card). The card itself deliberately has no
+        // ContextMenu, so there is only one discoverable app menu.
+        if (sender is Control target)
+        {
+            CardMenu.PlacementTarget = target;
+            CardMenu.Placement = PlacementMode.BottomEdgeAlignedRight;
+            CardMenu.Open(target);
+        }
         e.Handled = true;
     }
+
+    /// <summary>Swaps the card between the full layout and the mini ring.</summary>
+    public void ApplySizeMode()
+    {
+        bool mini = _settings?.SizeMode == CardSizeMode.Compact;
+        StandardLayout.IsVisible = !mini;
+        MiniLayout.IsVisible = mini;
+        Width = mini ? 118 : 368;
+        Height = mini ? 118 : 226;
+        MiniMenuItem.IsChecked = mini;
+    }
+
+    private void ToggleSizeMode()
+    {
+        if (_settings is null) return;
+        _settings.SizeMode = _settings.SizeMode == CardSizeMode.Compact
+            ? CardSizeMode.Standard
+            : CardSizeMode.Compact;
+        ApplySizeMode();
+        SettingsService.Save(_settings);
+    }
+
+    private void ToggleMini_Click(object? sender, RoutedEventArgs e) => ToggleSizeMode();
 
     private void Settings_Click(object? sender, RoutedEventArgs e) => OpenSettings();
     private void About_Click(object? sender, RoutedEventArgs e) => OpenAbout();
@@ -266,6 +344,7 @@ public partial class MainWindow : Window
 
         Screens.Changed -= OnScreensChanged;
         ScalingChanged -= OnScalingChanged;
+        if (_vm is not null) _vm.PropertyChanged -= OnVmPropertyChanged;
         _vm?.Dispose();
         base.OnClosing(e);
     }

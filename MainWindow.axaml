@@ -33,6 +33,22 @@
             <Setter Property="CornerRadius" Value="8"/>
             <Setter Property="FontSize" Value="11"/>
         </Style>
+        <Style Selector="Button.miniMenu">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Padding" Value="2"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Opacity" Value="0.45"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.miniMenu:pointerover">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <Style Selector="Button.miniMenu:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource HoverOverlay}"/>
+            <Setter Property="CornerRadius" Value="6"/>
+        </Style>
     </Window.Styles>
 
     <Border x:Name="CardBorder"
@@ -45,90 +61,123 @@
         <Grid>
             <Border Background="{DynamicResource CardBg}" Opacity="{Binding CardOpacity}" CornerRadius="16"/>
 
-            <Grid Margin="16" RowDefinitions="Auto,*,Auto" RowSpacing="10">
-                <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
-                    <StackPanel Grid.Column="0" Spacing="1">
-                        <TextBlock Text="BrainFuel" FontSize="15" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource TextPrimary}"/>
-                        <TextBlock Text="{DynamicResource CardSubtitle}" FontSize="10"
-                                   Foreground="{DynamicResource TextMuted}"/>
-                    </StackPanel>
-                    <Button x:Name="MenuButton" Grid.Column="1" Classes="ghost"
-                            Click="OpenMenu_Click" ToolTip.Tip="{DynamicResource MenuMoreTip}"
-                            VerticalAlignment="Top">
-                        <Button.ContextMenu>
-                            <ContextMenu x:Name="CardMenu">
-                                <MenuItem Header="{DynamicResource MenuRefresh}" Click="Refresh_Click"/>
-                                <MenuItem Header="{DynamicResource MenuSettings}" Click="Settings_Click"/>
-                                <MenuItem x:Name="UpdateMenuItem" Header="{DynamicResource MenuCheckUpdates}" Click="Update_Click"/>
-                                <Separator/>
-                                <MenuItem x:Name="TopmostMenuItem" Click="ToggleTopmost_Click"/>
-                                <MenuItem x:Name="MoveNextDisplayMenuItem" Header="{DynamicResource MenuMoveNextDisplay}" Click="MoveNextDisplay_Click"/>
-                                <MenuItem Header="{DynamicResource MenuMovePrimary}" Click="MovePrimary_Click"/>
-                                <Separator/>
-                                <MenuItem x:Name="AboutMenuItem" Header="About BrainFuel…" Click="About_Click"/>
-                                <Separator/>
-                                <MenuItem Header="{DynamicResource MenuHide}" Click="Hide_Click"/>
-                                <MenuItem Header="{DynamicResource MenuQuit}" Click="Quit_Click"/>
-                            </ContextMenu>
-                        </Button.ContextMenu>
-                        <TextBlock Text="⋯" FontSize="18" LineHeight="16"
+            <!-- Standard card -->
+            <Panel x:Name="StandardLayout">
+                <Grid Margin="16" RowDefinitions="Auto,*,Auto" RowSpacing="10">
+                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="1">
+                            <TextBlock Text="BrainFuel" FontSize="15" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextPrimary}"/>
+                            <TextBlock Text="{DynamicResource CardSubtitle}" FontSize="10"
+                                       Foreground="{DynamicResource TextMuted}"/>
+                        </StackPanel>
+                        <Button x:Name="MenuButton" Grid.Column="1" Classes="ghost"
+                                Click="OpenMenu_Click" ToolTip.Tip="{DynamicResource MenuMoreTip}"
+                                VerticalAlignment="Top">
+                            <Button.ContextMenu>
+                                <ContextMenu x:Name="CardMenu">
+                                    <MenuItem Header="{DynamicResource MenuRefresh}" Click="Refresh_Click"/>
+                                    <MenuItem Header="{DynamicResource MenuSettings}" Click="Settings_Click"/>
+                                    <MenuItem x:Name="UpdateMenuItem" Header="{DynamicResource MenuCheckUpdates}" Click="Update_Click"/>
+                                    <Separator/>
+                                    <MenuItem x:Name="TopmostMenuItem" Click="ToggleTopmost_Click"/>
+                                    <MenuItem x:Name="MiniMenuItem" Header="{DynamicResource MenuMiniMode}" ToggleType="CheckBox" Click="ToggleMini_Click"/>
+                                    <MenuItem x:Name="MoveNextDisplayMenuItem" Header="{DynamicResource MenuMoveNextDisplay}" Click="MoveNextDisplay_Click"/>
+                                    <MenuItem Header="{DynamicResource MenuMovePrimary}" Click="MovePrimary_Click"/>
+                                    <Separator/>
+                                    <MenuItem x:Name="AboutMenuItem" Header="About BrainFuel…" Click="About_Click"/>
+                                    <Separator/>
+                                    <MenuItem Header="{DynamicResource MenuHide}" Click="Hide_Click"/>
+                                    <MenuItem Header="{DynamicResource MenuQuit}" Click="Quit_Click"/>
+                                </ContextMenu>
+                            </Button.ContextMenu>
+                            <TextBlock Text="⋯" FontSize="18" LineHeight="16"
+                                       Foreground="{DynamicResource TextSecondary}"/>
+                        </Button>
+                    </Grid>
+
+                    <Grid Grid.Row="1" ColumnDefinitions="124,*" ColumnSpacing="14">
+                        <ctl:UsageRing x:Name="StandardRing" Grid.Column="0"
+                                       Width="116" Height="116"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       TrackBrush="{DynamicResource RingTrack}"
+                                       WeeklyBrush="{DynamicResource RingWeekly}"
+                                       HourlyBrush="{DynamicResource RingHourly}"
+                                       WeeklyProgress="{Binding WeeklyProgress}"
+                                       HourlyProgress="{Binding HourlyProgress}"/>
+
+                        <StackPanel Grid.Column="1" Spacing="7" VerticalAlignment="Center">
+                            <Border CornerRadius="10" Padding="10,8" Background="{DynamicResource HoverOverlay}">
+                                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                                    <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="6">
+                                        <Ellipse x:Name="HourlyDot" Width="6" Height="6" Fill="{DynamicResource RingHourly}" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{DynamicResource LblHourly}" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
+                                    </StackPanel>
+                                    <TextBlock x:Name="HourlyPctText" Grid.Row="0" Grid.Column="1" Text="{Binding HourlyPercentText}"
+                                               FontSize="22" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
+                                    <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding HourlySubText}"
+                                               Margin="12,1,0,0" FontSize="10" Foreground="{DynamicResource TextMuted}"/>
+                                </Grid>
+                            </Border>
+
+                            <Border CornerRadius="10" Padding="10,8" Background="{DynamicResource HoverOverlay}">
+                                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                                    <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="6">
+                                        <Ellipse x:Name="WeeklyDot" Width="6" Height="6" Fill="{DynamicResource RingWeekly}" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{DynamicResource LblWeekly}" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
+                                    </StackPanel>
+                                    <TextBlock x:Name="WeeklyPctText" Grid.Row="0" Grid.Column="1" Text="{Binding WeeklyPercentText}"
+                                               FontSize="22" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
+                                    <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding WeeklySubText}"
+                                               Margin="12,1,0,0" FontSize="10" Foreground="{DynamicResource TextMuted}"/>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid Grid.Row="2" ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                            <TextBlock Text="{DynamicResource QuotaDataStatus}" FontSize="10" Foreground="{DynamicResource TextMuted}"/>
+                            <TextBlock Text="·" FontSize="10" Foreground="{DynamicResource TextMuted}"/>
+                            <TextBlock Text="{Binding RefreshAgoText}" FontSize="10" Foreground="{DynamicResource TextSecondary}"
+                                       TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                        <Button Grid.Column="1" Classes="quotaAction" Click="Refresh_Click"
+                                IsEnabled="{Binding CanRefresh}"
+                                Content="{DynamicResource BtnRefreshQuota}" ToolTip.Tip="{DynamicResource BtnRefreshQuota}"/>
+                    </Grid>
+                </Grid>
+            </Panel>
+
+            <!-- Mini card: one ring for the window closer to exhaustion (double-click toggles back) -->
+            <Panel x:Name="MiniLayout" IsVisible="False">
+                <Grid Margin="10" RowDefinitions="Auto,*,Auto">
+                    <Button x:Name="MiniMenuButton" Grid.Row="0" Classes="miniMenu"
+                            HorizontalAlignment="Right" VerticalAlignment="Top"
+                            Click="OpenMenu_Click" ToolTip.Tip="{DynamicResource MenuMoreTip}">
+                        <TextBlock Text="⋯" FontSize="13" LineHeight="12"
                                    Foreground="{DynamicResource TextSecondary}"/>
                     </Button>
+
+                    <Panel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <ctl:UsageRing x:Name="MiniRing"
+                                       Width="66" Height="66"
+                                       TrackBrush="{DynamicResource RingTrack}"
+                                       WeeklyBrush="{DynamicResource RingWeekly}"
+                                       HourlyBrush="{DynamicResource RingTrack}"
+                                       WeeklyProgress="{Binding MiniProgress}"
+                                       HourlyProgress="0"/>
+                        <TextBlock x:Name="MiniPctText" Text="{Binding MiniPercentText}"
+                                   FontSize="16" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Panel>
+
+                    <TextBlock Grid.Row="2" Text="{Binding MiniLabelText}" FontSize="10"
+                               Foreground="{DynamicResource TextMuted}"
+                               HorizontalAlignment="Center"/>
                 </Grid>
-
-                <Grid Grid.Row="1" ColumnDefinitions="124,*" ColumnSpacing="14">
-                    <ctl:UsageRing Grid.Column="0"
-                                   Width="116" Height="116"
-                                   HorizontalAlignment="Center"
-                                   VerticalAlignment="Center"
-                                   TrackBrush="{DynamicResource RingTrack}"
-                                   WeeklyBrush="{DynamicResource RingWeekly}"
-                                   HourlyBrush="{DynamicResource RingHourly}"
-                                   WeeklyProgress="{Binding WeeklyProgress}"
-                                   HourlyProgress="{Binding HourlyProgress}"/>
-
-                    <StackPanel Grid.Column="1" Spacing="7" VerticalAlignment="Center">
-                        <Border CornerRadius="10" Padding="10,8" Background="{DynamicResource HoverOverlay}">
-                            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
-                                <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="6">
-                                    <Ellipse Width="6" Height="6" Fill="{DynamicResource RingHourly}" VerticalAlignment="Center"/>
-                                    <TextBlock Text="{DynamicResource LblHourly}" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
-                                </StackPanel>
-                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding HourlyPercentText}"
-                                           FontSize="22" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
-                                <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding HourlySubText}"
-                                           Margin="12,1,0,0" FontSize="10" Foreground="{DynamicResource TextMuted}"/>
-                            </Grid>
-                        </Border>
-
-                        <Border CornerRadius="10" Padding="10,8" Background="{DynamicResource HoverOverlay}">
-                            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
-                                <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="6">
-                                    <Ellipse Width="6" Height="6" Fill="{DynamicResource RingWeekly}" VerticalAlignment="Center"/>
-                                    <TextBlock Text="{DynamicResource LblWeekly}" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
-                                </StackPanel>
-                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding WeeklyPercentText}"
-                                           FontSize="22" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
-                                <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding WeeklySubText}"
-                                           Margin="12,1,0,0" FontSize="10" Foreground="{DynamicResource TextMuted}"/>
-                            </Grid>
-                        </Border>
-                    </StackPanel>
-                </Grid>
-
-                <Grid Grid.Row="2" ColumnDefinitions="*,Auto" ColumnSpacing="10">
-                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
-                        <TextBlock Text="{DynamicResource QuotaDataStatus}" FontSize="10" Foreground="{DynamicResource TextMuted}"/>
-                        <TextBlock Text="·" FontSize="10" Foreground="{DynamicResource TextMuted}"/>
-                        <TextBlock Text="{Binding RefreshAgoText}" FontSize="10" Foreground="{DynamicResource TextSecondary}"
-                                   TextTrimming="CharacterEllipsis"/>
-                    </StackPanel>
-                    <Button Grid.Column="1" Classes="quotaAction" Click="Refresh_Click"
-                            IsEnabled="{Binding CanRefresh}"
-                            Content="{DynamicResource BtnRefreshQuota}" ToolTip.Tip="{DynamicResource BtnRefreshQuota}"/>
-                </Grid>
-            </Grid>
+            </Panel>
         </Grid>
     </Border>
 </Window>
