@@ -45,6 +45,13 @@
                         <TextBlock Text="{Binding HourlyResetText}" FontSize="11" Foreground="{DynamicResource TextMuted}"/>
                         <TextBlock Text="{Binding HourlyBurnText}" FontSize="11" Foreground="{DynamicResource TextSecondary}"
                                    TextWrapping="Wrap"/>
+                        <Panel Height="52">
+                            <ctl:UsageGraph Points="{Binding HourlyGraph}" Accent="{DynamicResource RingHourly}"/>
+                            <TextBlock Text="{DynamicResource HistoryCollecting}" FontSize="10"
+                                       Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center"
+                                       IsVisible="{Binding !HasHourlyGraph}"/>
+                        </Panel>
                     </StackPanel>
 
                     <Border Height="1" Background="{DynamicResource Separator}"/>
@@ -63,6 +70,13 @@
                         <TextBlock Text="{Binding WeeklyResetText}" FontSize="11" Foreground="{DynamicResource TextMuted}"/>
                         <TextBlock Text="{Binding WeeklyBurnText}" FontSize="11" Foreground="{DynamicResource TextSecondary}"
                                    TextWrapping="Wrap"/>
+                        <Panel Height="52">
+                            <ctl:UsageGraph Points="{Binding WeeklyGraph}" Accent="{DynamicResource RingWeekly}"/>
+                            <TextBlock Text="{DynamicResource HistoryCollecting}" FontSize="10"
+                                       Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center"
+                                       IsVisible="{Binding !HasWeeklyGraph}"/>
+                        </Panel>
                     </StackPanel>
 
                     <Border Height="1" Background="{DynamicResource Separator}"/>

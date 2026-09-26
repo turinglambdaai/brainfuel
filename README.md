@@ -38,6 +38,7 @@ The goal is simple: glance at quota and get back to work.
 - **System tray** — hide the widget (also via close / Alt+F4) without stopping quota polling or notifications
 - **Readable quota failures** — the card's freshness line names the failure category (bad key/platform mismatch, network, proxy, timeout, no plan…); hovering the card shows the full guidance and the log path
 - **Burn-rate intelligence** — the detail panel (double-click) shows each window's consumption speed and a projected time-to-empty; threshold notifications append the projection ("At the current burn rate, ~2 h to empty") with a bit of personality
+- **Usage history graphs** — the detail panel charts the last 24 hours (5-hour window) and last 7 days (weekly quota) from local rolling history, so resets and burn cycles are visible at a glance
 - **Urgency-aware visuals** — rings, dots and percentages shift to amber at 75% used and red at 90%, in both standard and mini cards
 
 ## Desktop and multi-monitor behavior
@@ -74,7 +75,7 @@ If a **new or changed** key must be saved while no supported system secret store
 
 Non-secret preferences live under `%APPDATA%\BrainFuel\` on Windows, `~/.config/BrainFuel/` on Linux, or `~/Library/Application Support/BrainFuel/` on macOS.
 
-Release builds do not continuously persist raw quota responses to disk. Raw response logging is limited to Debug builds for troubleshooting. Quota *failures* (category + server message, never the key or raw payload) are appended to a rolling `brainfuel.log` beside `settings.json` so "the key is set but nothing refreshes" can be diagnosed after the fact; the path is shown in the card's failure tooltip.
+Release builds do not continuously persist raw quota responses to disk. Raw response logging is limited to Debug builds for troubleshooting. Quota *failures* (category + server message, never the key or raw payload) are appended to a rolling `brainfuel.log` beside `settings.json` so "the key is set but nothing refreshes" can be diagnosed after the fact; the path is shown in the card's failure tooltip. A `usage-history.json` beside them stores only used-percentages and timestamps (local, 8-day retention) to power the history graphs.
 
 ## Software updates
 

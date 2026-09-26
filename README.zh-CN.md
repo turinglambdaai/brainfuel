@@ -38,6 +38,7 @@ BrainFuel 明确拆开几个不同概念：
 - **系统托盘** — 隐藏卡片（关闭 / Alt+F4 同样生效）后额度轮询和通知继续工作
 - **可读的额度失败信息** — 卡片新鲜度行直接给出失败类别（Key 无效/平台不匹配、网络、代理、超时、无套餐等）；悬停卡片可见完整指引与日志路径
 - **燃速智能** — 详情面板（双击卡片）可见各窗口消耗速度与预计耗尽时间；阈值通知会追加预测（「按当前燃速，约 2 小时后耗尽」），文案也更有性格
+- **用量历史曲线** — 详情面板用本地滚动历史绘制 5 小时窗口（近 24 小时）与周额度（近 7 天）曲线，重置与消耗节奏一眼可见
 - **告急视觉** — 环形、圆点与百分比在已用 75% 变琥珀、90% 变红，标准卡与迷你卡一致
 
 ## 桌面与多屏行为
@@ -82,7 +83,7 @@ BrainFuel 使用你的 Coding Plan API Key 调用 GLM Coding Plan 监控接口�
 
 如果用户在系统安全存储不可用时**新建或更换** Key，为了不把用户输入直接丢掉，BrainFuel 会回退到本地 `settings.json`。在 Linux/macOS 上，如果文件系统支持，会把权限限制为当前用户 `0600`，同时设置页会明确提示这个回退状态。完整安全模型见 [`SECURITY.md`](SECURITY.md)。
 
-非敏感设置文件位于 `%APPDATA%\BrainFuel\`（Windows）、`~/.config/BrainFuel/`（Linux）或 `~/Library/Application Support/BrainFuel/`（macOS）。Release 构建不会持续把原始额度响应写入磁盘；原始响应日志只用于 Debug 排查。额度**失败记录**（类别 + 服务端消息，绝不含 Key 或原始报文）会滚动追加到 `settings.json` 同目录的 `brainfuel.log`，卡片失败悬停提示中会给出该路径，便于事后排查“填了 Key 却刷不出额度”。
+非敏感设置文件位于 `%APPDATA%\BrainFuel\`（Windows）、`~/.config/BrainFuel/`（Linux）或 `~/Library/Application Support/BrainFuel/`（macOS）。Release 构建不会持续把原始额度响应写入磁盘；原始响应日志只用于 Debug 排查。额度**失败记录**（类别 + 服务端消息，绝不含 Key 或原始报文）会滚动追加到 `settings.json` 同目录的 `brainfuel.log`，卡片失败悬停提示中会给出该路径，便于事后排查“填了 Key 却刷不出额度”。同目录的 `usage-history.json` 只保存已用百分比与时间戳（本地，保留 8 天），用于历史曲线。
 
 ## 软件更新
 
