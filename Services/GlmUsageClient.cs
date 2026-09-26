@@ -28,9 +28,18 @@ public sealed class GlmUsageClient : IDisposable
     private readonly string _debugPath;
 
     public GlmUsageClient(string baseDomain, string apiKey, string debugPath)
+        : this(baseDomain, apiKey, debugPath, new HttpClientHandler())
+    {
+    }
+
+    internal GlmUsageClient(string baseDomain, string apiKey, string debugPath, HttpMessageHandler handler)
     {
         var root = baseDomain.TrimEnd('/') + "/";
-        _http = new HttpClient { BaseAddress = new Uri(root), Timeout = TimeSpan.FromSeconds(15) };
+        _http = new HttpClient(handler, disposeHandler: true)
+        {
+            BaseAddress = new Uri(root),
+            Timeout = TimeSpan.FromSeconds(15),
+        };
         _http.DefaultRequestHeaders.Add("Accept-Language", "en-US,en");
         // Tolerate pasted keys carrying a "Bearer " prefix; both gateways expect
         // the raw key and would otherwise reject the request.

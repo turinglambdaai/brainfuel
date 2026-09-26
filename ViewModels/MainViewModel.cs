@@ -12,6 +12,11 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     private readonly AppSettings _settings;
     private readonly DispatcherTimer _refreshTimer;
     private readonly DispatcherTimer _relativeTimer;
+
+    // Transient failures (network blip, throttling) heal on their own — retry
+    // well before the configured interval instead of leaving the card stale.
+    private static readonly TimeSpan TransientRetryInterval = TimeSpan.FromSeconds(45);
+
     private GlmUsageClient? _client;
     private UsageSnapshot? _last;
     private UsageFailureKind? _failureKind;
@@ -98,15 +103,31 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         {
             IsRefreshing = false;
             ApplySnapshot();
+            ApplyRetryInterval();
         }
     }
+
+    /// <summary>
+    /// Shortens the wait after a transient failure (network, throttling, 5xx)
+    /// so recovery needs at most ~45 s; permanent causes (bad key, no plan)
+    /// keep the configured interval because only the user can fix them.
+    /// </summary>
+    private void ApplyRetryInterval()
+    {
+        _refreshTimer.Interval = _inError && _failureKind is { } kind && UsageFailureText.IsTransient(kind)
+            ? TransientRetryInterval
+            : ConfiguredInterval;
+    }
+
+    private TimeSpan ConfiguredInterval =>
+        TimeSpan.FromMinutes(Math.Max(1, _settings.RefreshIntervalMinutes));
 
     public void OnSettingsChanged()
     {
         _client?.Dispose();
         _client = CreateClient();
         _failureKind = null;
-        _refreshTimer.Interval = TimeSpan.FromMinutes(Math.Max(1, _settings.RefreshIntervalMinutes));
+        _refreshTimer.Interval = ConfiguredInterval;
         CardOpacity = _settings.CardOpacity;
         UpdateTexts();
         _ = RefreshAsync();

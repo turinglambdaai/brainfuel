@@ -36,6 +36,21 @@ public sealed class UsageRequestException : Exception
 
 public static class UsageFailureText
 {
+    /// <summary>
+    /// Failures that can heal on their own (network blips, throttling, temporary
+    /// service errors). The refresh timer retries these much sooner than the
+    /// configured interval; permanent causes (bad key, no plan) keep the full
+    /// interval because only the user can fix them.
+    /// </summary>
+    public static bool IsTransient(UsageFailureKind kind) => kind is
+        UsageFailureKind.Network or
+        UsageFailureKind.Tls or
+        UsageFailureKind.Proxy or
+        UsageFailureKind.Timeout or
+        UsageFailureKind.RateLimited or
+        UsageFailureKind.ServiceUnavailable or
+        UsageFailureKind.InvalidResponse;
+
     public static bool AllowsSaveAnyway(UsageFailureKind kind) => kind is not
         (UsageFailureKind.Authentication or UsageFailureKind.NoCodingPlan);
 
