@@ -15,6 +15,71 @@
         TransparencyLevelHint="Transparent"
         WindowStartupLocation="Manual">
 
+    <Window.Resources>
+        <!-- L1 detail panel: double-click the card (or ⋯ → Details) to open -->
+        <Flyout x:Key="DetailFlyout">
+            <Border Width="302" Padding="18,16" CornerRadius="14"
+                    Background="{DynamicResource CardBg}"
+                    BorderBrush="{DynamicResource CardBorder}"
+                    BorderThickness="1"
+                    BoxShadow="0 10 28 0 #66000000">
+                <StackPanel Spacing="12">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="BrainFuel" FontSize="15" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextPrimary}"/>
+                        <TextBlock Grid.Column="1" Text="{Binding PlanLevelText}" FontSize="11"
+                                   Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <!-- 5-hour window -->
+                    <StackPanel Spacing="3">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                <Ellipse Width="6" Height="6" Fill="{DynamicResource RingHourly}" VerticalAlignment="Center"/>
+                                <TextBlock Text="{DynamicResource LblHourly}" FontSize="12"
+                                           Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <TextBlock x:Name="DetailHourlyPct" Grid.Column="1" Text="{Binding HourlyPercentText}"
+                                       FontSize="26" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
+                        </Grid>
+                        <TextBlock Text="{Binding HourlyResetText}" FontSize="11" Foreground="{DynamicResource TextMuted}"/>
+                        <TextBlock Text="{Binding HourlyBurnText}" FontSize="11" Foreground="{DynamicResource TextSecondary}"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
+
+                    <Border Height="1" Background="{DynamicResource Separator}"/>
+
+                    <!-- weekly window -->
+                    <StackPanel Spacing="3">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                <Ellipse Width="6" Height="6" Fill="{DynamicResource RingWeekly}" VerticalAlignment="Center"/>
+                                <TextBlock Text="{DynamicResource LblWeekly}" FontSize="12"
+                                           Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <TextBlock x:Name="DetailWeeklyPct" Grid.Column="1" Text="{Binding WeeklyPercentText}"
+                                       FontSize="26" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
+                        </Grid>
+                        <TextBlock Text="{Binding WeeklyResetText}" FontSize="11" Foreground="{DynamicResource TextMuted}"/>
+                        <TextBlock Text="{Binding WeeklyBurnText}" FontSize="11" Foreground="{DynamicResource TextSecondary}"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
+
+                    <Border Height="1" Background="{DynamicResource Separator}"/>
+
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="{Binding RefreshAgoText}" FontSize="11"
+                                   Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis"/>
+                        <Button Grid.Column="1" Classes="quotaAction" Click="Refresh_Click"
+                                IsEnabled="{Binding CanRefresh}"
+                                Content="{DynamicResource BtnRefreshQuota}"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </Flyout>
+    </Window.Resources>
+
     <Window.Styles>
         <Style Selector="Button.ghost">
             <Setter Property="Background" Value="Transparent"/>
@@ -76,6 +141,7 @@
                                 VerticalAlignment="Top">
                             <Button.ContextMenu>
                                 <ContextMenu x:Name="CardMenu">
+                                    <MenuItem Header="{DynamicResource MenuDetail}" Click="Detail_Click"/>
                                     <MenuItem Header="{DynamicResource MenuRefresh}" Click="Refresh_Click"/>
                                     <MenuItem Header="{DynamicResource MenuSettings}" Click="Settings_Click"/>
                                     <MenuItem x:Name="UpdateMenuItem" Header="{DynamicResource MenuCheckUpdates}" Click="Update_Click"/>

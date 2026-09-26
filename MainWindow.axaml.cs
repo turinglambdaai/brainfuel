@@ -24,6 +24,9 @@ public partial class MainWindow : Window
     private MainViewModel? _vm;
     private bool _userMoveInProgress;
     private bool _quitRequested;
+    private Flyout? _detailFlyout;
+
+    private Flyout DetailFlyout => _detailFlyout ??= (Flyout)Resources["DetailFlyout"];
 
     public MainWindow()
     {
@@ -77,6 +80,8 @@ public partial class MainWindow : Window
         MiniPctText.Foreground = _vm.MiniSeverity == SeverityLevel.Calm
             ? SeverityBrush(SeverityLevel.Calm, "TextPrimary")
             : miniBrush;
+        DetailHourlyPct.Foreground = SeverityBrush(_vm.HourlySeverity, "TextPrimary");
+        DetailWeeklyPct.Foreground = SeverityBrush(_vm.WeeklySeverity, "TextPrimary");
     }
 
     private IBrush SeverityBrush(SeverityLevel level, string calmResourceKey) => level switch
@@ -119,12 +124,17 @@ public partial class MainWindow : Window
             source.GetSelfAndVisualAncestors().Any(visual => visual is Button))
             return;
 
-        // Double-click toggles the card between standard and mini sizes.
+        // Double-click opens the detail panel — the frequent "go deeper" action.
         if (e.ClickCount >= 2)
         {
-            ToggleSizeMode();
+            ToggleDetailPanel();
             return;
         }
+
+        // A click while the panel is open just dismisses it (light-dismiss
+        // already closed it by now); don't start a drag underneath.
+        if (DetailFlyout.IsOpen)
+            return;
 
         _userMoveInProgress = true;
         BeginMoveDrag(e);
@@ -169,6 +179,19 @@ public partial class MainWindow : Window
         }
         e.Handled = true;
     }
+
+    /// <summary>Toggles the L1 detail panel (double-click / ⋯ menu).</summary>
+    public void ToggleDetailPanel()
+    {
+        if (DetailFlyout.IsOpen)
+        {
+            DetailFlyout.Hide();
+            return;
+        }
+        DetailFlyout.ShowAt(CardBorder);
+    }
+
+    private void Detail_Click(object? sender, RoutedEventArgs e) => ToggleDetailPanel();
 
     /// <summary>Swaps the card between the full layout and the mini ring.</summary>
     public void ApplySizeMode()
@@ -335,6 +358,7 @@ public partial class MainWindow : Window
             e.CloseReason is WindowCloseReason.WindowClosing or WindowCloseReason.Undefined)
         {
             e.Cancel = true;
+            if (_detailFlyout?.IsOpen == true) _detailFlyout.Hide();
             Hide();
             // The app has no taskbar button; without a hint, "close" reads as
             // "the program is gone". Point at the tray once, briefly.
