@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Avalonia.Threading;
+using BrainFuel.Controls;
 using BrainFuel.Services;
 
 namespace BrainFuel.ViewModels;
@@ -26,6 +27,11 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     private bool _weeklyAlerted;
     private readonly QuotaBurnTracker _hourlyBurn = new();
     private readonly QuotaBurnTracker _weeklyBurn = new();
+    private readonly UsageHistoryStore _history;
+
+    // Graph ranges shown in the detail panel.
+    private static readonly TimeSpan HourlyGraphRange = TimeSpan.FromHours(24);
+    private static readonly TimeSpan WeeklyGraphRange = TimeSpan.FromDays(7);
 
     public Action<string, string>? OnNotify { get; set; }
 
@@ -33,6 +39,8 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     {
         _settings = settings;
         _client = CreateClient();
+        _history = UsageHistoryStore.Load(UsageHistoryStore.DefaultPath);
+        RebuildGraphs();
         CardOpacity = settings.CardOpacity;
         _refreshTimer = new DispatcherTimer
         {
@@ -93,6 +101,13 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
                 // a reset inside the tracker drops stale-window samples.
                 if (snap.HasHourly) _hourlyBurn.AddSample(snap.FetchedAt, snap.HourlyUsedPct);
                 if (snap.HasWeekly) _weeklyBurn.AddSample(snap.FetchedAt, snap.WeeklyUsedPct);
+
+                _history.Append(new UsageSample(
+                    snap.FetchedAt,
+                    snap.HasHourly ? snap.HourlyUsedPct : double.NaN,
+                    snap.HasWeekly ? snap.WeeklyUsedPct : double.NaN));
+                _history.Prune(snap.FetchedAt);
+                _history.Save();
             }
             catch (UsageRequestException ex)
             {
@@ -154,7 +169,34 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         HourlyProgress = (_settings.HourlyDisplayStyle == DisplayStyle.Remaining ? 100 - hourlyUsed : hourlyUsed) / 100.0;
 
         UpdateTexts();
+        RebuildGraphs();
         CheckAlerts();
+    }
+
+    /// <summary>Rebuilds the detail-panel series from persisted history.</summary>
+    private void RebuildGraphs()
+    {
+        var end = DateTimeOffset.Now;
+        HourlyGraph = BuildSeries(end - HourlyGraphRange, end, s => s.HourlyPct);
+        WeeklyGraph = BuildSeries(end - WeeklyGraphRange, end, s => s.WeeklyPct);
+    }
+
+    private IReadOnlyList<GraphPoint> BuildSeries(DateTimeOffset start, DateTimeOffset end, Func<UsageSample, double> pick)
+    {
+        var points = new List<GraphPoint>();
+        double spanMinutes = (end - start).TotalMinutes;
+        if (spanMinutes <= 0) return points;
+
+        foreach (var s in _history.Samples)
+        {
+            if (s.At < start) continue;
+            var v = pick(s);
+            if (double.IsNaN(v)) continue;
+            points.Add(new GraphPoint(
+                Math.Clamp((s.At - start).TotalMinutes / spanMinutes, 0, 1),
+                Math.Clamp(v, 0, 100)));
+        }
+        return points;
     }
 
     private void CheckAlerts()
@@ -371,6 +413,20 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     private string _weeklyBurnText = "";
     public string PlanLevelText { get => _planLevelText; set => Set(ref _planLevelText, value); }
     private string _planLevelText = "—";
+
+    // Detail-panel history series (refresh with every successful fetch).
+    public IReadOnlyList<GraphPoint> HourlyGraph { get => _hourlyGraph; private set { _hourlyGraph = value; NotifyGraphChanged(nameof(HourlyGraph)); } }
+    private IReadOnlyList<GraphPoint> _hourlyGraph = Array.Empty<GraphPoint>();
+    public IReadOnlyList<GraphPoint> WeeklyGraph { get => _weeklyGraph; private set { _weeklyGraph = value; NotifyGraphChanged(nameof(WeeklyGraph)); } }
+    private IReadOnlyList<GraphPoint> _weeklyGraph = Array.Empty<GraphPoint>();
+    public bool HasHourlyGraph => HourlyGraph.Count > 1;
+    public bool HasWeeklyGraph => WeeklyGraph.Count > 1;
+
+    private void NotifyGraphChanged(string name)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name == nameof(HourlyGraph) ? nameof(HasHourlyGraph) : nameof(HasWeeklyGraph)));
+    }
     public double CardOpacity { get => _cardOpacity; set => Set(ref _cardOpacity, value); }
     private double _cardOpacity = 1.0;
     public bool IsError { get => _isError; set => Set(ref _isError, value); }
