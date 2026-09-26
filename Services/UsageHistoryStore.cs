@@ -116,4 +116,40 @@ public sealed class UsageHistoryStore
         if (double.IsNaN(pct)) return; // absent window: omit, reads back as NaN
         writer.WriteNumber(name, Math.Round(pct, 2));
     }
+
+    /// <summary>
+    /// Average consumption speed of one window over the last 24 hours, in
+    /// used-% per hour: the sum of positive percentage deltas (a drop means a
+    /// window reset, not negative usage) divided by 24. Returns null when the
+    /// window has fewer than two samples in range, so no average can be
+    /// trusted yet.
+    /// </summary>
+    public static double? AverageBurnRateLast24h(IReadOnlyList<UsageSample> samples, DateTimeOffset now)
+    {
+        var start = now - TimeSpan.FromHours(24);
+        double total = 0;
+        double? prev = null;
+        bool anyPair = false;
+
+        foreach (var s in samples)
+        {
+            if (s.At < start) continue;
+            double v = s.HourlyPct;
+            if (double.IsNaN(v))
+            {
+                prev = null; // window absent: the chain of comparable samples breaks
+                continue;
+            }
+            if (prev is { } p)
+            {
+                double delta = v - p;
+                if (delta > 0) total += delta;
+                anyPair = true;
+            }
+            prev = v;
+        }
+
+        if (!anyPair) return null;
+        return total / 24.0;
+    }
 }
