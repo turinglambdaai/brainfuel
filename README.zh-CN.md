@@ -155,6 +155,10 @@ dotnet run
 
 首次启动时进入 **设置 → 账户**，粘贴 GLM Coding Plan Key。
 
+```bash
+dotnet test BrainFuel.Tests/BrainFuel.Tests.csproj   # 失败分类回归测试（CI 也会跑）
+```
+
 ## 发布工程
 
 Windows 本地打包：
@@ -200,6 +204,7 @@ brainfuel/
 ├── .github/workflows/
 │   ├── ci.yml
 │   └── release.yml
+├── BrainFuel.Tests/            # xUnit 测试（额度失败分类、重试语义）
 ├── SECURITY.md
 └── BrainFuel.csproj
 ```

@@ -141,6 +141,10 @@ dotnet run
 
 On first launch, paste your GLM Coding Plan key into **Settings → Account**.
 
+```bash
+dotnet test BrainFuel.Tests/BrainFuel.Tests.csproj   # failure-classification regression tests (also run in CI)
+```
+
 ## Release engineering
 
 Local Windows packaging:
@@ -187,6 +191,7 @@ brainfuel/
 ├── .github/workflows/
 │   ├── ci.yml
 │   └── release.yml
+├── BrainFuel.Tests/           # xUnit tests (quota failure classification, retry semantics)
 ├── SECURITY.md
 └── BrainFuel.csproj
 ```

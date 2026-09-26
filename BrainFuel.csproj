@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\tray.ico</ApplicationIcon>
-    <Version>0.5.5</Version>
+    <Version>0.5.6</Version>
     <Product>BrainFuel</Product>
     <Description>Desktop widget for GLM Coding Plan quota</Description>
     <Authors>TuringLambdaAI</Authors>
@@ -16,6 +16,15 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Assets\tray.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="BrainFuel.Tests" />
+  </ItemGroup>
+
+  <!-- The test project lives in a subfolder; keep its sources out of the app build. -->
+  <ItemGroup>
+    <Compile Remove="BrainFuel.Tests\**" />
   </ItemGroup>
 
   <ItemGroup>
