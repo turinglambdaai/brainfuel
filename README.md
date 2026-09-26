@@ -11,6 +11,7 @@ A small desktop widget for monitoring **GLM Coding Plan** quota — the 5-hour r
 BrainFuel deliberately separates concepts that should not be confused:
 
 - **Quota data** lives on the main card. The visible action is explicitly **Refresh quota**.
+- **Three information layers** — L0: the always-visible card (glance, zero interaction). L1: **double-click the card** for the detail panel (large numbers, burn rate, time-to-empty, reset times, plan level, manual refresh). L2: the ⋯ menu and Settings for configuration. No main window, no taskbar noise.
 - **Application lifecycle** lives in the top-right **⋯ app menu** and Settings: Settings, software updates, display movement, About, hide, and quit. Closing the card (X button / Alt+F4 / system menu) is also just "hide": a transient toast points at the tray, and only the explicit **Quit** ends the process — monitoring never dies with the window.
 - **Desktop behavior** is user-controlled. New installs do not force the card above every application; **Keep on top** is optional.
 
@@ -19,7 +20,7 @@ The goal is simple: glance at quota and get back to work.
 ## Features
 
 - **Focused quota card** — nested weekly / 5-hour rings, clear percentages, reset timing, and data freshness
-- **Mini mode** — double-click the card (or use the ⋯ menu) to collapse it into a one-ring mini card tracking whichever window is closer to exhaustion
+- **Mini mode** — the ⋯ menu collapses the card into a one-ring mini card tracking whichever window is closer to exhaustion
 - **Explicit quota refresh** — manual **Refresh quota** plus configurable automatic refresh
 - **Secure API-key storage** — Windows DPAPI, macOS Keychain, and Linux Secret Service when available; legacy plaintext keys are migrated automatically
 - **Structured Settings** — General / Account / Notifications / Software tabs instead of one long form
@@ -36,7 +37,7 @@ The goal is simple: glance at quota and get back to work.
 - **Quota notifications** — configurable exhaustion threshold
 - **System tray** — hide the widget (also via close / Alt+F4) without stopping quota polling or notifications
 - **Readable quota failures** — the card's freshness line names the failure category (bad key/platform mismatch, network, proxy, timeout, no plan…); hovering the card shows the full guidance and the log path
-- **Burn-rate intelligence** — hovering the card shows each window's consumption speed and a projected time-to-empty; threshold notifications append the projection ("At the current burn rate, ~2 h to empty") with a bit of personality
+- **Burn-rate intelligence** — the detail panel (double-click) shows each window's consumption speed and a projected time-to-empty; threshold notifications append the projection ("At the current burn rate, ~2 h to empty") with a bit of personality
 - **Urgency-aware visuals** — rings, dots and percentages shift to amber at 75% used and red at 90%, in both standard and mini cards
 
 ## Desktop and multi-monitor behavior

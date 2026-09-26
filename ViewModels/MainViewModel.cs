@@ -211,9 +211,15 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         WeeklySubText = snap?.WeeklyResetAt is { } wr ? FutureWords(wr) : Strings.Get("None");
         HourlySubText = snap?.HourlyResetAt is { } hr ? FutureWords(hr) : Strings.Get("None");
 
+        // Detail-panel variants carry a "resets …" prefix.
+        WeeklyResetText = snap?.WeeklyResetAt is { } wr2 ? Strings.Get("DetailResets", FutureWords(wr2)) : Strings.Get("None");
+        HourlyResetText = snap?.HourlyResetAt is { } hr2 ? Strings.Get("DetailResets", FutureWords(hr2)) : Strings.Get("None");
+
         HourlySeverity = snap?.HasHourly == true ? Severity.FromUsedPct(hourlyUsed) : SeverityLevel.Calm;
         WeeklySeverity = snap?.HasWeekly == true ? Severity.FromUsedPct(weeklyUsed) : SeverityLevel.Calm;
         UpdateMini(snap, hourlyUsed, weeklyUsed);
+        UpdateBurnTexts(snap);
+        PlanLevelText = string.IsNullOrWhiteSpace(snap?.PlanLevel) ? "—" : snap!.PlanLevel!;
 
         if (IsRefreshing)
             RefreshAgoText = Strings.Get("Refreshing");
@@ -265,31 +271,38 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         MiniLabelText = Strings.Get(pickHourly ? "LblHourly" : "LblWeekly");
     }
 
+    /// <summary>Burn-rate lines shared by the card tooltip and the detail panel.</summary>
+    private void UpdateBurnTexts(UsageSnapshot? snap)
+    {
+        HourlyBurnText = BurnLine(snap?.HasHourly == true, _hourlyBurn, snap?.HourlyUsedPct ?? 0);
+        WeeklyBurnText = BurnLine(snap?.HasWeekly == true, _weeklyBurn, snap?.WeeklyUsedPct ?? 0);
+    }
+
+    private static string BurnLine(bool has, QuotaBurnTracker burn, double usedPct) =>
+        has && burn.ProjectHoursToExhaustion(usedPct, DateTimeOffset.Now) is { } hours
+            && burn.RatePctPerHour is { } rate
+            ? Strings.Get("TipBurn", Math.Round(rate), FormatSpan(hours))
+            : string.Empty;
+
     private string BuildSuccessTooltip(UsageSnapshot snap)
     {
-        var lines = new System.Collections.Generic.List<string>();
+        var lines = new List<string>();
         if (snap.HasHourly)
         {
             var line = Strings.Get("TipHourly", Math.Round(snap.HourlyUsedPct));
             if (snap.HourlyResetAt is { } r) line += " · " + FutureWords(r);
             lines.Add(line);
-            AppendBurn(lines, _hourlyBurn, snap.HourlyUsedPct);
+            if (HourlyBurnText.Length > 0) lines.Add(HourlyBurnText);
         }
         if (snap.HasWeekly)
         {
             var line = Strings.Get("TipWeekly", Math.Round(snap.WeeklyUsedPct));
             if (snap.WeeklyResetAt is { } r) line += " · " + FutureWords(r);
             lines.Add(line);
-            AppendBurn(lines, _weeklyBurn, snap.WeeklyUsedPct);
+            if (WeeklyBurnText.Length > 0) lines.Add(WeeklyBurnText);
         }
         lines.Add(Strings.Get("TipSizeHint"));
         return string.Join("\n", lines);
-    }
-
-    private static void AppendBurn(List<string> lines, QuotaBurnTracker burn, double usedPct)
-    {
-        if (burn.ProjectHoursToExhaustion(usedPct, DateTimeOffset.Now) is { } hours && burn.RatePctPerHour is { } rate)
-            lines.Add(Strings.Get("TipBurn", Math.Round(rate), FormatSpan(hours)));
     }
 
     private static string FormatPct(double value, bool? has)
@@ -326,6 +339,10 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     private string _weeklySubText = "周用量";
     public string HourlySubText { get => _hourlySubText; set => Set(ref _hourlySubText, value); }
     private string _hourlySubText = "5 小时";
+    public string WeeklyResetText { get => _weeklyResetText; set => Set(ref _weeklyResetText, value); }
+    private string _weeklyResetText = "—";
+    public string HourlyResetText { get => _hourlyResetText; set => Set(ref _hourlyResetText, value); }
+    private string _hourlyResetText = "—";
     public string RefreshAgoText { get => _refreshAgoText; set => Set(ref _refreshAgoText, value); }
     private string _refreshAgoText = "刷新中…";
     public string? StatusTooltip { get => _statusTooltip; set => Set(ref _statusTooltip, value); }
@@ -346,6 +363,14 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     private SeverityLevel _miniSeverity;
     public string MiniLabelText { get => _miniLabelText; set => Set(ref _miniLabelText, value); }
     private string _miniLabelText = "5 小时";
+
+    // Detail panel (double-click): burn lines and plan level beside the rings.
+    public string HourlyBurnText { get => _hourlyBurnText; set => Set(ref _hourlyBurnText, value); }
+    private string _hourlyBurnText = "";
+    public string WeeklyBurnText { get => _weeklyBurnText; set => Set(ref _weeklyBurnText, value); }
+    private string _weeklyBurnText = "";
+    public string PlanLevelText { get => _planLevelText; set => Set(ref _planLevelText, value); }
+    private string _planLevelText = "—";
     public double CardOpacity { get => _cardOpacity; set => Set(ref _cardOpacity, value); }
     private double _cardOpacity = 1.0;
     public bool IsError { get => _isError; set => Set(ref _isError, value); }
