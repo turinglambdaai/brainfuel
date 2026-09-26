@@ -313,18 +313,37 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         MiniLabelText = Strings.Get(pickHourly ? "LblHourly" : "LblWeekly");
     }
 
-    /// <summary>Burn-rate lines shared by the card tooltip and the detail panel.</summary>
+    /// <summary>Burn-rate lines shared by the card tooltip and the detail panel.
+    /// The 5-hour line carries a comparison against the 24h average when there
+    /// is enough history; the weekly window has no meaningful daily baseline.</summary>
     private void UpdateBurnTexts(UsageSnapshot? snap)
     {
-        HourlyBurnText = BurnLine(snap?.HasHourly == true, _hourlyBurn, snap?.HourlyUsedPct ?? 0);
-        WeeklyBurnText = BurnLine(snap?.HasWeekly == true, _weeklyBurn, snap?.WeeklyUsedPct ?? 0);
+        var avg = UsageHistoryStore.AverageBurnRateLast24h(_history.Samples, DateTimeOffset.Now);
+        HourlyBurnText = BurnLine(snap?.HasHourly == true, _hourlyBurn, snap?.HourlyUsedPct ?? 0, avg);
+        WeeklyBurnText = BurnLine(snap?.HasWeekly == true, _weeklyBurn, snap?.WeeklyUsedPct ?? 0, null);
     }
 
-    private static string BurnLine(bool has, QuotaBurnTracker burn, double usedPct) =>
-        has && burn.ProjectHoursToExhaustion(usedPct, DateTimeOffset.Now) is { } hours
-            && burn.RatePctPerHour is { } rate
-            ? Strings.Get("TipBurn", Math.Round(rate), FormatSpan(hours))
-            : string.Empty;
+    private static string BurnLine(bool has, QuotaBurnTracker burn, double usedPct, double? avgRate)
+    {
+        if (!has ||
+            burn.ProjectHoursToExhaustion(usedPct, DateTimeOffset.Now) is not { } hours ||
+            burn.RatePctPerHour is not { } rate)
+            return string.Empty;
+
+        var line = Strings.Get("TipBurn", Math.Round(rate), FormatSpan(hours));
+
+        // Context: is the momentary burn above or below the daily norm?
+        // Tiny averages (<0.5 %/h) would produce absurd ratios — skip them.
+        if (avgRate is > 0.5)
+        {
+            var key = rate > avgRate.Value * 1.15 ? "BurnFaster"
+                    : rate < avgRate.Value * 0.85 ? "BurnSlower"
+                    : "BurnTypical";
+            int delta = Math.Max(1, (int)Math.Round(Math.Abs(rate - avgRate.Value) / avgRate.Value * 100));
+            line += Strings.Get(key, delta);
+        }
+        return line;
+    }
 
     private string BuildSuccessTooltip(UsageSnapshot snap)
     {
