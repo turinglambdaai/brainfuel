@@ -35,7 +35,7 @@ The goal is simple: glance at quota and get back to work.
 - **Light / Dark / System theme** — with adjustable card opacity
 - **Bilingual UI** — Chinese / English
 - **Start on login** — Windows registry / macOS LaunchAgent / Linux autostart
-- **Quota notifications** — configurable exhaustion threshold
+- **Quota notifications** — configurable exhaustion threshold; toasts appear on the display the card lives on
 - **System tray** — hide the widget (also via close / Alt+F4) without stopping quota polling or notifications
 - **Readable quota failures** — the card's freshness line names the failure category (bad key/platform mismatch, network, proxy, timeout, no plan…); hovering the card shows the full guidance and the log path
 - **Burn-rate intelligence** — the detail panel (double-click) shows each window's consumption speed and a projected time-to-empty; threshold notifications append the projection ("At the current burn rate, ~2 h to empty") with a bit of personality

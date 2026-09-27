@@ -53,7 +53,8 @@ public partial class MainWindow : Window
         vm.PropertyChanged += OnVmPropertyChanged;
 
         vm.OnNotify = (title, msg) => Dispatcher.UIThread.Post(() =>
-            new NotificationWindow().ShowNotification(title, msg));
+            new NotificationWindow().ShowNotification(
+                title, msg, Screens.ScreenFromWindow(this) ?? Screens.Primary));
 
         vm.Start();
     }
