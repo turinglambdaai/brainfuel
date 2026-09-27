@@ -20,18 +20,29 @@ public class UsageGraph : Control
     public static readonly StyledProperty<IReadOnlyList<GraphPoint>?> PointsProperty =
         AvaloniaProperty.Register<UsageGraph, IReadOnlyList<GraphPoint>?>(nameof(Points));
 
+    public static readonly StyledProperty<IReadOnlyList<GraphPoint>?> PreviousPointsProperty =
+        AvaloniaProperty.Register<UsageGraph, IReadOnlyList<GraphPoint>?>(nameof(PreviousPoints));
+
     public static readonly StyledProperty<IBrush?> AccentProperty =
         AvaloniaProperty.Register<UsageGraph, IBrush?>(nameof(Accent));
 
     static UsageGraph()
     {
-        AffectsRender<UsageGraph>(PointsProperty, AccentProperty);
+        AffectsRender<UsageGraph>(PointsProperty, PreviousPointsProperty, AccentProperty);
     }
 
     public IReadOnlyList<GraphPoint>? Points
     {
         get => GetValue(PointsProperty);
         set => SetValue(PointsProperty, value);
+    }
+
+    /// <summary>The same window one period earlier (24h / 7d), drawn as a
+    /// dimmer dashed line without fill for comparison.</summary>
+    public IReadOnlyList<GraphPoint>? PreviousPoints
+    {
+        get => GetValue(PreviousPointsProperty);
+        set => SetValue(PreviousPointsProperty, value);
     }
 
     public IBrush? Accent
@@ -65,28 +76,22 @@ public class UsageGraph : Control
         DrawGuide(context, 90, w, Y);
 
         var accent = Accent as SolidColorBrush ?? new SolidColorBrush(Color.FromRgb(150, 150, 150));
+
+        // Previous-period overlay first (below the main series), if present.
+        if (PreviousPoints is { Count: > 1 } prev && BuildLine(prev, w, Y) is { } prevFigure)
+        {
+            var prevPen = new Pen(new ImmutableSolidColorBrush(accent.Color, 0x55), 1.2)
+            {
+                DashStyle = new DashStyle(new double[] { 3, 2 }, 0),
+            };
+            context.DrawGeometry(null, prevPen, new PathGeometry { Figures = new PathFigures { prevFigure } });
+        }
+
         var fill = new ImmutableSolidColorBrush(accent.Color, 0x30);
         var stroke = new ImmutablePen(new ImmutableSolidColorBrush(accent.Color), 1.5);
 
         // One continuous figure; resets show as steep drops, which is honest.
-        var figure = new PathFigure { IsClosed = false };
-        bool first = true;
-        foreach (var p in points)
-        {
-            var pt = new Point(p.X * w, Y(p.Pct));
-            if (first)
-            {
-                figure.StartPoint = pt;
-                first = false;
-            }
-            else
-            {
-                (figure.Segments ??= new PathSegments()).Add(new LineSegment { Point = pt });
-            }
-        }
-        if (first) return;
-
-        var geometry = new PathGeometry { Figures = new PathFigures { figure } };
+        if (BuildLine(points, w, Y) is not { } figure) return;
 
         var areaFigure = new PathFigure
         {
@@ -99,7 +104,25 @@ public class UsageGraph : Control
         areaFigure.Segments!.Add(new LineSegment { Point = new Point(figure.StartPoint.X, bottom) });
 
         context.DrawGeometry(fill, null, new PathGeometry { Figures = new PathFigures { areaFigure } });
-        context.DrawGeometry(null, stroke, geometry);
+        context.DrawGeometry(null, stroke, new PathGeometry { Figures = new PathFigures { figure } });
+    }
+
+    private static PathFigure? BuildLine(IReadOnlyList<GraphPoint> points, double w, Func<double, double> y)
+    {
+        PathFigure? figure = null;
+        foreach (var p in points)
+        {
+            var pt = new Point(p.X * w, y(p.Pct));
+            if (figure is null)
+            {
+                figure = new PathFigure { StartPoint = pt, IsClosed = false };
+            }
+            else
+            {
+                (figure.Segments ??= new PathSegments()).Add(new LineSegment { Point = pt });
+            }
+        }
+        return figure;
     }
 
     private static void DrawGuide(DrawingContext ctx, double pct, double w, Func<double, double> y)

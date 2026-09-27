@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Avalonia.Threading;
@@ -19,27 +20,44 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     // well before the configured interval instead of leaving the card stale.
     private static readonly TimeSpan TransientRetryInterval = TimeSpan.FromSeconds(45);
 
-    private GlmUsageClient? _client;
-    private UsageSnapshot? _last;
-    private UsageFailureKind? _failureKind;
-    private bool _inError;
-    private bool _hourlyAlerted;
-    private bool _weeklyAlerted;
-    private readonly QuotaBurnTracker _hourlyBurn = new();
-    private readonly QuotaBurnTracker _weeklyBurn = new();
-    private readonly UsageHistoryStore _history;
-
     // Graph ranges shown in the detail panel.
     private static readonly TimeSpan HourlyGraphRange = TimeSpan.FromHours(24);
     private static readonly TimeSpan WeeklyGraphRange = TimeSpan.FromDays(7);
+
+    /// <summary>Per-account runtime state. Every configured account is polled
+    /// so histories and alerts keep working for all of them; the card shows
+    /// the active one.</summary>
+    private sealed class AccountState
+    {
+        public AccountConfig Config;
+        public GlmUsageClient? Client;
+        public UsageSnapshot? Last;
+        public UsageFailureKind? FailureKind;
+        public bool InError;
+        public bool HourlyAlerted;
+        public bool WeeklyAlerted;
+        public readonly QuotaBurnTracker HourlyBurn = new();
+        public readonly QuotaBurnTracker WeeklyBurn = new();
+        public readonly UsageHistoryStore History;
+
+        public AccountState(AccountConfig config)
+        {
+            Config = config;
+            History = UsageHistoryStore.Load(UsageHistoryStore.PathForAccount(config.Id));
+        }
+    }
+
+    private readonly List<AccountState> _accounts = new();
+
+    private AccountState? Active =>
+        _accounts.FirstOrDefault(a => a.Config.Id == _settings.ActiveAccountId) ?? _accounts.FirstOrDefault();
 
     public Action<string, string>? OnNotify { get; set; }
 
     public MainViewModel(AppSettings settings)
     {
         _settings = settings;
-        _client = CreateClient();
-        _history = UsageHistoryStore.Load(UsageHistoryStore.DefaultPath);
+        BuildAccounts();
         RebuildGraphs();
         CardOpacity = settings.CardOpacity;
         _refreshTimer = new DispatcherTimer
@@ -49,6 +67,29 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         _refreshTimer.Tick += async (_, _) => await RefreshAsync();
         _relativeTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
         _relativeTimer.Tick += (_, _) => UpdateTexts();
+    }
+
+    /// <summary>Aligns runtime state with the account list in settings,
+    /// preserving existing snapshots/trackers/histories across edits.</summary>
+    private void BuildAccounts()
+    {
+        foreach (var state in _accounts.Where(s => _settings.Accounts.All(a => a.Id != s.Config.Id)))
+            state.Client?.Dispose();
+        _accounts.RemoveAll(s => _settings.Accounts.All(a => a.Id != s.Config.Id));
+
+        foreach (var config in _settings.Accounts)
+            if (_accounts.All(s => s.Config.Id != config.Id))
+                _accounts.Add(new AccountState(config));
+
+        // Keep config objects in sync (name/domain may have been edited).
+        foreach (var state in _accounts)
+        {
+            var config = _settings.Accounts.First(a => a.Id == state.Config.Id);
+            state.Config = config;
+            if (state.Client is not null && state.InError is false)
+                state.Client = CreateClient(config); // domain may have changed
+        }
+        ActiveAccountName = ComputeAccountLabel();
     }
 
     public void Start()
@@ -69,58 +110,13 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         IsRefreshing = true;
         try
         {
-            // If a protected credential was temporarily unavailable at startup,
-            // every normal quota refresh is also a chance to recover it. No restart
-            // or manual re-entry is needed once the OS credential service returns.
-            if (string.IsNullOrWhiteSpace(_settings.ApiKey) && _settings.ApiKeyConfigured == true)
-            {
-                if (SettingsService.TryRefreshProtectedApiKey(_settings))
-                {
-                    _client?.Dispose();
-                    _client = CreateClient();
-                }
-            }
+            // If protected credentials were temporarily unavailable at startup,
+            // every refresh is a chance to recover them — no restart needed.
+            if (ApiKeyStorageUnavailable())
+                SettingsService.TryRefreshProtectedKeys(_settings);
 
-            if (string.IsNullOrWhiteSpace(_settings.ApiKey))
-            {
-                _last = null;
-                _failureKind = null;
-                _inError = false;
-                return;
-            }
-
-            try
-            {
-                if (_client is null) _client = CreateClient();
-                var snap = await _client.GetUsageAsync();
-                _last = snap;
-                _failureKind = null;
-                _inError = false;
-
-                // Feed the burn-rate estimators only from real observations;
-                // a reset inside the tracker drops stale-window samples.
-                if (snap.HasHourly) _hourlyBurn.AddSample(snap.FetchedAt, snap.HourlyUsedPct);
-                if (snap.HasWeekly) _weeklyBurn.AddSample(snap.FetchedAt, snap.WeeklyUsedPct);
-
-                _history.Append(new UsageSample(
-                    snap.FetchedAt,
-                    snap.HasHourly ? snap.HourlyUsedPct : double.NaN,
-                    snap.HasWeekly ? snap.WeeklyUsedPct : double.NaN));
-                _history.Prune(snap.FetchedAt);
-                _history.Save();
-            }
-            catch (UsageRequestException ex)
-            {
-                _failureKind = ex.Kind;
-                _inError = true;
-                AppLog.Error($"refresh failed ({ex.Kind}): {ex.Message}");
-            }
-            catch (Exception ex)
-            {
-                _failureKind = UsageFailureKind.Unknown;
-                _inError = true;
-                AppLog.Error($"refresh failed (Unknown): {ex.Message}");
-            }
+            foreach (var state in _accounts)
+                await RefreshAccount(state);
         }
         finally
         {
@@ -130,6 +126,57 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         }
     }
 
+    private static bool ApiKeyStorageUnavailable() =>
+        SettingsService.ApiKeyStorageState == ApiKeyStorageState.ProtectedUnavailable;
+
+    private async Task RefreshAccount(AccountState state)
+    {
+        var key = SettingsService.GetKey(state.Config.Id);
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            state.Last = null;
+            state.FailureKind = null;
+            state.InError = false;
+            return;
+        }
+
+        try
+        {
+            state.Client ??= CreateClient(state.Config);
+            var snap = await state.Client.GetUsageAsync();
+            state.Last = snap;
+            state.FailureKind = null;
+            state.InError = false;
+
+            // Feed the burn-rate estimators only from real observations; a
+            // reset inside the tracker drops stale-window samples.
+            if (snap.HasHourly) state.HourlyBurn.AddSample(snap.FetchedAt, snap.HourlyUsedPct);
+            if (snap.HasWeekly) state.WeeklyBurn.AddSample(snap.FetchedAt, snap.WeeklyUsedPct);
+
+            state.History.Append(new UsageSample(
+                snap.FetchedAt,
+                snap.HasHourly ? snap.HourlyUsedPct : double.NaN,
+                snap.HasWeekly ? snap.WeeklyUsedPct : double.NaN));
+            state.History.Prune(snap.FetchedAt);
+            state.History.Save();
+        }
+        catch (UsageRequestException ex)
+        {
+            state.FailureKind = ex.Kind;
+            state.InError = true;
+            AppLog.Error($"refresh failed [{AccountLabel(state.Config)}] ({ex.Kind}): {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            state.FailureKind = UsageFailureKind.Unknown;
+            state.InError = true;
+            AppLog.Error($"refresh failed [{AccountLabel(state.Config)}] (Unknown): {ex.Message}");
+        }
+    }
+
+    private static string AccountLabel(AccountConfig config) =>
+        string.IsNullOrWhiteSpace(config.Name) ? config.Id : config.Name;
+
     /// <summary>
     /// Shortens the wait after a transient failure (network, throttling, 5xx)
     /// so recovery needs at most ~45 s; permanent causes (bad key, no plan)
@@ -137,7 +184,8 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     /// </summary>
     private void ApplyRetryInterval()
     {
-        _refreshTimer.Interval = _inError && _failureKind is { } kind && UsageFailureText.IsTransient(kind)
+        var active = Active;
+        _refreshTimer.Interval = active is { InError: true, FailureKind: { } kind } && UsageFailureText.IsTransient(kind)
             ? TransientRetryInterval
             : ConfiguredInterval;
     }
@@ -145,23 +193,33 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     private TimeSpan ConfiguredInterval =>
         TimeSpan.FromMinutes(Math.Max(1, _settings.RefreshIntervalMinutes));
 
+    /// <summary>Switches the card to another account (instant — all accounts are polled already).</summary>
+    public void SwitchAccount(string accountId)
+    {
+        if (_settings.ActiveAccountId == accountId) return;
+        if (_accounts.All(a => a.Config.Id != accountId)) return;
+
+        _settings.ActiveAccountId = accountId;
+        SettingsService.Save(_settings);
+        ApplySnapshot();
+    }
+
     public void OnSettingsChanged()
     {
-        _client?.Dispose();
-        _client = CreateClient();
-        _failureKind = null;
+        BuildAccounts();
         _refreshTimer.Interval = ConfiguredInterval;
         CardOpacity = _settings.CardOpacity;
         UpdateTexts();
         _ = RefreshAsync();
     }
 
-    private GlmUsageClient CreateClient() =>
-        new(_settings.BaseDomain, _settings.ApiKey ?? string.Empty, SettingsService.DebugPath);
+    private GlmUsageClient CreateClient(AccountConfig config) =>
+        new(config.BaseDomain, SettingsService.GetKey(config.Id) ?? string.Empty, SettingsService.DebugPath);
 
     private void ApplySnapshot()
     {
-        var snap = _last;
+        var state = Active;
+        var snap = state?.Last;
         double weeklyUsed = snap?.WeeklyUsedPct ?? 0;
         WeeklyProgress = (_settings.WeeklyDisplayStyle == DisplayStyle.Remaining ? 100 - weeklyUsed : weeklyUsed) / 100.0;
 
@@ -173,23 +231,30 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         CheckAlerts();
     }
 
-    /// <summary>Rebuilds the detail-panel series from persisted history.</summary>
+    /// <summary>Rebuilds the detail-panel series from the active account's
+    /// history, plus the shifted "previous period" overlay series.</summary>
     private void RebuildGraphs()
     {
         var end = DateTimeOffset.Now;
-        HourlyGraph = BuildSeries(end - HourlyGraphRange, end, s => s.HourlyPct);
-        WeeklyGraph = BuildSeries(end - WeeklyGraphRange, end, s => s.WeeklyPct);
+        var history = Active?.History;
+
+        HourlyGraph = BuildSeries(history, end - HourlyGraphRange, end, s => s.HourlyPct);
+        WeeklyGraph = BuildSeries(history, end - WeeklyGraphRange, end, s => s.WeeklyPct);
+        PreviousHourlyGraph = BuildSeries(history, end - HourlyGraphRange - TimeSpan.FromHours(24), end - TimeSpan.FromHours(24), s => s.HourlyPct);
+        PreviousWeeklyGraph = BuildSeries(history, end - WeeklyGraphRange - TimeSpan.FromDays(7), end - TimeSpan.FromDays(7), s => s.WeeklyPct);
     }
 
-    private IReadOnlyList<GraphPoint> BuildSeries(DateTimeOffset start, DateTimeOffset end, Func<UsageSample, double> pick)
+    private IReadOnlyList<GraphPoint> BuildSeries(UsageHistoryStore? history, DateTimeOffset start, DateTimeOffset end, Func<UsageSample, double> pick)
     {
         var points = new List<GraphPoint>();
+        if (history is null) return points;
+
         double spanMinutes = (end - start).TotalMinutes;
         if (spanMinutes <= 0) return points;
 
-        foreach (var s in _history.Samples)
+        foreach (var s in history.Samples)
         {
-            if (s.At < start) continue;
+            if (s.At < start || s.At > end) continue;
             var v = pick(s);
             if (double.IsNaN(v)) continue;
             points.Add(new GraphPoint(
@@ -202,24 +267,32 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     private void CheckAlerts()
     {
         if (!_settings.NotifyEnabled || OnNotify is null) return;
-        var snap = _last;
-        double h = snap?.HourlyUsedPct ?? 0;
-        double w = snap?.WeeklyUsedPct ?? 0;
         int thr = Math.Clamp(_settings.NotifyThreshold, 1, 99);
+        bool multi = _accounts.Count(s => s.Config.Configured) > 1;
 
-        if (snap?.HasHourly == true && h >= thr && !_hourlyAlerted)
+        foreach (var state in _accounts)
         {
-            _hourlyAlerted = true;
-            OnNotify(Strings.Get("NotifyHourlyTitle"), FunBody("NotifyHourlyBody", h, _hourlyBurn, h));
-        }
-        if (h < thr - 5) _hourlyAlerted = false;
+            var snap = state.Last;
+            double h = snap?.HourlyUsedPct ?? 0;
+            double w = snap?.WeeklyUsedPct ?? 0;
+            var titlePrefix = multi ? $"{AccountLabel(state.Config)} · " : "";
 
-        if (snap?.HasWeekly == true && w >= thr && !_weeklyAlerted)
-        {
-            _weeklyAlerted = true;
-            OnNotify(Strings.Get("NotifyWeeklyTitle"), FunBody("NotifyWeeklyBody", w, _weeklyBurn, w));
+            if (snap?.HasHourly == true && h >= thr && !state.HourlyAlerted)
+            {
+                state.HourlyAlerted = true;
+                OnNotify(titlePrefix + Strings.Get("NotifyHourlyTitle"),
+                    FunBody("NotifyHourlyBody", h, state.HourlyBurn, h));
+            }
+            if (h < thr - 5) state.HourlyAlerted = false;
+
+            if (snap?.HasWeekly == true && w >= thr && !state.WeeklyAlerted)
+            {
+                state.WeeklyAlerted = true;
+                OnNotify(titlePrefix + Strings.Get("NotifyWeeklyTitle"),
+                    FunBody("NotifyWeeklyBody", w, state.WeeklyBurn, w));
+            }
+            if (w < thr - 5) state.WeeklyAlerted = false;
         }
-        if (w < thr - 5) _weeklyAlerted = false;
     }
 
     /// <summary>One of three flavor lines, plus a burn-rate projection when available.</summary>
@@ -240,7 +313,8 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
 
     private void UpdateTexts()
     {
-        var snap = _last;
+        var state = Active;
+        var snap = state?.Last;
 
         double weeklyUsed = snap?.WeeklyUsedPct ?? 0;
         double weeklyShown = _settings.WeeklyDisplayStyle == DisplayStyle.Remaining ? 100 - weeklyUsed : weeklyUsed;
@@ -260,17 +334,20 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         HourlySeverity = snap?.HasHourly == true ? Severity.FromUsedPct(hourlyUsed) : SeverityLevel.Calm;
         WeeklySeverity = snap?.HasWeekly == true ? Severity.FromUsedPct(weeklyUsed) : SeverityLevel.Calm;
         UpdateMini(snap, hourlyUsed, weeklyUsed);
-        UpdateBurnTexts(snap);
-        PlanLevelText = string.IsNullOrWhiteSpace(snap?.PlanLevel) ? "—" : snap!.PlanLevel!;
+        UpdateBurnTexts(state, snap);
+        var level = string.IsNullOrWhiteSpace(snap?.PlanLevel) ? "—" : snap!.PlanLevel!;
+        var label = ComputeAccountLabel();
+        PlanLevelText = label.Length > 0 ? $"{label} · {level}" : level;
+        ActiveAccountName = label;
 
         if (IsRefreshing)
             RefreshAgoText = Strings.Get("Refreshing");
-        else if (string.IsNullOrWhiteSpace(_settings.ApiKey) && _settings.ApiKeyConfigured == true)
+        else if (state is { Config.Configured: true } && SettingsService.ApiKeyStorageState == ApiKeyStorageState.ProtectedUnavailable)
             RefreshAgoText = Strings.Get("CredentialUnavailableCard");
         else if (!_settings.IsValid)
             RefreshAgoText = Strings.Get("NotConfigured");
-        else if (_inError)
-            RefreshAgoText = UsageFailureText.Card(_failureKind ?? UsageFailureKind.Unknown);
+        else if (state?.InError == true)
+            RefreshAgoText = UsageFailureText.Card(state.FailureKind ?? UsageFailureKind.Unknown);
         else if (snap is null)
             RefreshAgoText = Strings.Get("Refreshing");
         else
@@ -279,12 +356,20 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         // Hover detail: failures show the long-form explanation (same text the
         // settings dialog shows) plus the log path; success shows per-window
         // numbers with burn-rate projections.
-        StatusTooltip = _inError
-            ? UsageFailureText.Validation(_failureKind ?? UsageFailureKind.Unknown)
+        StatusTooltip = state?.InError == true
+            ? UsageFailureText.Validation(state.FailureKind ?? UsageFailureKind.Unknown)
                 + "\n" + Strings.Get("ErrLogAt", AppLog.LogPath)
             : snap is null ? null : BuildSuccessTooltip(snap);
 
-        IsError = _inError;
+        IsError = state?.InError == true;
+    }
+
+    private string ComputeAccountLabel()
+    {
+        // Only worth showing when there is something to distinguish.
+        if (_settings.Accounts.Count <= 1) return "";
+        var active = Active;
+        return active is null ? "" : AccountLabel(active.Config);
     }
 
     /// <summary>Mini card tracks whichever window is closer to exhaustion.</summary>
@@ -316,16 +401,16 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     /// <summary>Burn-rate lines shared by the card tooltip and the detail panel.
     /// The 5-hour line carries a comparison against the 24h average when there
     /// is enough history; the weekly window has no meaningful daily baseline.</summary>
-    private void UpdateBurnTexts(UsageSnapshot? snap)
+    private void UpdateBurnTexts(AccountState? state, UsageSnapshot? snap)
     {
-        var avg = UsageHistoryStore.AverageBurnRateLast24h(_history.Samples, DateTimeOffset.Now);
-        HourlyBurnText = BurnLine(snap?.HasHourly == true, _hourlyBurn, snap?.HourlyUsedPct ?? 0, avg);
-        WeeklyBurnText = BurnLine(snap?.HasWeekly == true, _weeklyBurn, snap?.WeeklyUsedPct ?? 0, null);
+        var avg = UsageHistoryStore.AverageBurnRateLast24h(state?.History.Samples ?? Array.Empty<UsageSample>(), DateTimeOffset.Now);
+        HourlyBurnText = BurnLine(snap?.HasHourly == true, state?.HourlyBurn, snap?.HourlyUsedPct ?? 0, avg);
+        WeeklyBurnText = BurnLine(snap?.HasWeekly == true, state?.WeeklyBurn, snap?.WeeklyUsedPct ?? 0, null);
     }
 
-    private static string BurnLine(bool has, QuotaBurnTracker burn, double usedPct, double? avgRate)
+    private static string BurnLine(bool has, QuotaBurnTracker? burn, double usedPct, double? avgRate)
     {
-        if (!has ||
+        if (!has || burn is null ||
             burn.ProjectHoursToExhaustion(usedPct, DateTimeOffset.Now) is not { } hours ||
             burn.RatePctPerHour is not { } rate)
             return string.Empty;
@@ -383,7 +468,7 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         var d = t - DateTimeOffset.Now;
         if (d.TotalMinutes <= 0) return Strings.Get("ResettingSoon");
         if (d.TotalHours < 1) return Strings.Get("MinutesLater", (int)Math.Ceiling(d.TotalMinutes));
-        if (d.TotalDays < 1) return Strings.Get("HoursLater", (int)Math.Round(d.TotalHours));
+        if (d.TotalHours < 1) return Strings.Get("HoursLater", (int)Math.Round(d.TotalHours));
         return Strings.Get("DaysLater", (int)Math.Round(d.TotalDays));
     }
 
@@ -409,6 +494,10 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     public string? StatusTooltip { get => _statusTooltip; set => Set(ref _statusTooltip, value); }
     private string? _statusTooltip;
 
+    // Card subtitle: empty for the single unnamed account, account name otherwise.
+    public string ActiveAccountName { get => _activeAccountName; private set => Set(ref _activeAccountName, value); }
+    private string _activeAccountName = "";
+
     // Severity drives the code-behind recolor (ring, dots, percent text).
     public SeverityLevel HourlySeverity { get => _hourlySeverity; set => Set(ref _hourlySeverity, value); }
     private SeverityLevel _hourlySeverity;
@@ -433,18 +522,29 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     public string PlanLevelText { get => _planLevelText; set => Set(ref _planLevelText, value); }
     private string _planLevelText = "—";
 
-    // Detail-panel history series (refresh with every successful fetch).
+    // Detail-panel history series (refresh with every successful fetch) plus
+    // the previous-period overlays (same range shifted 24h / 7d back).
     public IReadOnlyList<GraphPoint> HourlyGraph { get => _hourlyGraph; private set { _hourlyGraph = value; NotifyGraphChanged(nameof(HourlyGraph)); } }
     private IReadOnlyList<GraphPoint> _hourlyGraph = Array.Empty<GraphPoint>();
     public IReadOnlyList<GraphPoint> WeeklyGraph { get => _weeklyGraph; private set { _weeklyGraph = value; NotifyGraphChanged(nameof(WeeklyGraph)); } }
     private IReadOnlyList<GraphPoint> _weeklyGraph = Array.Empty<GraphPoint>();
+    public IReadOnlyList<GraphPoint> PreviousHourlyGraph { get => _prevHourlyGraph; private set { _prevHourlyGraph = value; NotifyGraphChanged(nameof(PreviousHourlyGraph)); } }
+    private IReadOnlyList<GraphPoint> _prevHourlyGraph = Array.Empty<GraphPoint>();
+    public IReadOnlyList<GraphPoint> PreviousWeeklyGraph { get => _prevWeeklyGraph; private set { _prevWeeklyGraph = value; NotifyGraphChanged(nameof(PreviousWeeklyGraph)); } }
+    private IReadOnlyList<GraphPoint> _prevWeeklyGraph = Array.Empty<GraphPoint>();
     public bool HasHourlyGraph => HourlyGraph.Count > 1;
     public bool HasWeeklyGraph => WeeklyGraph.Count > 1;
+    public bool HasPrevHourly => PreviousHourlyGraph.Count > 1;
+    public bool HasPrevWeekly => PreviousWeeklyGraph.Count > 1;
 
     private void NotifyGraphChanged(string name)
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name == nameof(HourlyGraph) ? nameof(HasHourlyGraph) : nameof(HasWeeklyGraph)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(
+            name == nameof(HourlyGraph) ? nameof(HasHourlyGraph)
+            : name == nameof(WeeklyGraph) ? nameof(HasWeeklyGraph)
+            : name == nameof(PreviousHourlyGraph) ? nameof(HasPrevHourly)
+            : nameof(HasPrevWeekly)));
     }
     public double CardOpacity { get => _cardOpacity; set => Set(ref _cardOpacity, value); }
     private double _cardOpacity = 1.0;
@@ -480,6 +580,8 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     {
         _refreshTimer.Stop();
         _relativeTimer.Stop();
-        _client?.Dispose();
+        foreach (var state in _accounts)
+            state.Client?.Dispose();
+        _accounts.Clear();
     }
 }

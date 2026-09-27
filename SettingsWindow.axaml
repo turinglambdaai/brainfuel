@@ -54,6 +54,14 @@
           <Border x:Name="FirstRunPanel" IsVisible="False" Classes="sectionCard"><StackPanel Spacing="5"><TextBlock Text="{DynamicResource FirstRunTitle}" FontWeight="SemiBold"/><TextBlock Text="{DynamicResource FirstRunBody}" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}"/></StackPanel></Border>
           <Border Classes="sectionCard"><StackPanel Spacing="12">
             <StackPanel Spacing="3"><TextBlock Text="{DynamicResource SectionAccount}" FontWeight="SemiBold"/><TextBlock Text="{DynamicResource AccountDesc}" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}"/></StackPanel>
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8">
+              <ComboBox x:Name="AccountBox" HorizontalAlignment="Stretch" SelectionChanged="AccountBox_SelectionChanged"/>
+              <Button x:Name="SetActiveBtn" Grid.Column="1" Content="{DynamicResource BtnSetActive}" Click="SetActive_Click" VerticalAlignment="Center"/>
+              <Button x:Name="AddAccountBtn" Grid.Column="2" Content="＋" Click="AddAccount_Click" Width="38" VerticalAlignment="Center" ToolTip.Tip="{DynamicResource AddAccount}"/>
+              <Button x:Name="RemoveAccountBtn" Grid.Column="3" Content="－" Click="RemoveAccount_Click" Width="38" VerticalAlignment="Center" ToolTip.Tip="{DynamicResource RemoveAccount}"/>
+            </Grid>
+            <StackPanel Spacing="5"><TextBlock Text="{DynamicResource LblAccountName}"/><TextBox x:Name="AccountNameBox" PlaceholderText="{DynamicResource AccountNamePlaceholder}"/></StackPanel>
+            <StackPanel Spacing="5"><TextBlock Text="{DynamicResource LblPlatform}"/><ComboBox x:Name="PlatformBox"><ComboBoxItem Content="{DynamicResource PlatformCn}"/><ComboBoxItem Content="{DynamicResource PlatformIntl}"/></ComboBox></StackPanel>
             <StackPanel Spacing="5">
               <TextBlock Text="{DynamicResource LblApiKey}"/>
               <TextBox x:Name="KeyBox" PlaceholderText="{DynamicResource KeyPlaceholder}" PasswordChar="•"/>
@@ -62,7 +70,6 @@
                 <TextBlock Text="{DynamicResource KeyOpenConsole}" TextDecorations="Underline" FontSize="11"/>
               </Button>
             </StackPanel>
-            <StackPanel Spacing="5"><TextBlock Text="{DynamicResource LblPlatform}"/><ComboBox x:Name="PlatformBox"><ComboBoxItem Content="{DynamicResource PlatformCn}"/><ComboBoxItem Content="{DynamicResource PlatformIntl}"/></ComboBox></StackPanel>
           </StackPanel></Border>
           <Border Classes="sectionCard"><StackPanel Spacing="7">
             <TextBlock Text="{DynamicResource CredentialSecurityTitle}" FontWeight="SemiBold"/>

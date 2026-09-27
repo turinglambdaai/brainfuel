@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -61,6 +62,50 @@ public static class CredentialStore
             value = null;
             return false;
         }
+    }
+
+    /// <summary>
+    /// Reads the multi-account keyring: one secret blob containing a JSON
+    /// object of {"accountId": key}. Blobs written by v0.5.x (a bare key
+    /// string) read back as {"default": key} so migration is lossless.
+    /// </summary>
+    public static bool TryReadAll(string appDirectory, out Dictionary<string, string> keys)
+    {
+        keys = new Dictionary<string, string>();
+        if (!TryRead(appDirectory, out var raw) || string.IsNullOrWhiteSpace(raw))
+            return false;
+
+        raw = raw.Trim();
+        if (raw.StartsWith('{'))
+        {
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(raw);
+                foreach (var p in doc.RootElement.EnumerateObject())
+                    if (p.Value.ValueKind == System.Text.Json.JsonValueKind.String &&
+                        !string.IsNullOrWhiteSpace(p.Value.GetString()))
+                        keys[p.Name] = p.Value.GetString()!;
+                return keys.Count > 0;
+            }
+            catch
+            {
+                keys.Clear();
+                return false;
+            }
+        }
+
+        // Legacy single-key blob.
+        keys[SettingsService.LegacyAccountId] = raw;
+        return true;
+    }
+
+    public static bool TryWriteAll(string appDirectory, IReadOnlyDictionary<string, string> keys)
+    {
+        if (keys.Count == 0)
+            return TryDelete(appDirectory);
+
+        var json = System.Text.Json.JsonSerializer.Serialize(keys);
+        return TryWrite(appDirectory, json);
     }
 
     public static bool TryWrite(string appDirectory, string value)
