@@ -1,6 +1,7 @@
 using System;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Platform;
 using Avalonia.Threading;
 
 namespace BrainFuel;
@@ -13,12 +14,12 @@ public partial class NotificationWindow : Window
         InitializeComponent();
     }
 
-    public void ShowNotification(string title, string message)
+    public void ShowNotification(string title, string message, Screen? screen = null)
     {
         TitleText.Text = title;
         MessageText.Text = message;
 
-        PositionBottomRight();
+        PositionBottomRight(screen);
         Show();
 
         var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(6) };
@@ -26,14 +27,17 @@ public partial class NotificationWindow : Window
         timer.Start();
     }
 
-    private void PositionBottomRight()
+    /// <summary>Parks the toast on the given screen (the card's screen by
+    /// default, so the alert appears where the user is actually looking);
+    /// falls back to the primary display.</summary>
+    private void PositionBottomRight(Screen? screen)
     {
-        var screen = Screens.Primary;
-        if (screen == null) return;
+        var target = screen ?? Screens.Primary;
+        if (target == null) return;
         double scale = RenderScaling > 0 ? RenderScaling : 1;
         int devW = (int)(Width * scale);
         int devH = (int)(Height * scale);
-        var wa = screen.WorkingArea;
+        var wa = target.WorkingArea;
         Position = new PixelPoint(wa.Right - devW - 16, wa.Bottom - devH - 16);
     }
 }
