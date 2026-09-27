@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
@@ -19,9 +21,13 @@ public partial class SettingsWindow : Window
     private readonly bool _installedBuild;
     private int _savedRefreshInterval;
     private bool _initializingInterval = true;
+    private bool _initializingAccount = true;
     private bool _validated;
     private bool _saveAnyway;
     private bool _forgetKeyRequested;
+
+    // Accounts whose key was typed anew in this dialog; each needs validation on save.
+    private readonly List<AccountConfig> _pendingKeyAccounts = new();
 
     public SettingsWindow() : this(new AppSettings()) { }
 
@@ -35,9 +41,6 @@ public partial class SettingsWindow : Window
         Title = $"{Strings.Get("WinTitle")} · v{version}";
         HeaderVersionText.Text = $"v{version}";
 
-        KeyBox.Text = settings.ApiKey;
-        PlatformBox.SelectedIndex =
-            settings.BaseDomain.Contains("z.ai", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
         _savedRefreshInterval = Math.Clamp(settings.RefreshIntervalMinutes, 1, 60);
         IntervalBox.Value = _savedRefreshInterval;
         WeeklyRemaining.IsChecked = settings.WeeklyDisplayStyle == DisplayStyle.Remaining;
@@ -53,7 +56,8 @@ public partial class SettingsWindow : Window
         _initializingInterval = false;
         RefreshIntervalStatus();
         RefreshCredentialStatus();
-        ForgetKeyBtn.IsVisible = settings.HasConfiguredCredential;
+
+        RebuildAccountList(selectId: settings.ActiveAccountId);
 
         var buildKind = Strings.Get(_installedBuild ? "UpdateInstalledBuild" : "UpdatePortableBuild");
         CurrentVersionText.Text = $"{string.Format(Strings.Get("UpdateCurrentVersion"), version)} · {buildKind}";
@@ -68,6 +72,89 @@ public partial class SettingsWindow : Window
         KeyBox.TextChanged += ResetValidation;
         PlatformBox.SelectionChanged += ResetValidation;
     }
+
+    // ---- multi-account management -------------------------------------------
+
+    private AccountConfig? SelectedAccount() =>
+        AccountBox.SelectedItem as AccountConfig;
+
+    private void RebuildAccountList(string? selectId)
+    {
+        _initializingAccount = true;
+        var keep = selectId ?? SelectedAccount()?.Id;
+        AccountBox.ItemsSource = null;
+        AccountBox.ItemsSource = _settings.Accounts; // display text = AccountConfig.ToString()
+        AccountBox.SelectedItem = _settings.Accounts.FirstOrDefault(a => a.Id == keep)
+                                 ?? _settings.Accounts.FirstOrDefault();
+        _initializingAccount = false;
+        LoadSelectedAccountEditor();
+    }
+
+    private void LoadSelectedAccountEditor()
+    {
+        var account = SelectedAccount();
+        if (account is null) return;
+
+        AccountNameBox.Text = account.Name;
+        PlatformBox.SelectedIndex =
+            account.BaseDomain.Contains("z.ai", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+        KeyBox.Text = SettingsService.GetKey(account.Id) ?? string.Empty;
+        _forgetKeyRequested = false;
+        ForgetKeyBtn.IsVisible = account.Configured;
+        RemoveAccountBtn.IsEnabled = _settings.Accounts.Count > 1;
+        SetActiveBtn.IsEnabled = account.Id != _settings.ActiveAccountId;
+        RefreshCredentialStatus();
+    }
+
+    private void AccountBox_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_initializingAccount) return;
+        // Flush the previous editor content before switching? No: fields are
+        // written back on save; switching just loads the other account.
+        LoadSelectedAccountEditor();
+        _validated = false;
+        _saveAnyway = false;
+        ValidateMsg.Text = "";
+        SaveBtn.Content = Strings.Get("BtnSave");
+    }
+
+    private void SetActive_Click(object? sender, RoutedEventArgs e)
+    {
+        var account = SelectedAccount();
+        if (account is null) return;
+        _settings.ActiveAccountId = account.Id;
+        RebuildAccountList(account.Id);
+    }
+
+    private void AddAccount_Click(object? sender, RoutedEventArgs e)
+    {
+        var account = new AccountConfig
+        {
+            Id = Guid.NewGuid().ToString("N")[..12],
+            Name = "",
+            BaseDomain = "https://open.bigmodel.cn",
+        };
+        _settings.Accounts.Add(account);
+        RebuildAccountList(account.Id);
+        _validated = false;
+    }
+
+    private void RemoveAccount_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_settings.Accounts.Count <= 1) return;
+        var account = SelectedAccount();
+        if (account is null) return;
+
+        SettingsService.SetKey(account.Id, null);
+        _settings.Accounts.Remove(account);
+        _pendingKeyAccounts.Remove(account);
+        if (_settings.ActiveAccountId == account.Id)
+            _settings.ActiveAccountId = _settings.Accounts[0].Id;
+        RebuildAccountList(_settings.ActiveAccountId);
+        _validated = false;
+    }
+
+    // ---- credential status ---------------------------------------------------
 
     private void RefreshCredentialStatus()
     {
@@ -88,6 +175,8 @@ public partial class SettingsWindow : Window
 
     private void ForgetKey_Click(object? sender, RoutedEventArgs e)
     {
+        var account = SelectedAccount();
+        if (account is null) return;
         _forgetKeyRequested = true;
         KeyBox.Text = string.Empty;
         ForgetKeyBtn.IsVisible = false;
@@ -173,29 +262,36 @@ public partial class SettingsWindow : Window
     private async void Save_Click(object? sender, RoutedEventArgs e)
     {
         CollectForm();
-        var key = _settings.ApiKey;
 
-        if (!string.IsNullOrWhiteSpace(key) && !_validated && !_saveAnyway)
+        // Validate only accounts whose key was (re)typed in this dialog.
+        if (!_validated && !_saveAnyway && _pendingKeyAccounts.Count > 0)
         {
             ValidateMsg.Text = "";
             SaveBtn.IsEnabled = false;
             SaveBtn.Content = Strings.Get("ValidateTesting");
-            bool ok = false;
+            bool ok = true;
             try
             {
-                using var probe = new GlmUsageClient(_settings.BaseDomain, key, SettingsService.DebugPath);
-                await probe.GetUsageAsync();
+                foreach (var account in _pendingKeyAccounts)
+                {
+                    var key = SettingsService.GetKey(account.Id);
+                    if (string.IsNullOrWhiteSpace(key)) continue;
+                    using var probe = new GlmUsageClient(account.BaseDomain, key, SettingsService.DebugPath);
+                    await probe.GetUsageAsync();
+                }
                 ok = true;
             }
             catch (UsageRequestException ex)
             {
                 _saveAnyway = UsageFailureText.AllowsSaveAnyway(ex.Kind);
                 ValidateMsg.Text = UsageFailureText.Validation(ex.Kind);
+                ok = false;
             }
             catch
             {
                 _saveAnyway = true;
                 ValidateMsg.Text = UsageFailureText.Validation(UsageFailureKind.Unknown);
+                ok = false;
             }
             finally
             {
@@ -216,11 +312,30 @@ public partial class SettingsWindow : Window
 
     private void CollectForm()
     {
-        _settings.ApiKey = KeyBox.Text?.Trim();
-        if (_forgetKeyRequested && string.IsNullOrWhiteSpace(_settings.ApiKey))
-            _settings.ApiKeyConfigured = false;
+        if (SelectedAccount() is { } account)
+        {
+            account.Name = AccountNameBox.Text?.Trim() ?? "";
+            account.BaseDomain = PlatformBox.SelectedIndex == 1 ? "https://api.z.ai" : "https://open.bigmodel.cn";
 
-        _settings.BaseDomain = PlatformBox.SelectedIndex == 1 ? "https://api.z.ai" : "https://open.bigmodel.cn";
+            var typedKey = KeyBox.Text?.Trim();
+            if (_forgetKeyRequested)
+            {
+                SettingsService.SetKey(account.Id, null);
+                account.Configured = false;
+                _pendingKeyAccounts.RemoveAll(a => a.Id == account.Id);
+            }
+            else if (!string.IsNullOrWhiteSpace(typedKey) && typedKey != SettingsService.GetKey(account.Id))
+            {
+                SettingsService.SetKey(account.Id, typedKey);
+                account.Configured = true;
+                if (!_pendingKeyAccounts.Any(a => a.Id == account.Id))
+                    _pendingKeyAccounts.Add(account);
+            }
+        }
+
+        if (_settings.ActiveAccountId is null || _settings.Accounts.All(a => a.Id != _settings.ActiveAccountId))
+            _settings.ActiveAccountId = _settings.Accounts.FirstOrDefault()?.Id;
+
         _settings.RefreshIntervalMinutes = Math.Clamp((int)(IntervalBox.Value ?? 5), 1, 60);
         _settings.WeeklyDisplayStyle = (WeeklyRemaining.IsChecked ?? false) ? DisplayStyle.Remaining : DisplayStyle.Used;
         _settings.HourlyDisplayStyle = (HourlyRemaining.IsChecked ?? false) ? DisplayStyle.Remaining : DisplayStyle.Used;

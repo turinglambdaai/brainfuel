@@ -46,12 +46,16 @@
                         <TextBlock Text="{Binding HourlyBurnText}" FontSize="11" Foreground="{DynamicResource TextSecondary}"
                                    TextWrapping="Wrap"/>
                         <Panel Height="52">
-                            <ctl:UsageGraph Points="{Binding HourlyGraph}" Accent="{DynamicResource RingHourly}"/>
+                            <ctl:UsageGraph Points="{Binding HourlyGraph}" PreviousPoints="{Binding PreviousHourlyGraph}"
+                                            Accent="{DynamicResource RingHourly}"/>
                             <TextBlock Text="{DynamicResource HistoryCollecting}" FontSize="10"
                                        Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap"
                                        HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center"
                                        IsVisible="{Binding !HasHourlyGraph}"/>
                         </Panel>
+                        <TextBlock Text="{DynamicResource GraphLegendDay}" FontSize="9"
+                                   Foreground="{DynamicResource TextMuted}"
+                                   IsVisible="{Binding HasPrevHourly}"/>
                     </StackPanel>
 
                     <Border Height="1" Background="{DynamicResource Separator}"/>
@@ -71,12 +75,16 @@
                         <TextBlock Text="{Binding WeeklyBurnText}" FontSize="11" Foreground="{DynamicResource TextSecondary}"
                                    TextWrapping="Wrap"/>
                         <Panel Height="52">
-                            <ctl:UsageGraph Points="{Binding WeeklyGraph}" Accent="{DynamicResource RingWeekly}"/>
+                            <ctl:UsageGraph Points="{Binding WeeklyGraph}" PreviousPoints="{Binding PreviousWeeklyGraph}"
+                                            Accent="{DynamicResource RingWeekly}"/>
                             <TextBlock Text="{DynamicResource HistoryCollecting}" FontSize="10"
                                        Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap"
                                        HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center"
                                        IsVisible="{Binding !HasWeeklyGraph}"/>
                         </Panel>
+                        <TextBlock Text="{DynamicResource GraphLegendWeek}" FontSize="9"
+                                   Foreground="{DynamicResource TextMuted}"
+                                   IsVisible="{Binding HasPrevWeekly}"/>
                     </StackPanel>
 
                     <Border Height="1" Background="{DynamicResource Separator}"/>
@@ -147,8 +155,12 @@
                         <StackPanel Grid.Column="0" Spacing="1">
                             <TextBlock Text="BrainFuel" FontSize="15" FontWeight="SemiBold"
                                        Foreground="{DynamicResource TextPrimary}"/>
+                            <TextBlock Text="{Binding ActiveAccountName}" FontSize="10"
+                                       Foreground="{DynamicResource TextMuted}"
+                                       IsVisible="{Binding ActiveAccountName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                             <TextBlock Text="{DynamicResource CardSubtitle}" FontSize="10"
-                                       Foreground="{DynamicResource TextMuted}"/>
+                                       Foreground="{DynamicResource TextMuted}"
+                                       IsVisible="{Binding ActiveAccountName, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
                         </StackPanel>
                         <Button x:Name="MenuButton" Grid.Column="1" Classes="ghost"
                                 Click="OpenMenu_Click" ToolTip.Tip="{DynamicResource MenuMoreTip}"
@@ -157,6 +169,7 @@
                                 <ContextMenu x:Name="CardMenu">
                                     <MenuItem Header="{DynamicResource MenuDetail}" Click="Detail_Click"/>
                                     <MenuItem Header="{DynamicResource MenuRefresh}" Click="Refresh_Click"/>
+                                    <MenuItem x:Name="AccountsMenuItem" Header="{DynamicResource MenuAccounts}"/>
                                     <MenuItem Header="{DynamicResource MenuSettings}" Click="Settings_Click"/>
                                     <MenuItem x:Name="UpdateMenuItem" Header="{DynamicResource MenuCheckUpdates}" Click="Update_Click"/>
                                     <Separator/>

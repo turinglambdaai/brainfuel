@@ -23,6 +23,7 @@ The goal is simple: glance at quota and get back to work.
 - **Mini mode** — the ⋯ menu collapses the card into a one-ring mini card tracking whichever window is closer to exhaustion
 - **Explicit quota refresh** — manual **Refresh quota** plus configurable automatic refresh
 - **Secure API-key storage** — Windows DPAPI, macOS Keychain, and Linux Secret Service when available; legacy plaintext keys are migrated automatically
+- **Multiple accounts** — add any number of GLM accounts (each with its own platform and key); all are polled and alerted on their own schedule, the card shows the active one, and the ⋯ menu switches instantly. Keys live in the OS vault as one keyring blob
 - **Structured Settings** — General / Account / Notifications / Software tabs instead of one long form
 - **Non-intrusive desktop behavior** — new installs start non-topmost and do not steal focus; Keep on top is an explicit preference
 - **Monitor-aware placement** — remembers the physical display plus relative position, handles DPI/resolution/taskbar changes, and recovers when an external display disappears
@@ -39,6 +40,7 @@ The goal is simple: glance at quota and get back to work.
 - **Readable quota failures** — the card's freshness line names the failure category (bad key/platform mismatch, network, proxy, timeout, no plan…); hovering the card shows the full guidance and the log path
 - **Burn-rate intelligence** — the detail panel (double-click) shows each window's consumption speed and a projected time-to-empty; threshold notifications append the projection ("At the current burn rate, ~2 h to empty") with a bit of personality
 - **Usage history graphs** — the detail panel charts the last 24 hours (5-hour window) and last 7 days (weekly quota) from local rolling history, so resets and burn cycles are visible at a glance; the 5-hour burn line adds context against the 24-hour average ("faster than the 24h average by 50%")
+- **Previous-period overlay** — each graph can draw the same window shifted one period back (dashed line): yesterday's hours beside today's, last week beside this one
 - **Urgency-aware visuals** — rings, dots and percentages shift to amber at 75% used and red at 90%, in both standard and mini cards
 
 ## Desktop and multi-monitor behavior

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using Avalonia;
@@ -224,6 +225,34 @@ public partial class MainWindow : Window
         RefreshAboutMenuText();
         RefreshTopmostMenuText();
         RefreshDisplayMenuState();
+        RefreshAccountsMenu();
+    }
+
+    /// <summary>Rebuilds the accounts submenu: one checkable entry per account
+    /// plus a "manage" item. Only shown with more than one account.</summary>
+    private void RefreshAccountsMenu()
+    {
+        if (_settings is null || AccountsMenuItem is null) return;
+        AccountsMenuItem.IsVisible = _settings.Accounts.Count > 1;
+        if (!AccountsMenuItem.IsVisible) return;
+
+        AccountsMenuItem.Items.Clear();
+        foreach (var account in _settings.Accounts)
+        {
+            var id = account.Id;
+            var item = new MenuItem
+            {
+                Header = account.ToString(),
+                ToggleType = MenuItemToggleType.CheckBox,
+                IsChecked = id == _settings.ActiveAccountId,
+            };
+            item.Click += (_, _) => _vm?.SwitchAccount(id);
+            AccountsMenuItem.Items.Add(item);
+        }
+        AccountsMenuItem.Items.Add(new Separator());
+        var manage = new MenuItem { Header = Strings.Get("ManageAccounts") };
+        manage.Click += (_, _) => Dispatcher.UIThread.Post(OpenSettings);
+        AccountsMenuItem.Items.Add(manage);
     }
 
     private void RefreshAboutMenuText()

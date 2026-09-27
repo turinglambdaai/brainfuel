@@ -30,6 +30,21 @@ public sealed class UsageHistoryStore
 
     public static string DefaultPath => Path.Combine(SettingsService.AppDirectory, "usage-history.json");
 
+    /// <summary>Per-account history path; moves the pre-0.6 shared file into
+    /// place for the migrated default account on first use.</summary>
+    public static string PathForAccount(string accountId)
+    {
+        var path = Path.Combine(SettingsService.AppDirectory, $"usage-history-{accountId}.json");
+        try
+        {
+            if (accountId == SettingsService.LegacyAccountId &&
+                !File.Exists(path) && File.Exists(DefaultPath))
+                File.Move(DefaultPath, path);
+        }
+        catch { /* migration is best-effort; sampling starts over otherwise */ }
+        return path;
+    }
+
     public IReadOnlyList<UsageSample> Samples => _samples;
 
     public static UsageHistoryStore Load(string path)
