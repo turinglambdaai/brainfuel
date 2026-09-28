@@ -247,21 +247,32 @@ public sealed class GlmUsageClient : IDisposable
         var snap = new UsageSnapshot { FetchedAt = DateTimeOffset.Now, RawJson = raw, PlanLevel = level };
 
         // Heuristic: tolerate servers that report 0..1 instead of 0..100.
+        // Only fractional values (0.35, 0.8, ...) indicate the 0..1 range —
+        // whole numbers are genuine percentages (Lite reports plain "1" for 1%,
+        // which the old max<=1.5 check blew up to 100%).
         double maxPct = 0;
+        bool hasFractional = false;
         foreach (var l in limits)
-            if (l.Percentage is double p && p > maxPct) maxPct = p;
-        double scale = maxPct > 0 && maxPct <= 1.5 ? 100.0 : 1.0;
+        {
+            if (l.Percentage is not double p) continue;
+            if (p > maxPct) maxPct = p;
+            if (p > 0 && p != Math.Floor(p)) hasFractional = true;
+        }
+        double scale = hasFractional && maxPct <= 1.5 ? 100.0 : 1.0;
 
         foreach (var lim in limits)
         {
             var type = (lim.Type ?? "").Trim().ToUpperInvariant();
-            if (type != "TOKENS_LIMIT")
-                continue; // TIME_LIMIT is the MCP monthly quota — not shown in v1.
+            // Legacy plans expose token quotas (TOKENS_LIMIT); newer plans such
+            // as Lite expose credit quotas (CREDIT_LIMIT) with the same shape.
+            // TIME_LIMIT is the MCP monthly quota — not shown.
+            if (type != "TOKENS_LIMIT" && type != "CREDIT_LIMIT")
+                continue;
 
             var pct = (lim.Percentage ?? 0) * scale;
             var reset = TryFindReset(lim);
 
-            // `number == 5` is the 5-hour token window; the other TOKENS_LIMIT is the weekly quota.
+            // `number == 5` is the 5-hour window; the other token/credit limit is the weekly quota.
             if (lim.Number == 5)
             {
                 snap.HasHourly = true;

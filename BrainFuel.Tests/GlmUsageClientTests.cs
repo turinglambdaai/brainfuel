@@ -220,6 +220,40 @@ public sealed class GlmUsageClientTests
         Assert.Contains("foo, bar", ex.Message);
     }
 
+    // ---- newer plans: CREDIT_LIMIT with integer 0..100 percentages ----
+    // Replay of a real Lite-plan response (2026-09): same shape as legacy
+    // TOKENS_LIMIT but credit-based, and percentages are plain integers.
+
+    private const string LitePlanBody = """
+        {"code":200,"msg":"ok","success":true,"data":{"level":"lite","limits":[
+            {"type":"CREDIT_LIMIT","unit":3,"number":5,"usage":2000,"currentValue":0,"remaining":2000,"percentage":0},
+            {"type":"CREDIT_LIMIT","unit":6,"number":1,"usage":10000,"currentValue":135,"remaining":9864,"percentage":1,"nextResetTime":1790748174980}
+        ]}}
+        """;
+
+    [Fact]
+    public void LitePlan_CreditLimits_AreMappedWithoutScaling()
+    {
+        using var client = Client(_ => Json(200, LitePlanBody), out _);
+        var snap = client.GetUsageAsync().GetAwaiter().GetResult();
+        Assert.True(snap.HasHourly);
+        Assert.True(snap.HasWeekly);
+        Assert.Equal(0, snap.HourlyUsedPct, 2);
+        Assert.Equal(1, snap.WeeklyUsedPct, 2);   // must NOT be blown up to 100
+        Assert.Equal("lite", snap.PlanLevel);
+    }
+
+    [Fact]
+    public void LitePlan_WhollyUnusedHourlyWindow_MapsToZero()
+    {
+        // A fresh window at percentage 0 must not trip the 0..1 heuristic either.
+        using var client = Client(_ => Json(200,
+            "{\"data\":{\"limits\":[{\"type\":\"CREDIT_LIMIT\",\"number\":5,\"percentage\":0}]}}"), out _);
+        var snap = client.GetUsageAsync().GetAwaiter().GetResult();
+        Assert.True(snap.HasHourly);
+        Assert.Equal(0, snap.HourlyUsedPct, 2);
+    }
+
     [Fact]
     public void Success_MissingDataObject_IsInvalidResponse()
     {
