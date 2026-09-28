@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using Avalonia.Controls;
+using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using BrainFuel.Services;
@@ -45,6 +46,8 @@ public partial class SettingsWindow : Window
         WeeklyRemaining.IsChecked = settings.WeeklyDisplayStyle == DisplayStyle.Remaining;
         HourlyRemaining.IsChecked = settings.HourlyDisplayStyle == DisplayStyle.Remaining;
         AlwaysOnTopBox.IsChecked = settings.AlwaysOnTop;
+        HotkeyEnabledBox.IsChecked = settings.HotkeyEnabled;
+        HotkeyBox.Text = settings.HotkeyCombo;
         AutoStartBox.IsChecked = AutoStartService.IsEnabled();
         NotifyBox.IsChecked = settings.NotifyEnabled;
         ThresholdBox.Value = Math.Clamp(settings.NotifyThreshold, 10, 99);
@@ -222,6 +225,20 @@ public partial class SettingsWindow : Window
         IntervalStatusText.Text = string.Format(Strings.Get(key), minutes);
     }
 
+    private async void CopyDiagnostics_Click(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var bundle = DiagnosticsBuilder.Build(_settings);
+            await Clipboard!.SetTextAsync(bundle);
+            DiagnosticsStatusText.Text = Strings.Get("DiagnosticsCopied");
+        }
+        catch
+        {
+            DiagnosticsStatusText.Text = Strings.Get("DiagnosticsCopyFailed");
+        }
+    }
+
     private async void CheckUpdate_Click(object? sender, RoutedEventArgs e)
     {
         if (!_installedBuild)
@@ -275,7 +292,7 @@ public partial class SettingsWindow : Window
                 {
                     var key = SettingsService.GetKey(account.Id);
                     if (string.IsNullOrWhiteSpace(key)) continue;
-                    using var probe = new GlmUsageClient(account.BaseDomain, key, SettingsService.DebugPath);
+                    using var probe = QuotaProviders.Create(account.Provider, account.BaseDomain, key, SettingsService.DebugPath);
                     await probe.GetUsageAsync();
                 }
                 ok = true;
@@ -334,6 +351,19 @@ public partial class SettingsWindow : Window
 
         if (_settings.ActiveAccountId is null || _settings.Accounts.All(a => a.Id != _settings.ActiveAccountId))
             _settings.ActiveAccountId = _settings.Accounts.FirstOrDefault()?.Id;
+
+        _settings.HotkeyEnabled = HotkeyEnabledBox.IsChecked ?? false;
+        if (_settings.HotkeyEnabled && !HotkeyParse.TryParse(HotkeyBox.Text, out _, out _))
+        {
+            // Invalid combo: keep the previous one and say so instead of
+            // silently registering nothing.
+            HotkeyBox.Text = _settings.HotkeyCombo;
+            ValidateMsg.Text = Strings.Get("HotkeyInvalid");
+        }
+        else if (!string.IsNullOrWhiteSpace(HotkeyBox.Text))
+        {
+            _settings.HotkeyCombo = HotkeyBox.Text.Trim();
+        }
 
         _settings.RefreshIntervalMinutes = Math.Clamp((int)(IntervalBox.Value ?? 5), 1, 60);
         _settings.WeeklyDisplayStyle = (WeeklyRemaining.IsChecked ?? false) ? DisplayStyle.Remaining : DisplayStyle.Used;

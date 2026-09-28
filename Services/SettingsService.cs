@@ -21,6 +21,10 @@ public class AccountConfig
     public string Name { get; set; } = "";
     public string BaseDomain { get; set; } = "https://open.bigmodel.cn";
 
+    // Which product's quota this account monitors ("glm" today; the provider
+    // abstraction exists so other products can be added without migrations).
+    public string Provider { get; set; } = QuotaProviders.DefaultProvider;
+
     // Tombstone semantics like the legacy ApiKeyConfigured: false is explicit,
     // so a failed keychain deletion cannot resurrect a cleared credential.
     public bool Configured { get; set; }
@@ -73,6 +77,8 @@ public class AppSettings
     public double CardOpacity { get; set; } = 1.0;
     public AppLanguage Language { get; set; } = AppLanguage.Zh;
     public CardSizeMode SizeMode { get; set; } = CardSizeMode.Standard;
+    public bool HotkeyEnabled { get; set; }
+    public string HotkeyCombo { get; set; } = "Ctrl+Alt+B";
 
     [JsonIgnore]
     public AccountConfig? ActiveAccount =>

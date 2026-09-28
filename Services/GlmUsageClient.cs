@@ -17,7 +17,7 @@ namespace BrainFuel.Services;
 ///   GET {baseDomain}/api/monitor/usage/quota/limit
 ///   Authorization: &lt;GLM Coding Plan key&gt;   (raw value, no "Bearer " prefix)
 /// </summary>
-public sealed class GlmUsageClient : IDisposable
+public sealed class GlmUsageClient : IQuotaClient
 {
     private static readonly JsonSerializerOptions JsonOpts = new()
     {
