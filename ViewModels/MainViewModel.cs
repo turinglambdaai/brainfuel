@@ -30,7 +30,7 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     private sealed class AccountState
     {
         public AccountConfig Config;
-        public GlmUsageClient? Client;
+        public IQuotaClient? Client;
         public UsageSnapshot? Last;
         public UsageFailureKind? FailureKind;
         public bool InError;
@@ -213,8 +213,8 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
         _ = RefreshAsync();
     }
 
-    private GlmUsageClient CreateClient(AccountConfig config) =>
-        new(config.BaseDomain, SettingsService.GetKey(config.Id) ?? string.Empty, SettingsService.DebugPath);
+    private IQuotaClient CreateClient(AccountConfig config) =>
+        QuotaProviders.Create(config.Provider, config.BaseDomain, SettingsService.GetKey(config.Id) ?? string.Empty, SettingsService.DebugPath);
 
     private void ApplySnapshot()
     {

@@ -31,6 +31,9 @@ The goal is simple: glance at quota and get back to work.
 - **Guided first run** — first launch opens directly to Account with setup guidance and API-key validation
 - **Windows automatic software updates** — installed builds check GitHub Releases in the background and prefer small Velopack delta packages
 - **Visible version information** — Settings, About, widget app menu, and tray expose the running version
+- **Global hotkey (Windows)** — an optional system-wide Ctrl+Alt+B-style combo shows/hides the card; the combo is editable in Settings
+- **In-app diagnostics** — Software → Problem reporting copies a sanitized support bundle (versions, account setup, failure log; never keys or quota payloads) to the clipboard
+- **Provider-ready** — quota sources sit behind an `IQuotaClient` abstraction (`QuotaProviders` factory); GLM Coding Plan is the first implementation
 - **Verifiable releases** — official builds include `SHA256SUMS` and GitHub Artifact Attestations
 - **Light / Dark / System theme** — with adjustable card opacity
 - **Bilingual UI** — Chinese / English
@@ -203,6 +206,7 @@ brainfuel/
 │   ├── ci.yml
 │   └── release.yml
 ├── BrainFuel.Tests/           # xUnit tests (quota failure classification, retry semantics)
+
 ├── SECURITY.md
 └── BrainFuel.csproj
 ```

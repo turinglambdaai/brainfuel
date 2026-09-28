@@ -411,6 +411,7 @@ public partial class MainWindow : Window
         win.Closed += (_, _) =>
         {
             Topmost = _settings.AlwaysOnTop;
+            App.ApplyHotkey(_settings, this);
             _vm?.OnSettingsChanged();
             WindowPlacementService.RepairAfterScreenChange(this, _settings);
             RefreshMenuState();

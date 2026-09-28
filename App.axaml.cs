@@ -64,6 +64,8 @@ public partial class App : Application
 
             _updateCts = new CancellationTokenSource();
             _ = UpdateService.RunAutomaticUpdateLoopAsync(_updateCts.Token);
+
+            ApplyHotkey(Settings, main);
         }
 
         base.OnFrameworkInitializationCompleted();
@@ -147,6 +149,30 @@ public partial class App : Application
 
     private static string Localized(string zh, string en)
         => Strings.Current == AppLanguage.Zh ? zh : en;
+
+    /// <summary>(Re)applies the global show/hide hotkey after startup and
+    /// after each settings save. Unsupported platforms stay off silently.</summary>
+    public static void ApplyHotkey(AppSettings settings, MainWindow main)
+    {
+        if (!settings.HotkeyEnabled)
+        {
+            GlobalHotkey.Stop();
+            return;
+        }
+
+        GlobalHotkey.TryRegister(settings.HotkeyCombo, () =>
+        {
+            if (main.IsVisible)
+            {
+                main.Hide();
+                ViewModel?.OnNotify?.Invoke(Strings.Get("HiddenTitle"), Strings.Get("HiddenBody"));
+            }
+            else
+            {
+                main.EnsureVisible();
+            }
+        });
+    }
 
     private static void StopBackgroundServicesAndDisposeTray()
     {

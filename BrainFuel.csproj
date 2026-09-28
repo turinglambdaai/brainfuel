@@ -3,9 +3,10 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
+    <DefineConstants Condition="$([MSBuild]::IsOSPlatform('Windows'))">WINDOWS</DefineConstants>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\tray.ico</ApplicationIcon>
-    <Version>0.6.8</Version>
+    <Version>0.7.0</Version>
     <Product>BrainFuel</Product>
     <Description>Desktop widget for GLM Coding Plan quota</Description>
     <Authors>TuringLambdaAI</Authors>
