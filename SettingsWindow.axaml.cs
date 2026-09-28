@@ -98,14 +98,44 @@ public partial class SettingsWindow : Window
         if (account is null) return;
 
         AccountNameBox.Text = account.Name;
-        PlatformBox.SelectedIndex =
-            account.BaseDomain.Contains("z.ai", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
-        KeyBox.Text = SettingsService.GetKey(account.Id) ?? string.Empty;
+        PlatformBox.SelectedIndex = account.Provider switch
+        {
+            "codex" => 2,
+            "claude" => 3,
+            _ => account.BaseDomain.Contains("z.ai", StringComparison.OrdinalIgnoreCase) ? 1 : 0,
+        };
+        ApplyProviderVisibility(account.Provider);
+        KeyBox.Text = account.Provider is "codex" or "claude"
+            ? string.Empty
+            : SettingsService.GetKey(account.Id) ?? string.Empty;
         _forgetKeyRequested = false;
-        ForgetKeyBtn.IsVisible = account.Configured;
+        ForgetKeyBtn.IsVisible = account.Configured && account.Provider is not ("codex" or "claude");
         RemoveAccountBtn.IsEnabled = _settings.Accounts.Count > 1;
         SetActiveBtn.IsEnabled = account.Id != _settings.ActiveAccountId;
         RefreshCredentialStatus();
+    }
+
+    /// <summary>Codex/Claude accounts need no pasted key — show the local-login note.</summary>
+    private void ApplyProviderVisibility(string provider)
+    {
+        bool cliLogin = provider is "codex" or "claude";
+        KeySection.IsVisible = !cliLogin;
+        CliLoginHint.IsVisible = cliLogin;
+    }
+
+    private static string ProviderForIndex(int index) => index switch
+    {
+        2 => "codex",
+        3 => "claude",
+        _ => QuotaProviders.DefaultProvider,
+    };
+
+    private void PlatformBox_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_initializingAccount) return;
+        var provider = ProviderForIndex(PlatformBox.SelectedIndex);
+        ApplyProviderVisibility(provider);
+        ResetValidation(sender, e);
     }
 
     private void AccountBox_SelectionChanged(object? sender, SelectionChangedEventArgs e)
@@ -331,21 +361,40 @@ public partial class SettingsWindow : Window
         if (SelectedAccount() is { } account)
         {
             account.Name = AccountNameBox.Text?.Trim() ?? "";
-            account.BaseDomain = PlatformBox.SelectedIndex == 1 ? "https://api.z.ai" : "https://open.bigmodel.cn";
+            var provider = ProviderForIndex(PlatformBox.SelectedIndex);
+            account.Provider = provider;
+            account.BaseDomain = provider switch
+            {
+                "codex" => "https://chatgpt.com",
+                "claude" => "https://api.anthropic.com",
+                _ => PlatformBox.SelectedIndex == 1 ? "https://api.z.ai" : "https://open.bigmodel.cn",
+            };
 
-            var typedKey = KeyBox.Text?.Trim();
-            if (_forgetKeyRequested)
+            if (provider is "codex" or "claude")
             {
-                SettingsService.SetKey(account.Id, null);
-                account.Configured = false;
+                // CLI-login providers: configured = local login present.
+                // Skip keyring entirely (no pasted key by design).
+                account.Configured = LocalCliCredentials.Exists(provider);
                 _pendingKeyAccounts.RemoveAll(a => a.Id == account.Id);
+                if (!account.Configured)
+                    ValidateMsg.Text = string.Format(Strings.Get("CliLoginMissing"), provider is "codex" ? "Codex CLI" : "Claude Code");
             }
-            else if (!string.IsNullOrWhiteSpace(typedKey) && typedKey != SettingsService.GetKey(account.Id))
+            else
             {
-                SettingsService.SetKey(account.Id, typedKey);
-                account.Configured = true;
-                if (!_pendingKeyAccounts.Any(a => a.Id == account.Id))
-                    _pendingKeyAccounts.Add(account);
+                var typedKey = KeyBox.Text?.Trim();
+                if (_forgetKeyRequested)
+                {
+                    SettingsService.SetKey(account.Id, null);
+                    account.Configured = false;
+                    _pendingKeyAccounts.RemoveAll(a => a.Id == account.Id);
+                }
+                else if (!string.IsNullOrWhiteSpace(typedKey) && typedKey != SettingsService.GetKey(account.Id))
+                {
+                    SettingsService.SetKey(account.Id, typedKey);
+                    account.Configured = true;
+                    if (!_pendingKeyAccounts.Any(a => a.Id == account.Id))
+                        _pendingKeyAccounts.Add(account);
+                }
             }
         }
 

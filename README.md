@@ -33,7 +33,7 @@ The goal is simple: glance at quota and get back to work.
 - **Visible version information** — Settings, About, widget app menu, and tray expose the running version
 - **Global hotkey (Windows)** — an optional system-wide Ctrl+Alt+B-style combo shows/hides the card; the combo is editable in Settings
 - **In-app diagnostics** — Software → Problem reporting copies a sanitized support bundle (versions, account setup, failure log; never keys or quota payloads) to the clipboard
-- **Provider-ready** — quota sources sit behind an `IQuotaClient` abstraction (`QuotaProviders` factory); GLM Coding Plan is the first implementation
+- **GLM, Codex and Claude in one widget** — GLM Coding Plan via API key; OpenAI Codex and Claude (Pro/Max) via your local CLI login (`~/.codex`, `~/.claude` — read fresh on every refresh, no tokens stored by BrainFuel)
 - **Verifiable releases** — official builds include `SHA256SUMS` and GitHub Artifact Attestations
 - **Light / Dark / System theme** — with adjustable card opacity
 - **Bilingual UI** — Chinese / English

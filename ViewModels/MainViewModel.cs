@@ -131,7 +131,12 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
 
     private async Task RefreshAccount(AccountState state)
     {
-        var key = SettingsService.GetKey(state.Config.Id);
+        // Key-based providers resolve from the keyring; CLI-login providers
+        // (Codex/Claude) read their OAuth token fresh from the local install.
+        bool keyBased = state.Config.Provider is not ("codex" or "claude");
+        var key = keyBased
+            ? SettingsService.GetKey(state.Config.Id)
+            : LocalCliCredentials.ReadToken(state.Config.Provider);
         if (string.IsNullOrWhiteSpace(key))
         {
             state.Last = null;

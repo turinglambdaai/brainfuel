@@ -20,10 +20,13 @@ public static class QuotaProviders
     public const string DefaultProvider = "glm";
 
     /// <summary>Provider ids the UI may offer; unknown ids fall back to GLM.</summary>
-    public static readonly IReadOnlyList<string> Known = new[] { "glm" };
+    public static readonly IReadOnlyList<string> Known = new[] { "glm", "codex", "claude" };
 
     public static IQuotaClient Create(string? providerId, string baseDomain, string apiKey, string debugPath) =>
-        providerId is null || providerId == DefaultProvider
-            ? new GlmUsageClient(baseDomain, apiKey, debugPath)
-            : new GlmUsageClient(baseDomain, apiKey, debugPath); // future: dispatch by id
+        providerId switch
+        {
+            "codex" => new CodexQuotaClient(),
+            "claude" => new ClaudeQuotaClient(),
+            _ => new GlmUsageClient(baseDomain, apiKey, debugPath),
+        };
 }

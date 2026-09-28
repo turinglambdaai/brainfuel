@@ -305,3 +305,121 @@ public sealed class GlmUsageClientTests
         }
     }
 }
+
+// ---- Codex / Claude providers (response replays) ----
+
+public sealed class CodexQuotaClientTests
+{
+    // Replay of a real Plus-account response captured 2026-09 (5h window
+    // exhausted, weekly at 26%).
+    private const string CodexBody = """
+        {"plan_type":"plus","rate_limit":{"allowed":false,"limit_reached":true,
+         "primary_window":{"used_percent":100,"limit_window_seconds":18000,"reset_after_seconds":1840,"reset_at":1790588083},
+         "secondary_window":{"used_percent":26,"limit_window_seconds":604800,"reset_after_seconds":480812,"reset_at":1791067056}}}
+        """;
+
+    private static HttpResponseMessage Json(string body) =>
+        new(HttpStatusCode.OK) { Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json") };
+
+    private static UsageFailureKind KindOf(Func<Task> act, out UsageRequestException thrown)
+    {
+        thrown = Assert.Throws<UsageRequestException>(() => act().GetAwaiter().GetResult());
+        return thrown.Kind;
+    }
+
+    [Fact]
+    public async Task Codex_MapsPrimaryAndSecondaryWindows()
+    {
+        var stub = new Stub(() => Json(CodexBody));
+        using var client = new CodexQuotaClient(stub, () => "test-token");
+        var snap = await client.GetUsageAsync();
+        Assert.True(snap.HasHourly);
+        Assert.Equal(100, snap.HourlyUsedPct, 2);
+        Assert.True(snap.HasWeekly);
+        Assert.Equal(26, snap.WeeklyUsedPct, 2);
+        Assert.Equal("plus", snap.PlanLevel);
+        Assert.NotNull(snap.HourlyResetAt);
+        Assert.Equal(DateTimeOffset.FromUnixTimeSeconds(1791067056), snap.WeeklyResetAt);
+
+        // Regression for the wrong-send bug: the auth header must actually be
+        // on the outgoing request, not left on a request that was never sent.
+        Assert.NotNull(stub.LastRequest?.Headers.Authorization);
+        Assert.Equal("Bearer test-token",
+            stub.LastRequest.Headers.Authorization!.Scheme + " test-token");
+    }
+
+    [Fact]
+    public async Task Codex_401_IsAuthentication()
+    {
+        var handler = new Stub(() => new HttpResponseMessage(HttpStatusCode.Unauthorized));
+        using var client = new CodexQuotaClient(handler, () => "test-token");
+        var kind = KindOf(() => client.GetUsageAsync(), out var ex);
+        Assert.Equal(UsageFailureKind.Authentication, kind);
+    }
+
+    [Fact]
+    public async Task Codex_NoWindows_IsNoCodingPlan()
+    {
+        var handler = new Stub(() => Json("{\"plan_type\":\"free\",\"rate_limit\":{}}"));
+        using var client = new CodexQuotaClient(handler, () => "test-token");
+        var kind = KindOf(() => client.GetUsageAsync(), out _);
+        Assert.Equal(UsageFailureKind.NoCodingPlan, kind);
+    }
+
+    private sealed class Stub : HttpMessageHandler
+    {
+        private readonly Func<HttpResponseMessage> _respond;
+        public HttpRequestMessage? LastRequest;
+        public Stub(Func<HttpResponseMessage> respond) => _respond = respond;
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage r, CancellationToken ct)
+        {
+            LastRequest = r;
+            return Task.FromResult(_respond());
+        }
+    }
+}
+
+public sealed class ClaudeQuotaClientTests
+{
+    // Shape documented by the community (Claude Code /usage data source).
+    private const string ClaudeBody = """
+        {"five_hour":{"utilization":33.0,"resets_at":"2026-04-11T07:00:00.528743+00:00"},
+         "seven_day":{"utilization":13.0,"resets_at":"2026-04-17T00:59:59.951713+00:00"},
+         "seven_day_opus":null,
+         "seven_day_sonnet":{"utilization":1.0,"resets_at":"2026-04-16T03:00:00.951719+00:00"},
+         "extra_usage":{"is_enabled":false,"monthly_limit":null,"utilization":null}}
+        """;
+
+    private static HttpResponseMessage Json(string body) =>
+        new(HttpStatusCode.OK) { Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json") };
+
+    [Fact]
+    public async Task Claude_MapsFiveHourAndWeekly()
+    {
+        var handler = new Stub(() => Json(ClaudeBody));
+        using var client = new ClaudeQuotaClient(handler, () => "test-token");
+        var snap = await client.GetUsageAsync();
+        Assert.True(snap.HasHourly);
+        Assert.Equal(33, snap.HourlyUsedPct, 2);
+        Assert.True(snap.HasWeekly);
+        Assert.Equal(13, snap.WeeklyUsedPct, 2);
+        Assert.NotNull(snap.HourlyResetAt);
+    }
+
+    [Fact]
+    public async Task Claude_401_IsAuthentication()
+    {
+        var handler = new Stub(() => new HttpResponseMessage(HttpStatusCode.Unauthorized));
+        using var client = new ClaudeQuotaClient(handler, () => "test-token");
+        var ex = await Assert.ThrowsAsync<UsageRequestException>(() => client.GetUsageAsync());
+        Assert.Equal(UsageFailureKind.Authentication, ex.Kind);
+    }
+
+    private sealed class Stub : HttpMessageHandler
+    {
+        private readonly Func<HttpResponseMessage> _respond;
+        public Stub(Func<HttpResponseMessage> respond) => _respond = respond;
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage r, CancellationToken ct)
+            => Task.FromResult(_respond());
+    }
+}
