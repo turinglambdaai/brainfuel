@@ -16,6 +16,29 @@
         WindowStartupLocation="Manual">
 
     <Window.Resources>
+        <!-- One application menu, opened from the ⋯ button of either card size.
+             MenuFlyout (not ContextMenu) because ContextMenu.Open refuses any
+             control other than the one it is attached to. -->
+        <MenuFlyout x:Key="CardMenuFlyout" Placement="BottomEdgeAlignedRight">
+            <MenuItem Header="{DynamicResource MenuDetail}" Click="Detail_Click"/>
+            <MenuItem Header="{DynamicResource MenuRefresh}" Click="Refresh_Click"/>
+            <MenuItem x:Name="AccountsMenuItem" Header="{DynamicResource MenuAccounts}"/>
+            <MenuItem Header="{DynamicResource MenuSettings}" Click="Settings_Click"/>
+            <MenuItem x:Name="UpdateMenuItem" Header="{DynamicResource MenuCheckUpdates}" Click="Update_Click"/>
+            <Separator/>
+            <MenuItem x:Name="TopmostMenuItem" Click="ToggleTopmost_Click"/>
+            <MenuItem x:Name="MiniMenuItem" Header="{DynamicResource MenuMiniMode}" ToggleType="CheckBox" Click="ToggleMini_Click"/>
+            <MenuItem x:Name="MoveNextDisplayMenuItem" Header="{DynamicResource MenuMoveNextDisplay}" Click="MoveNextDisplay_Click"/>
+            <MenuItem Header="{DynamicResource MenuMovePrimary}" Click="MovePrimary_Click"/>
+            <Separator/>
+            <MenuItem x:Name="AboutMenuItem" Header="About BrainFuel…" Click="About_Click"/>
+            <Separator/>
+            <MenuItem Header="{DynamicResource MenuHide}" Click="Hide_Click"/>
+            <MenuItem Header="{DynamicResource MenuQuit}" Click="Quit_Click"/>
+        </MenuFlyout>
+    </Window.Resources>
+
+    <Window.Resources>
         <!-- L1 detail panel: double-click the card (or ⋯ → Details) to open -->
         <Flyout x:Key="DetailFlyout">
             <Border Width="302" Padding="18,16" CornerRadius="14"
@@ -123,8 +146,8 @@
         <Style Selector="Button.miniMenu">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="Padding" Value="2"/>
-            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="CornerRadius" Value="8"/>
             <Setter Property="Opacity" Value="0.45"/>
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
@@ -165,25 +188,6 @@
                         <Button x:Name="MenuButton" Grid.Column="1" Classes="ghost"
                                 Click="OpenMenu_Click" ToolTip.Tip="{DynamicResource MenuMoreTip}"
                                 VerticalAlignment="Top">
-                            <Button.ContextMenu>
-                                <ContextMenu x:Name="CardMenu">
-                                    <MenuItem Header="{DynamicResource MenuDetail}" Click="Detail_Click"/>
-                                    <MenuItem Header="{DynamicResource MenuRefresh}" Click="Refresh_Click"/>
-                                    <MenuItem x:Name="AccountsMenuItem" Header="{DynamicResource MenuAccounts}"/>
-                                    <MenuItem Header="{DynamicResource MenuSettings}" Click="Settings_Click"/>
-                                    <MenuItem x:Name="UpdateMenuItem" Header="{DynamicResource MenuCheckUpdates}" Click="Update_Click"/>
-                                    <Separator/>
-                                    <MenuItem x:Name="TopmostMenuItem" Click="ToggleTopmost_Click"/>
-                                    <MenuItem x:Name="MiniMenuItem" Header="{DynamicResource MenuMiniMode}" ToggleType="CheckBox" Click="ToggleMini_Click"/>
-                                    <MenuItem x:Name="MoveNextDisplayMenuItem" Header="{DynamicResource MenuMoveNextDisplay}" Click="MoveNextDisplay_Click"/>
-                                    <MenuItem Header="{DynamicResource MenuMovePrimary}" Click="MovePrimary_Click"/>
-                                    <Separator/>
-                                    <MenuItem x:Name="AboutMenuItem" Header="About BrainFuel…" Click="About_Click"/>
-                                    <Separator/>
-                                    <MenuItem Header="{DynamicResource MenuHide}" Click="Hide_Click"/>
-                                    <MenuItem Header="{DynamicResource MenuQuit}" Click="Quit_Click"/>
-                                </ContextMenu>
-                            </Button.ContextMenu>
                             <TextBlock Text="⋯" FontSize="18" LineHeight="16"
                                        Foreground="{DynamicResource TextSecondary}"/>
                         </Button>
@@ -243,17 +247,11 @@
                 </Grid>
             </Panel>
 
-            <!-- Mini card: one ring for the window closer to exhaustion (double-click toggles back) -->
+            <!-- Mini card: one ring for the window closer to exhaustion.
+                 The ⋯ button is an overlay pinned into the top-right corner. -->
             <Panel x:Name="MiniLayout" IsVisible="False">
-                <Grid Margin="10" RowDefinitions="Auto,*,Auto">
-                    <Button x:Name="MiniMenuButton" Grid.Row="0" Classes="miniMenu"
-                            HorizontalAlignment="Right" VerticalAlignment="Top"
-                            Click="OpenMenu_Click" ToolTip.Tip="{DynamicResource MenuMoreTip}">
-                        <TextBlock Text="⋯" FontSize="13" LineHeight="12"
-                                   Foreground="{DynamicResource TextSecondary}"/>
-                    </Button>
-
-                    <Panel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Grid Margin="8" RowDefinitions="*,Auto">
+                    <Panel Grid.Row="0" HorizontalAlignment="Center" VerticalAlignment="Center">
                         <ctl:UsageRing x:Name="MiniRing"
                                        Width="66" Height="66"
                                        TrackBrush="{DynamicResource RingTrack}"
@@ -266,10 +264,18 @@
                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Panel>
 
-                    <TextBlock Grid.Row="2" Text="{Binding MiniLabelText}" FontSize="10"
+                    <TextBlock Grid.Row="1" Text="{Binding MiniLabelText}" FontSize="10"
                                Foreground="{DynamicResource TextMuted}"
                                HorizontalAlignment="Center"/>
                 </Grid>
+
+                <Button x:Name="MiniMenuButton" Classes="miniMenu" Width="24" Height="24"
+                        HorizontalAlignment="Right" VerticalAlignment="Top" Margin="5"
+                        Click="OpenMenu_Click" ToolTip.Tip="{DynamicResource MenuMoreTip}">
+                    <!-- The ⋯ glyph sits low in its line box; lift it to optically center. -->
+                    <TextBlock Text="⋯" FontSize="14" Margin="0,-3,0,0"
+                               Foreground="{DynamicResource TextSecondary}"/>
+                </Button>
             </Panel>
         </Grid>
     </Border>

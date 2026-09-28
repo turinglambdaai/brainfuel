@@ -1,6 +1,7 @@
 using Avalonia;
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 using BrainFuel.Services;
 using Velopack;
 
@@ -29,6 +30,16 @@ class Program
             SingleInstanceActivation.ActivateRunningInstance();
             return;
         }
+
+        // Crash telemetry for a resident widget: everything lands in
+        // brainfuel.log so "it just disappeared" becomes diagnosable.
+        AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+            AppLog.Error($"unhandled{(e.IsTerminating ? " (terminating)" : "")}: {e.ExceptionObject}");
+        TaskScheduler.UnobservedTaskException += (_, e) =>
+        {
+            AppLog.Error($"unobserved task: {e.Exception}");
+            e.SetObserved();
+        };
 
         try
         {
