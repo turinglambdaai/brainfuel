@@ -24,6 +24,15 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        // A resident widget must not die silently on a one-off UI fault: log
+        // the full exception and keep running. Without this, crashes (e.g. the
+        // mini-card menu) vanished without a trace.
+        Dispatcher.UIThread.UnhandledException += (_, e) =>
+        {
+            AppLog.Error($"ui thread: {e.Exception}");
+            e.Handled = true;
+        };
+
         Settings = SettingsService.Load();
         ApplyTheme(Settings.ThemeMode);
         Strings.ApplyLanguage(Settings.Language);

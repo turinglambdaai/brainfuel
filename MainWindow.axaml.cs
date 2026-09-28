@@ -166,19 +166,17 @@ public partial class MainWindow : Window
         await (_vm?.RefreshAsync() ?? System.Threading.Tasks.Task.CompletedTask);
     }
 
+    private MenuFlyout? _cardMenu;
+
     private void OpenMenu_Click(object? sender, RoutedEventArgs e)
     {
         RefreshMenuState();
 
         // The application menu belongs only to the explicit three-dot button
-        // (standard card or mini card). The card itself deliberately has no
-        // ContextMenu, so there is only one discoverable app menu.
+        // (standard card or mini card). MenuFlyout.ShowAt accepts whichever
+        // button was clicked; ContextMenu.Open would throw for the mini one.
         if (sender is Control target)
-        {
-            CardMenu.PlacementTarget = target;
-            CardMenu.Placement = PlacementMode.BottomEdgeAlignedRight;
-            CardMenu.Open(target);
-        }
+            (_cardMenu ??= (MenuFlyout)Resources["CardMenuFlyout"]).ShowAt(target);
         e.Handled = true;
     }
 
