@@ -121,7 +121,7 @@ MSI 面向更喜欢传统 Windows Installer 流程的用户或管理员，包含
 
 ### SmartScreen 与文件验证
 
-BrainFuel 是免费开源项目，目前**不购买商业 Authenticode 代码签名证书**，因此 Windows 仍可能显示 SmartScreen 或“未知发布者”。
+BrainFuel 是免费开源项目，目前**不购买商业 Authenticode 代码签名证书**，因此 Windows 仍可能显示 SmartScreen 或“未知发布者”。 发布流水线已接入 Azure Artifact Signing（Trusted Signing）：按 [`docs/WINDOWS_SIGNING.md`](docs/WINDOWS_SIGNING.md) 配置六个 `AZURE_*` 仓库变量后，后续每个 Release 都会自动切换为 Authenticode 签名产物，无需其他改动。
 
 每个正式 Release 都包含 `SHA256SUMS`：
 

@@ -5,10 +5,16 @@
 # - Setup shows a lightweight BrainFuel-branded splash instead of the bare default UI.
 # - An MSI is also produced for users/admins who prefer a conventional installer wizard.
 # - Installed builds stay multi-file so Velopack delta packages remain small.
+#
+# Phases: 'all' (default) publishes and packs in one go — local runs and CI
+# without signing. 'publish' / 'pack' split the pipeline so CI can sign the
+# application binaries (Authenticode) between the two.
 
 param(
     [string]$Version,
-    [switch]$DownloadPrevious
+    [switch]$DownloadPrevious,
+    [ValidateSet('all', 'publish', 'pack')]
+    [string]$Phase = 'all'
 )
 
 $ErrorActionPreference = "Stop"
@@ -88,9 +94,11 @@ Write-Host "== BrainFuel $Version Velopack package ($Rid) =="
 dotnet tool restore
 if ($LASTEXITCODE -ne 0) { throw "dotnet tool restore failed" }
 
-if (Test-Path $PublishDir) { Remove-Item $PublishDir -Recurse -Force }
+if ($Phase -in @('all', 'publish')) {
+    if (Test-Path $PublishDir) { Remove-Item $PublishDir -Recurse -Force }
+    New-Item -ItemType Directory -Path $PublishDir -Force | Out-Null
+}
 if (Test-Path $GeneratedDir) { Remove-Item $GeneratedDir -Recurse -Force }
-New-Item -ItemType Directory -Path $PublishDir -Force | Out-Null
 New-Item -ItemType Directory -Path $FeedDir -Force | Out-Null
 New-Item -ItemType Directory -Path $GeneratedDir -Force | Out-Null
 
@@ -100,80 +108,87 @@ Copy-Item (Join-Path $Root "LICENSE") $LicensePath -Force
 # Multi-file publishing is deliberate: a small app change then touches only a
 # few files, making Velopack delta packages substantially smaller than a full
 # self-contained single-file executable.
-dotnet publish BrainFuel.csproj -c Release -r $Rid --self-contained true `
-    -p:Version=$Version `
-    -p:PublishSingleFile=false `
-    -p:PublishTrimmed=false `
-    -o $PublishDir
-if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed" }
-
-if ($DownloadPrevious) {
-    Write-Host "== Downloading previous Velopack release for delta generation =="
-    $downloadArgs = @(
-        "tool", "run", "vpk", "--", "download", "github",
-        "--repoUrl", $RepoUrl,
-        "--outputDir", $FeedDir,
-        "--channel", $Channel
-    )
-    if (-not [string]::IsNullOrWhiteSpace($env:GITHUB_TOKEN)) {
-        $downloadArgs += @("--token", $env:GITHUB_TOKEN)
-    }
-
-    & dotnet @downloadArgs
-    if ($LASTEXITCODE -ne 0) {
-        Write-Warning "No previous Velopack feed could be downloaded; continuing with a full package."
-    }
+if ($Phase -in @('all', 'publish')) {
+    dotnet publish BrainFuel.csproj -c Release -r $Rid --self-contained true `
+        -p:Version=$Version `
+        -p:PublishSingleFile=false `
+        -p:PublishTrimmed=false `
+        -o $PublishDir
+    if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed" }
 }
 
-Write-Host "== Packaging branded Setup, optional MSI, full package, delta and update feed =="
-$packArgs = @(
-    "tool", "run", "vpk", "--", "pack",
-    "--packId", "BrainFuel",
-    "--packVersion", $Version,
-    "--packDir", $PublishDir,
-    "--mainExe", "BrainFuel.exe",
-    "--packTitle", "BrainFuel",
-    "--packAuthors", "TuringLambdaAI",
-    "--outputDir", $FeedDir,
-    "--runtime", $Rid,
-    "--channel", $Channel,
-    "--icon", (Join-Path $Root "Assets\tray.ico"),
-    "--splashImage", $SplashPath,
-    "--shortcuts", "StartMenuRoot",
-    "--noPortable", "true",
-    "--msi",
-    "--instLocation", "PerUser",
-    "--instWelcome", (Join-Path $InstallerDir "welcome.md"),
-    "--instLicense", $LicensePath,
-    "--instConclusion", (Join-Path $InstallerDir "conclusion.md")
-)
-& dotnet @packArgs
-if ($LASTEXITCODE -ne 0) { throw "vpk pack failed" }
+if ($Phase -in @('all', 'pack')) {
+    if (-not (Test-Path (Join-Path $PublishDir "BrainFuel.exe"))) {
+        throw "Pack phase needs an existing publish payload at $PublishDir — run with -Phase publish (or -Phase all) first."
+    }
+    if ($DownloadPrevious) {
+        Write-Host "== Downloading previous Velopack release for delta generation =="
+        $downloadArgs = @(
+            "tool", "run", "vpk", "--", "download", "github",
+            "--repoUrl", $RepoUrl,
+            "--outputDir", $FeedDir,
+            "--channel", $Channel
+        )
+        if (-not [string]::IsNullOrWhiteSpace($env:GITHUB_TOKEN)) {
+            $downloadArgs += @("--token", $env:GITHUB_TOKEN)
+        }
 
-if (Test-Path $DistDir) { Remove-Item $DistDir -Recurse -Force }
-New-Item -ItemType Directory -Path $DistDir -Force | Out-Null
+        & dotnet @downloadArgs
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "No previous Velopack feed could be downloaded; continuing with a full package."
+        }
+    }
 
-$full = Get-ChildItem $FeedDir -File | Where-Object { $_.Name -like "*-$Version-full.nupkg" } | Select-Object -First 1
-if (-not $full) { throw "Velopack full package for $Version was not created" }
-Copy-Item $full.FullName $DistDir
+    Write-Host "== Packaging branded Setup, optional MSI, full package, delta and update feed =="
+    $packArgs = @(
+        "tool", "run", "vpk", "--", "pack",
+        "--packId", "BrainFuel",
+        "--packVersion", $Version,
+        "--packDir", $PublishDir,
+        "--mainExe", "BrainFuel.exe",
+        "--packTitle", "BrainFuel",
+        "--packAuthors", "TuringLambdaAI",
+        "--outputDir", $FeedDir,
+        "--runtime", $Rid,
+        "--channel", $Channel,
+        "--icon", (Join-Path $Root "Assets\tray.ico"),
+        "--splashImage", $SplashPath,
+        "--shortcuts", "StartMenuRoot",
+        "--noPortable", "true",
+        "--msi",
+        "--instLocation", "PerUser",
+        "--instWelcome", (Join-Path $InstallerDir "welcome.md"),
+        "--instLicense", $LicensePath,
+        "--instConclusion", (Join-Path $InstallerDir "conclusion.md")
+    )
+    & dotnet @packArgs
+    if ($LASTEXITCODE -ne 0) { throw "vpk pack failed" }
 
-$delta = Get-ChildItem $FeedDir -File | Where-Object { $_.Name -like "*-$Version-delta.nupkg" } | Select-Object -First 1
-if ($delta) { Copy-Item $delta.FullName $DistDir }
+    if (Test-Path $DistDir) { Remove-Item $DistDir -Recurse -Force }
+    New-Item -ItemType Directory -Path $DistDir -Force | Out-Null
 
-$setup = Get-ChildItem $FeedDir -File -Filter "*-Setup.exe" | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
-if (-not $setup) { throw "Velopack Setup.exe was not created" }
-Copy-Item $setup.FullName (Join-Path $DistDir "BrainFuel-win-Setup.exe")
+    $full = Get-ChildItem $FeedDir -File | Where-Object { $_.Name -like "*-$Version-full.nupkg" } | Select-Object -First 1
+    if (-not $full) { throw "Velopack full package for $Version was not created" }
+    Copy-Item $full.FullName $DistDir
 
-$msi = Get-ChildItem $FeedDir -File -Filter "*.msi" | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
-if (-not $msi) { throw "Velopack MSI was not created" }
-Copy-Item $msi.FullName (Join-Path $DistDir "BrainFuel-win-Setup.msi")
+    $delta = Get-ChildItem $FeedDir -File | Where-Object { $_.Name -like "*-$Version-delta.nupkg" } | Select-Object -First 1
+    if ($delta) { Copy-Item $delta.FullName $DistDir }
 
-$feed = Join-Path $FeedDir "releases.$Channel.json"
-if (-not (Test-Path $feed)) { throw "Expected update feed $feed was not created" }
-Copy-Item $feed $DistDir
+    $setup = Get-ChildItem $FeedDir -File -Filter "*-Setup.exe" | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
+    if (-not $setup) { throw "Velopack Setup.exe was not created" }
+    Copy-Item $setup.FullName (Join-Path $DistDir "BrainFuel-win-Setup.exe")
 
-Write-Host ""
-Write-Host "Done. Release assets:"
-Get-ChildItem $DistDir -File | ForEach-Object {
-    Write-Host ("  {0} ({1:N1} MB)" -f $_.Name, ($_.Length / 1MB))
+    $msi = Get-ChildItem $FeedDir -File -Filter "*.msi" | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
+    if (-not $msi) { throw "Velopack MSI was not created" }
+    Copy-Item $msi.FullName (Join-Path $DistDir "BrainFuel-win-Setup.msi")
+
+    $feed = Join-Path $FeedDir "releases.$Channel.json"
+    if (-not (Test-Path $feed)) { throw "Expected update feed $feed was not created" }
+    Copy-Item $feed $DistDir
+
+    Write-Host ""
+    Write-Host "Done. Release assets:"
+    Get-ChildItem $DistDir -File | ForEach-Object {
+        Write-Host ("  {0} ({1:N1} MB)" -f $_.Name, ($_.Length / 1MB))
+    }
 }

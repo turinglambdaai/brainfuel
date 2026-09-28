@@ -5,7 +5,11 @@ name: release
 # - Windows gets a branded one-click Setup, an optional MSI, full/delta update packages and feed;
 # - every binary artifact receives a GitHub/Sigstore build-provenance attestation;
 # - the final release contains a verified SHA256SUMS manifest;
-# - one final job publishes the GitHub Release only after all verification passes.
+# - one final job publishes the GitHub Release only after all verification passes;
+# - nothing is packaged before the test suite passes on Linux and Windows;
+# - Windows binaries are Authenticode-signed via Azure Artifact Signing when the
+#   six AZURE_* repository variables are configured (see docs/WINDOWS_SIGNING.md),
+#   and ship unsigned with checksums otherwise.
 on:
   workflow_dispatch:
     inputs:
@@ -64,8 +68,24 @@ jobs:
           echo "publish=$publish" >> "$GITHUB_OUTPUT"
           echo "Release version: $version; publish: $publish"
 
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build
+        run: dotnet build BrainFuel.Tests/BrainFuel.Tests.csproj -c Release
+      - name: Test
+        run: dotnet test BrainFuel.Tests/BrainFuel.Tests.csproj -c Release --no-build
+
   portable:
-    needs: prepare
+    needs: [prepare, test]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -109,18 +129,84 @@ jobs:
           if-no-files-found: error
 
   windows-updater:
-    needs: prepare
+    needs: [prepare, test]
     runs-on: windows-latest
     permissions:
       contents: read
       id-token: write
       attestations: write
+    env:
+      AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      ARTIFACT_SIGNING_ENDPOINT: ${{ vars.AZURE_ARTIFACT_SIGNING_ENDPOINT }}
+      ARTIFACT_SIGNING_ACCOUNT: ${{ vars.AZURE_ARTIFACT_SIGNING_ACCOUNT }}
+      ARTIFACT_SIGNING_PROFILE: ${{ vars.AZURE_ARTIFACT_SIGNING_PROFILE }}
     steps:
       - uses: actions/checkout@v4
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+      - name: Resolve Windows signing mode
+        id: signing-mode
+        shell: pwsh
+        run: |
+          $required = @(
+            $env:AZURE_CLIENT_ID,
+            $env:AZURE_TENANT_ID,
+            $env:AZURE_SUBSCRIPTION_ID,
+            $env:ARTIFACT_SIGNING_ENDPOINT,
+            $env:ARTIFACT_SIGNING_ACCOUNT,
+            $env:ARTIFACT_SIGNING_PROFILE
+          )
+          $present = @($required | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }).Count
+          if ($present -eq 0) {
+            "enabled=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+            Write-Warning 'Azure Artifact Signing is not configured. Publishing unsigned Windows binaries with checksums and attestations.'
+          } elseif ($present -ne $required.Count) {
+            throw 'Azure Artifact Signing is only partially configured. Configure all six repository variables or remove them all.'
+          } else {
+            "enabled=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+            Write-Host 'Azure Artifact Signing configuration detected; Windows binaries will be signed.'
+          }
+      - name: Publish multi-file payload for the pack phase
+        shell: pwsh
+        env:
+          BUILD_VERSION: ${{ needs.prepare.outputs.version }}
+        run: ./installer/build-velopack.ps1 -Version $env:BUILD_VERSION -Phase publish
+      - name: Azure login with GitHub OIDC
+        if: steps.signing-mode.outputs.enabled == 'true'
+        uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Sign BrainFuel.exe with Azure Artifact Signing
+        if: steps.signing-mode.outputs.enabled == 'true'
+        uses: azure/artifact-signing-action@v2
+        with:
+          endpoint: ${{ vars.AZURE_ARTIFACT_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ vars.AZURE_ARTIFACT_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ vars.AZURE_ARTIFACT_SIGNING_PROFILE }}
+          files: ${{ github.workspace }}\publish\velopack-win-x64\BrainFuel.exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+          description: BrainFuel
+          description-url: https://brainfuel.jrtx.site/
+      - name: Verify application Authenticode signature
+        if: steps.signing-mode.outputs.enabled == 'true'
+        shell: pwsh
+        run: |
+          $path = Join-Path $pwd 'publish\velopack-win-x64\BrainFuel.exe'
+          $signature = Get-AuthenticodeSignature $path
+          if ($signature.Status -ne 'Valid') {
+            throw "BrainFuel.exe Authenticode signature is not valid. Status: $($signature.Status); Message: $($signature.StatusMessage)"
+          }
+          if ($null -eq $signature.SignerCertificate) {
+            throw 'BrainFuel.exe has no signer certificate after signing.'
+          }
       - name: Build Velopack installer and update feed
         shell: pwsh
         env:
@@ -129,9 +215,49 @@ jobs:
           PUBLISH_RELEASE: ${{ needs.prepare.outputs.publish }}
         run: |
           if ($env:PUBLISH_RELEASE -eq 'true') {
-            ./installer/build-velopack.ps1 -Version $env:BUILD_VERSION -DownloadPrevious
+            ./installer/build-velopack.ps1 -Version $env:BUILD_VERSION -Phase pack -DownloadPrevious
           } else {
-            ./installer/build-velopack.ps1 -Version $env:BUILD_VERSION
+            ./installer/build-velopack.ps1 -Version $env:BUILD_VERSION -Phase pack
+          }
+      - name: Sign Setup with Azure Artifact Signing
+        if: steps.signing-mode.outputs.enabled == 'true'
+        uses: azure/artifact-signing-action@v2
+        with:
+          endpoint: ${{ vars.AZURE_ARTIFACT_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ vars.AZURE_ARTIFACT_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ vars.AZURE_ARTIFACT_SIGNING_PROFILE }}
+          files: ${{ github.workspace }}\dist\velopack\BrainFuel-win-Setup.exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+          description: BrainFuel
+          description-url: https://brainfuel.jrtx.site/
+      - name: Sign MSI with Azure Artifact Signing
+        if: steps.signing-mode.outputs.enabled == 'true'
+        uses: azure/artifact-signing-action@v2
+        with:
+          endpoint: ${{ vars.AZURE_ARTIFACT_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ vars.AZURE_ARTIFACT_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ vars.AZURE_ARTIFACT_SIGNING_PROFILE }}
+          files: ${{ github.workspace }}\dist\velopack\BrainFuel-win-Setup.msi
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+          description: BrainFuel
+          description-url: https://brainfuel.jrtx.site/
+      - name: Verify installer Authenticode signatures
+        if: steps.signing-mode.outputs.enabled == 'true'
+        shell: pwsh
+        run: |
+          foreach ($name in @('BrainFuel-win-Setup.exe', 'BrainFuel-win-Setup.msi')) {
+            $path = Join-Path $pwd "dist\velopack\$name"
+            $signature = Get-AuthenticodeSignature $path
+            if ($signature.Status -ne 'Valid') {
+              throw "$name Authenticode signature is not valid. Status: $($signature.Status); Message: $($signature.StatusMessage)"
+            }
+            if ($null -eq $signature.SignerCertificate) {
+              throw "$name has no signer certificate after signing."
+            }
           }
       - name: Verify Windows release artifacts
         shell: pwsh

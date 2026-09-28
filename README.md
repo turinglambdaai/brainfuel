@@ -107,7 +107,7 @@ The MSI is intended for users or administrators who prefer a conventional Window
 
 ### SmartScreen and verification
 
-BrainFuel is free and open source and currently does **not** purchase a commercial Authenticode certificate. Windows may therefore show SmartScreen or **Unknown publisher** warnings.
+BrainFuel is free and open source and currently does **not** purchase a commercial Authenticode certificate. Windows may therefore show SmartScreen or **Unknown publisher** warnings. The release pipeline is wired for Azure Artifact Signing (Trusted Signing): configuring the six `AZURE_*` repository variables documented in [`docs/WINDOWS_SIGNING.md`](docs/WINDOWS_SIGNING.md) switches every future release to Authenticode-signed binaries with no other change.
 
 Every official Release includes `SHA256SUMS`:
 
