@@ -147,10 +147,12 @@ MSI、Portable ZIP 与 Velopack 包同样可以验证。Artifact Attestation 用
 | `BrainFuel-win-Setup.exe` | **Windows 普通用户推荐** |
 | `BrainFuel-win-Setup.msi` | 传统 / 管理型 Windows 安装 |
 | `BrainFuel-windows-x64.zip` | Windows 便携版 |
+| `BrainFuel-macos-arm64.dmg` | **macOS 普通用户推荐**（拖入 Applications） |
+| `BrainFuel-macos-arm64.app.zip` | 免 DMG 的 macOS 应用包 |
 | `BrainFuel-macos-arm64.zip` | macOS 便携版 |
 | `BrainFuel-linux-x64.zip` | Linux 便携版 |
 
-便携包都是自包含版本，目标机器无需另外安装 .NET。目前 macOS 与 Linux 仍以便携包为主。
+便携包都是自包含版本，目标机器无需另外安装 .NET。macOS 的 DMG 与便携包升级方式为安装新版本；应用内自动更新适用于 Windows 安装版。
 
 ## 从源码运行
 

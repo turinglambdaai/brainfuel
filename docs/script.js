@@ -150,7 +150,7 @@ function applyLanguage(lang, persist) {
 // Falls back gracefully to the releases page if the API is unreachable.
 async function initReleaseLinks() {
     const assetMatchers = {
-        'dl-macos': name => /macos.*\.zip$/i.test(name),
+        'dl-macos': name => /macos-arm64\.dmg$/i.test(name),
         'dl-windows': name => /setup\.exe$/i.test(name),
         'dl-linux': name => /linux.*\.zip$/i.test(name),
     };

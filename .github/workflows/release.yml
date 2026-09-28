@@ -128,6 +128,43 @@ jobs:
           path: publish/BrainFuel-${{ matrix.platform }}.zip
           if-no-files-found: error
 
+  macos-native:
+    needs: [prepare, test]
+    runs-on: macos-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build app bundle and DMG
+        run: bash packaging/macos/build-native.sh "${{ needs.prepare.outputs.version }}" dist/native
+      - name: Verify DMG contents
+        run: |
+          hdiutil attach dist/native/BrainFuel-macos-arm64.dmg -mountpoint /tmp/dmg-verify -nobrowse -readonly
+          test -x /tmp/dmg-verify/BrainFuel.app/Contents/MacOS/BrainFuel
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' /tmp/dmg-verify/BrainFuel.app/Contents/Info.plist | grep -qx "${{ needs.prepare.outputs.version }}"
+          plutil -lint /tmp/dmg-verify/BrainFuel.app/Contents/Info.plist
+          hdiutil detach /tmp/dmg-verify
+      - name: Attest native macOS build provenance
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            dist/native/BrainFuel-macos-arm64.dmg
+            dist/native/BrainFuel-macos-arm64.app.zip
+      - name: Upload native macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-macos-native
+          path: |
+            dist/native/BrainFuel-macos-arm64.dmg
+            dist/native/BrainFuel-macos-arm64.app.zip
+          if-no-files-found: error
+
   windows-updater:
     needs: [prepare, test]
     runs-on: windows-latest
@@ -292,7 +329,7 @@ jobs:
 
   publish-release:
     if: needs.prepare.outputs.publish == 'true'
-    needs: [prepare, portable, windows-updater]
+    needs: [prepare, portable, macos-native, windows-updater]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -315,6 +352,8 @@ jobs:
           required=(
             "BrainFuel-windows-x64.zip"
             "BrainFuel-macos-arm64.zip"
+            "BrainFuel-macos-arm64.dmg"
+            "BrainFuel-macos-arm64.app.zip"
             "BrainFuel-linux-x64.zip"
             "BrainFuel-win-Setup.exe"
             "BrainFuel-win-Setup.msi"

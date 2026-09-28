@@ -128,15 +128,19 @@ The same mechanism applies to the MSI, portable ZIPs, and Velopack packages. Art
 
 Only download official binaries from this repository's [Releases](https://github.com/turinglambdaai/brainfuel/releases) page.
 
+Windows users can also install via winget once manifests are submitted per [docs/WINGET.md](docs/WINGET.md).
+
 | Asset | Intended use |
 |---|---|
 | `BrainFuel-win-Setup.exe` | **Recommended Windows install** |
 | `BrainFuel-win-Setup.msi` | Conventional / managed Windows installation |
 | `BrainFuel-windows-x64.zip` | Windows portable |
+| `BrainFuel-macos-arm64.dmg` | **Recommended macOS install** (drag to Applications) |
+| `BrainFuel-macos-arm64.app.zip` | macOS app bundle without the disk image |
 | `BrainFuel-macos-arm64.zip` | macOS portable |
 | `BrainFuel-linux-x64.zip` | Linux portable |
 
-Portable builds are self-contained and do not require .NET on the target machine. macOS and Linux are currently distributed as portable builds.
+Portable builds are self-contained and do not require .NET on the target machine. DMG and portable installs on macOS update by installing the newer release; the in-app updater applies to installed Windows builds.
 
 ## Quick start from source
 
