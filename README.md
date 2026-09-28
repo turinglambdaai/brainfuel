@@ -11,7 +11,7 @@ A small desktop widget for monitoring **GLM Coding Plan** quota — the 5-hour r
 BrainFuel deliberately separates concepts that should not be confused:
 
 - **Quota data** lives on the main card. The visible action is explicitly **Refresh quota**.
-- **Three information layers** — L0: the always-visible card (glance, zero interaction). L1: **double-click the card** for the detail panel (large numbers, burn rate, time-to-empty, reset times, plan level, manual refresh). L2: the ⋯ menu and Settings for configuration. No main window, no taskbar noise.
+- **Three information layers** — L0: the always-visible card (glance, zero interaction). L1: **click the card** for the detail panel (large numbers, burn rate, time-to-empty, reset times, plan level, manual refresh). L2: the ⋯ menu and Settings for configuration. No main window, no taskbar noise.
 - **Application lifecycle** lives in the top-right **⋯ app menu** and Settings: Settings, software updates, display movement, About, hide, and quit. Closing the card (X button / Alt+F4 / system menu) is also just "hide": a transient toast points at the tray, and only the explicit **Quit** ends the process — monitoring never dies with the window.
 - **Desktop behavior** is user-controlled. New installs do not force the card above every application; **Keep on top** is optional.
 
@@ -38,7 +38,7 @@ The goal is simple: glance at quota and get back to work.
 - **Quota notifications** — configurable exhaustion threshold; toasts appear on the display the card lives on
 - **System tray** — hide the widget (also via close / Alt+F4) without stopping quota polling or notifications
 - **Readable quota failures** — the card's freshness line names the failure category (bad key/platform mismatch, network, proxy, timeout, no plan…); hovering the card shows the full guidance and the log path
-- **Burn-rate intelligence** — the detail panel (double-click) shows each window's consumption speed and a projected time-to-empty; threshold notifications append the projection ("At the current burn rate, ~2 h to empty") with a bit of personality
+- **Burn-rate intelligence** — the detail panel (click the card) shows each window's consumption speed and a projected time-to-empty; threshold notifications append the projection ("At the current burn rate, ~2 h to empty") with a bit of personality
 - **Usage history graphs** — the detail panel charts the last 24 hours (5-hour window) and last 7 days (weekly quota) from local rolling history, so resets and burn cycles are visible at a glance; the 5-hour burn line adds context against the 24-hour average ("faster than the 24h average by 50%")
 - **Previous-period overlay** — each graph can draw the same window shifted one period back (dashed line): yesterday's hours beside today's, last week beside this one
 - **Urgency-aware visuals** — rings, dots and percentages shift to amber at 75% used and red at 90%, in both standard and mini cards
