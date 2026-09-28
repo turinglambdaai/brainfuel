@@ -23,9 +23,16 @@ public partial class MainWindow : Window
 
     private AppSettings? _settings;
     private MainViewModel? _vm;
-    private bool _userMoveInProgress;
     private bool _quitRequested;
     private Flyout? _detailFlyout;
+
+    // Set when the detail panel closes, so a Tapped caused by its own
+    // light-dismiss is not mistaken for "open the panel again".
+    private DateTime _flyoutDismissedAt = DateTime.MinValue;
+
+    // Position changes arrive continuously during a drag; save at most once
+    // per idle second instead of on every pixel.
+    private DispatcherTimer? _positionSaveTimer;
 
     private Flyout DetailFlyout => _detailFlyout ??= (Flyout)Resources["DetailFlyout"];
 
@@ -50,6 +57,8 @@ public partial class MainWindow : Window
 
         Screens.Changed += OnScreensChanged;
         ScalingChanged += OnScalingChanged;
+        PositionChanged += OnPositionChanged;
+        DetailFlyout.Closed += (_, _) => _flyoutDismissedAt = DateTime.Now;
         vm.PropertyChanged += OnVmPropertyChanged;
 
         vm.OnNotify = (title, msg) => Dispatcher.UIThread.Post(() =>
@@ -126,30 +135,39 @@ public partial class MainWindow : Window
             source.GetSelfAndVisualAncestors().Any(visual => visual is Button))
             return;
 
-        // Double-click opens the detail panel — the frequent "go deeper" action.
-        if (e.ClickCount >= 2)
-        {
-            ToggleDetailPanel();
-            return;
-        }
-
-        // A click while the panel is open just dismisses it (light-dismiss
-        // already closed it by now); don't start a drag underneath.
-        if (DetailFlyout.IsOpen)
-            return;
-
-        _userMoveInProgress = true;
+        // BeginMoveDrag must be called synchronously from the press. Tapped /
+        // DoubleTapped (below) carry the click gestures; a drag that ends
+        // without movement still yields a Tapped.
         BeginMoveDrag(e);
     }
 
-    private void Card_PointerReleased(object? sender, PointerReleasedEventArgs e)
+    private void Card_Tapped(object? sender, TappedEventArgs e)
     {
-        if (!_userMoveInProgress || _settings is null)
+        if (e.Source is Visual source &&
+            source.GetSelfAndVisualAncestors().Any(visual => visual is Button))
             return;
 
-        _userMoveInProgress = false;
-        WindowPlacementService.Capture(this, _settings);
-        SettingsService.Save(_settings);
+        // A tap on the open panel is its light-dismiss "close" (the flyout
+        // closes before Tapped arrives) — don't immediately reopen.
+        if (DetailFlyout.IsOpen || (DateTime.Now - _flyoutDismissedAt).TotalMilliseconds < 300)
+        {
+            _flyoutDismissedAt = DateTime.MinValue;
+            return;
+        }
+
+        ToggleDetailPanel();
+    }
+
+    private void Card_DoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (e.Source is Visual source &&
+            source.GetSelfAndVisualAncestors().Any(visual => visual is Button))
+            return;
+
+        // Undo the first tap's panel toggle, then switch size.
+        if (DetailFlyout.IsOpen)
+            DetailFlyout.Hide();
+        ToggleSizeMode();
     }
 
     private async void Refresh_Click(object? sender, RoutedEventArgs e)
@@ -199,9 +217,45 @@ public partial class MainWindow : Window
         bool mini = _settings?.SizeMode == CardSizeMode.Compact;
         StandardLayout.IsVisible = !mini;
         MiniLayout.IsVisible = mini;
-        Width = mini ? 118 : 368;
-        Height = mini ? 118 : 226;
         MiniMenuItem.IsChecked = mini;
+        EnforceCardSize();
+    }
+
+    private void OnPositionChanged(object? sender, PixelPointEventArgs e)
+    {
+        EnforceCardSize();
+
+        if (_settings is null) return;
+        WindowPlacementService.Capture(this, _settings);
+        if (_positionSaveTimer is null)
+        {
+            _positionSaveTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+            _positionSaveTimer.Tick += (_, _) =>
+            {
+                _positionSaveTimer?.Stop();
+                _positionSaveTimer = null;
+                if (_settings is not null) SettingsService.Save(_settings);
+            };
+        }
+        _positionSaveTimer.Stop();
+        _positionSaveTimer.Start();
+    }
+
+    /// <summary>
+    /// Mixed-DPI monitor setups can leave the borderless window resized after a
+    /// drag crosses screens (Windows sends DPICHANGED and the size ends up
+    /// scaled and unrecoverable). Snap back to the size for the current mode.
+    /// </summary>
+    private void EnforceCardSize()
+    {
+        bool mini = _settings?.SizeMode == CardSizeMode.Compact;
+        double w = mini ? 118 : 368;
+        double h = mini ? 118 : 226;
+        if (Math.Abs(Width - w) > 1 || Math.Abs(Height - h) > 1)
+        {
+            Width = w;
+            Height = h;
+        }
     }
 
     private void ToggleSizeMode()
