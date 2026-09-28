@@ -196,8 +196,28 @@ public sealed class GlmUsageClientTests
     {
         using var client = Client(_ => Json(200,
             "{\"data\":{\"limits\":[{\"type\":\"TIME_LIMIT\",\"number\":1,\"percentage\":0.5}]}}"), out _);
-        var kind = KindOf(() => client.GetUsageAsync().GetAwaiter().GetResult(), out _);
+        var kind = KindOf(() => client.GetUsageAsync().GetAwaiter().GetResult(), out var ex);
         Assert.Equal(UsageFailureKind.NoCodingPlan, kind);
+        // Structural summary in the message: limit types and numbers, no values.
+        Assert.Contains("TIME_LIMIT#1", ex.Message);
+    }
+
+    [Fact]
+    public void Success_EmptyLimits_StructureSaysNone()
+    {
+        using var client = Client(_ => Json(200, "{\"data\":{\"limits\":[]}}"), out _);
+        var kind = KindOf(() => client.GetUsageAsync().GetAwaiter().GetResult(), out var ex);
+        Assert.Equal(UsageFailureKind.NoCodingPlan, kind);
+        Assert.Contains("limits: none", ex.Message);
+    }
+
+    [Fact]
+    public void Success_MissingData_ListsTopLevelFields()
+    {
+        using var client = Client(_ => Json(200, "{\"foo\":1,\"bar\":true}"), out _);
+        var kind = KindOf(() => client.GetUsageAsync().GetAwaiter().GetResult(), out var ex);
+        Assert.Equal(UsageFailureKind.InvalidResponse, kind);
+        Assert.Contains("foo, bar", ex.Message);
     }
 
     [Fact]
