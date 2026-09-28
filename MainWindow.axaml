@@ -188,8 +188,12 @@
                         <Button x:Name="MenuButton" Grid.Column="1" Classes="ghost"
                                 Click="OpenMenu_Click" ToolTip.Tip="{DynamicResource MenuMoreTip}"
                                 VerticalAlignment="Top">
-                            <TextBlock Text="⋯" FontSize="18" LineHeight="16"
-                                       Foreground="{DynamicResource TextSecondary}"/>
+                            <StackPanel Orientation="Horizontal" Spacing="4"
+                                        VerticalAlignment="Center">
+                                <Ellipse Width="3.5" Height="3.5" Fill="{DynamicResource TextSecondary}"/>
+                                <Ellipse Width="3.5" Height="3.5" Fill="{DynamicResource TextSecondary}"/>
+                                <Ellipse Width="3.5" Height="3.5" Fill="{DynamicResource TextSecondary}"/>
+                            </StackPanel>
                         </Button>
                     </Grid>
 
@@ -272,9 +276,14 @@
                 <Button x:Name="MiniMenuButton" Classes="miniMenu" Width="24" Height="24"
                         HorizontalAlignment="Right" VerticalAlignment="Top" Margin="5"
                         Click="OpenMenu_Click" ToolTip.Tip="{DynamicResource MenuMoreTip}">
-                    <!-- The ⋯ glyph sits low in its line box; lift it to optically center. -->
-                    <TextBlock Text="⋯" FontSize="14" Margin="0,-3,0,0"
-                               Foreground="{DynamicResource TextSecondary}"/>
+                    <!-- Drawn dots, not the ⋯ glyph: the glyph's visible points sit
+                         off-center inside its advance box in the Inter font. -->
+                    <StackPanel Orientation="Horizontal" Spacing="3.5"
+                                HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Ellipse Width="3" Height="3" Fill="{DynamicResource TextSecondary}"/>
+                        <Ellipse Width="3" Height="3" Fill="{DynamicResource TextSecondary}"/>
+                        <Ellipse Width="3" Height="3" Fill="{DynamicResource TextSecondary}"/>
+                    </StackPanel>
                 </Button>
             </Panel>
         </Grid>
