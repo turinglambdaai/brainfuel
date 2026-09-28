@@ -112,9 +112,11 @@ public sealed class GlmUsageClient : IDisposable
 
             if (parsed?.Data is null)
             {
+                // Structural summary only (top-level field names) — enough to
+                // recognize a changed response shape without persisting payloads.
                 throw new UsageRequestException(
                     UsageFailureKind.InvalidResponse,
-                    "GLM quota response did not contain a data object",
+                    $"GLM quota response did not contain a data object (top-level fields: {TopLevelFields(body)})",
                     statusCode: resp.StatusCode);
             }
 
@@ -124,12 +126,19 @@ public sealed class GlmUsageClient : IDisposable
             // A successful Coding Plan response is expected to expose at least one
             // token quota. A successful HTTP response containing no token quota is
             // much more useful to users as "this account has no Coding Plan" than
-            // as a mysterious empty card.
+            // as a mysterious empty card. Newer plans (e.g. Lite) may simply not
+            // be covered by this endpoint yet — the structural summary in the
+            // message (limit types + numbers, no values) makes that visible in
+            // the log without persisting any payload.
             if (!snapshot.HasHourly && !snapshot.HasWeekly)
             {
+                var structure = limits.Count == 0
+                    ? "limits: none"
+                    : "limits: " + string.Join(", ", limits.Select(l =>
+                        $"{l.Type ?? "?"}#{l.Number?.ToString() ?? "-"}"));
                 throw new UsageRequestException(
                     UsageFailureKind.NoCodingPlan,
-                    "No Coding Plan token quota was present in the GLM response",
+                    $"No Coding Plan token quota was present in the GLM response ({structure})",
                     statusCode: resp.StatusCode);
             }
 
@@ -180,6 +189,20 @@ public sealed class GlmUsageClient : IDisposable
             return new UsageRequestException(UsageFailureKind.ServiceUnavailable, $"GLM service error (HTTP {code})", statusCode: statusCode);
 
         return new UsageRequestException(UsageFailureKind.ServiceUnavailable, $"Unexpected GLM response (HTTP {code})", statusCode: statusCode);
+    }
+
+    /// <summary>Top-level property names of a JSON body, for structural logs.</summary>
+    private static string TopLevelFields(string body)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            return string.Join(", ", doc.RootElement.EnumerateObject().Select(p => p.Name));
+        }
+        catch
+        {
+            return "<not json>";
+        }
     }
 
     private static UsageRequestException ClassifyTransportFailure(HttpRequestException ex)

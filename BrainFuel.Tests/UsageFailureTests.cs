@@ -23,7 +23,7 @@ public sealed class UsageFailureTests
 
     [Theory]
     [InlineData(UsageFailureKind.Authentication, false)]
-    [InlineData(UsageFailureKind.NoCodingPlan, false)]
+    [InlineData(UsageFailureKind.NoCodingPlan, true)]   // newer plans may lag behind the monitor endpoint; saving lets polling recover
     [InlineData(UsageFailureKind.Network, true)]
     [InlineData(UsageFailureKind.Timeout, true)]
     [InlineData(UsageFailureKind.Unknown, true)]

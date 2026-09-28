@@ -52,7 +52,7 @@ public static class UsageFailureText
         UsageFailureKind.InvalidResponse;
 
     public static bool AllowsSaveAnyway(UsageFailureKind kind) => kind is not
-        (UsageFailureKind.Authentication or UsageFailureKind.NoCodingPlan);
+        UsageFailureKind.Authentication;
 
     public static string Card(UsageFailureKind kind)
     {
@@ -96,8 +96,8 @@ public static class UsageFailureText
                 ? "GLM 暂时限流了这个请求。请稍后重试；当前设置可以先保存。"
                 : "GLM rate-limited the request. Try again later; you can save the current settings now.",
             UsageFailureKind.NoCodingPlan => zh
-                ? "这个账户没有检测到可用的 Coding Plan 额度。请确认该 Key 属于已开通 GLM Coding Plan 的账户。"
-                : "No usable Coding Plan quota was found for this account. Confirm that the key belongs to an account with GLM Coding Plan enabled.",
+                ? "这个账户没有检测到可用的 Coding Plan 额度。请确认该 Key 属于已开通 GLM Coding Plan 的账户；如果是刚购买的新套餐，可能是监控接口暂未覆盖，可选择保存并持续刷新观察。"
+                : "No usable Coding Plan quota was found for this account. Confirm the key belongs to an account with GLM Coding Plan enabled; for recently purchased plans the monitor endpoint may not cover them yet — you can save and keep refreshing.",
             UsageFailureKind.ServiceUnavailable => zh
                 ? "GLM 服务当前暂时异常。请稍后重试；当前设置可以先保存。"
                 : "The GLM service is temporarily unavailable. Try again later; you can save the current settings now.",
