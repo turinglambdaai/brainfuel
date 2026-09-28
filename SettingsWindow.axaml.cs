@@ -39,7 +39,6 @@ public partial class SettingsWindow : Window
 
         var version = typeof(SettingsWindow).Assembly.GetName().Version?.ToString(3) ?? "dev";
         Title = $"{Strings.Get("WinTitle")} · v{version}";
-        HeaderVersionText.Text = $"v{version}";
 
         _savedRefreshInterval = Math.Clamp(settings.RefreshIntervalMinutes, 1, 60);
         IntervalBox.Value = _savedRefreshInterval;
