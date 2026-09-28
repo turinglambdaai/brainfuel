@@ -25,9 +25,8 @@
   </Window.Styles>
 
   <Grid RowDefinitions="Auto,*,Auto">
-    <Grid Grid.Row="0" Margin="24,20,24,14" ColumnDefinitions="*,Auto">
+    <Grid Grid.Row="0" Margin="24,20,24,14" ColumnDefinitions="*">
       <StackPanel Spacing="3"><TextBlock Text="BrainFuel" FontSize="20" FontWeight="Bold"/><TextBlock Text="{DynamicResource SettingsDesc}" FontSize="12" Foreground="{DynamicResource TextSecondary}"/></StackPanel>
-      <Border Grid.Column="1" CornerRadius="9" Padding="9,5" Background="{DynamicResource HoverOverlay}" BorderBrush="{DynamicResource Separator}" BorderThickness="1" VerticalAlignment="Top"><TextBlock x:Name="HeaderVersionText" FontSize="11" Foreground="{DynamicResource TextSecondary}"/></Border>
     </Grid>
 
     <TabControl x:Name="SettingsTabs" Grid.Row="1" Margin="24,0">
@@ -103,7 +102,8 @@
         <StackPanel Spacing="12" Margin="2,14,12,12">
           <Border Classes="sectionCard"><StackPanel Spacing="12">
             <StackPanel Spacing="3"><TextBlock Text="{DynamicResource UpdateSectionTitle}" FontWeight="SemiBold"/><TextBlock Text="{DynamicResource SoftwareDesc}" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}"/></StackPanel>
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12"><StackPanel Spacing="3" VerticalAlignment="Center"><TextBlock x:Name="CurrentVersionText" FontSize="12" Foreground="{DynamicResource TextSecondary}"/><TextBlock x:Name="UpdateStatusText" FontSize="11" Foreground="{DynamicResource RingWeekly}" TextWrapping="Wrap"/></StackPanel><Button x:Name="CheckUpdateBtn" Grid.Column="1" Content="{DynamicResource BtnCheckUpdates}" Click="CheckUpdate_Click" MinWidth="128"/></Grid>
+            <StackPanel Spacing="3"><TextBlock x:Name="CurrentVersionText" FontSize="12" Foreground="{DynamicResource TextSecondary}"/><TextBlock x:Name="UpdateStatusText" FontSize="11" Foreground="{DynamicResource RingWeekly}" TextWrapping="Wrap"/></StackPanel>
+            <Button x:Name="CheckUpdateBtn" Content="{DynamicResource BtnCheckUpdates}" Click="CheckUpdate_Click" MinWidth="128" HorizontalAlignment="Right" Margin="0,6,0,0"/>
             <Button x:Name="OpenReleasesBtn" Classes="link" Click="OpenReleases_Click" HorizontalAlignment="Left"><TextBlock Text="{DynamicResource UpdateOpenDownloads}" TextDecorations="Underline" FontSize="11"/></Button>
           </StackPanel></Border>
           <Border Classes="sectionCard"><StackPanel Spacing="5"><TextBlock Text="{DynamicResource SoftwareTrustTitle}" FontWeight="SemiBold"/><TextBlock Text="{DynamicResource SoftwareTrustDesc}" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}"/></StackPanel></Border>
@@ -111,6 +111,6 @@
       </TabItem>
     </TabControl>
 
-    <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" Margin="24,12,24,20"><TextBlock x:Name="ValidateMsg" TextWrapping="Wrap" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource RingWeekly}"/><Button Grid.Column="1" Content="{DynamicResource BtnCancel}" Click="Cancel_Click" Width="104" Margin="0,0,10,0"/><Button x:Name="SaveBtn" Grid.Column="2" Content="{DynamicResource BtnSave}" Click="Save_Click" Width="112" Classes="accent"/></Grid>
+    <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" Margin="24,12,24,20"><TextBlock x:Name="ValidateMsg" TextWrapping="Wrap" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource RingWeekly}"/><Button Grid.Column="1" Content="{DynamicResource BtnCancel}" Click="Cancel_Click" MinWidth="104" Padding="16,6" Margin="0,0,10,0"/><Button x:Name="SaveBtn" Grid.Column="2" Content="{DynamicResource BtnSave}" Click="Save_Click" MinWidth="112" Padding="16,6" Classes="accent"/></Grid>
   </Grid>
 </Window>
