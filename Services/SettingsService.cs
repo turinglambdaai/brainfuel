@@ -272,10 +272,16 @@ public static class SettingsService
             ApiKeyStorageState = ApiKeyStorageState.None;
         }
 
-        // Mark accounts configured when a key for them actually resolved.
+        // Mark accounts configured: keyring keys for key-based providers,
+        // local CLI login presence for Codex/Claude (they hold no keyring
+        // entry by design - tokens are read fresh from the CLI files).
         foreach (var account in settings.Accounts)
-            if (Keyring.ContainsKey(account.Id) && Keyring[account.Id].Length > 0)
+        {
+            if (account.Provider is "codex" or "claude")
+                account.Configured = LocalCliCredentials.Exists(account.Provider);
+            else if (Keyring.ContainsKey(account.Id) && Keyring[account.Id].Length > 0)
                 account.Configured = true;
+        }
     }
 
     /// <summary>

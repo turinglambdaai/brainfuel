@@ -80,8 +80,9 @@
               <Button x:Name="RemoveAccountBtn" Grid.Column="3" Content="－" Click="RemoveAccount_Click" Width="38" VerticalAlignment="Center" ToolTip.Tip="{DynamicResource RemoveAccount}"/>
             </Grid>
             <StackPanel Spacing="5"><TextBlock Text="{DynamicResource LblAccountName}"/><TextBox x:Name="AccountNameBox" PlaceholderText="{DynamicResource AccountNamePlaceholder}"/></StackPanel>
-            <StackPanel Spacing="5"><TextBlock Text="{DynamicResource LblPlatform}"/><ComboBox x:Name="PlatformBox"><ComboBoxItem Content="{DynamicResource PlatformCn}"/><ComboBoxItem Content="{DynamicResource PlatformIntl}"/></ComboBox></StackPanel>
-            <StackPanel Spacing="5">
+            <StackPanel Spacing="5"><TextBlock Text="{DynamicResource LblPlatform}"/><ComboBox x:Name="PlatformBox" SelectionChanged="PlatformBox_SelectionChanged"><ComboBoxItem Content="{DynamicResource PlatformCn}"/><ComboBoxItem Content="{DynamicResource PlatformIntl}"/><ComboBoxItem Content="{DynamicResource PlatformCodex}"/><ComboBoxItem Content="{DynamicResource PlatformClaude}"/></ComboBox></StackPanel>
+            <TextBlock x:Name="CliLoginHint" Text="{DynamicResource CliLoginHint}" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}" IsVisible="False"/>
+            <StackPanel Spacing="5" x:Name="KeySection">
               <TextBlock Text="{DynamicResource LblApiKey}"/>
               <TextBox x:Name="KeyBox" PlaceholderText="{DynamicResource KeyPlaceholder}" PasswordChar="•"/>
               <TextBlock Text="{DynamicResource KeyHint}" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}"/>
