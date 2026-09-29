@@ -117,6 +117,14 @@ jobs:
       - name: Package portable ZIP
         working-directory: publish
         run: zip -r "BrainFuel-${{ matrix.platform }}.zip" . -x '*.pdb'
+      - name: Free disk space before Debian packaging
+        if: matrix.rid == 'linux-x64'
+        run: |
+          sudo rm -rf /usr/local/lib/android /opt/ghc /usr/share/dotnet/sdk/8.* || true
+          sudo docker image prune -af || true
+          sudo apt-get clean
+          df -h /
+
       - name: Build Debian package
         if: matrix.rid == 'linux-x64'
         run: bash packaging/linux/build-deb.sh "${{ needs.prepare.outputs.version }}" dist/deb
