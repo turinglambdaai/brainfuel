@@ -77,6 +77,9 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>Public hook for the settings dialog's ring-palette preview.</summary>
+    public void ApplySeverityColorsPublic() => ApplySeverityColors();
+
     private void ApplySeverityColors()
     {
         if (_vm is null) return;
@@ -406,8 +409,12 @@ public partial class MainWindow : Window
     public void OpenSettings()
     {
         if (_settings is null) return;
+        var sw = System.Diagnostics.Stopwatch.StartNew();
         var win = new SettingsWindow(_settings);
+        AppLog.Info($"perf: settings ctor {sw.ElapsedMilliseconds} ms");
+        sw.Restart();
         win.ShowDialog(this);
+        AppLog.Info($"perf: settings dialog closed after {sw.ElapsedMilliseconds} ms");
         win.Closed += (_, _) =>
         {
             Topmost = _settings.AlwaysOnTop;

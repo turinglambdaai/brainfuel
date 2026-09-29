@@ -35,7 +35,8 @@ The goal is simple: glance at quota and get back to work.
 - **In-app diagnostics** — Software → Problem reporting copies a sanitized support bundle (versions, account setup, failure log; never keys or quota payloads) to the clipboard
 - **GLM, Codex and Claude in one widget** — GLM Coding Plan via API key; OpenAI Codex and Claude (Pro/Max) via your local CLI login (`~/.codex`, `~/.claude` — read fresh on every refresh, no tokens stored by BrainFuel)
 - **Verifiable releases** — official builds include `SHA256SUMS` and GitHub Artifact Attestations
-- **Light / Dark / System theme** — with adjustable card opacity
+- **Light / Dark / System theme** — with adjustable card opacity (previewed live on the card while sliding)
+- **Curated ring palettes** — five hand-picked ring color sets with click-to-preview; urgency colors stay fixed
 - **Bilingual UI** — Chinese / English
 - **Start on login** — Windows registry / macOS LaunchAgent / Linux autostart
 - **Quota notifications** — configurable exhaustion threshold; toasts appear on the display the card lives on

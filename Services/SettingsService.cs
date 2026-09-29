@@ -79,6 +79,7 @@ public class AppSettings
     public CardSizeMode SizeMode { get; set; } = CardSizeMode.Standard;
     public bool HotkeyEnabled { get; set; }
     public string HotkeyCombo { get; set; } = "Ctrl+Alt+B";
+    public string RingPalette { get; set; } = "classic";
 
     [JsonIgnore]
     public AccountConfig? ActiveAccount =>
