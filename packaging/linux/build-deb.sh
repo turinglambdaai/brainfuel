@@ -65,10 +65,7 @@ cp "$root/Assets/icon.png" "$pkg/usr/share/icons/hicolor/256x256/apps/brainfuel.
 ln -s /opt/brainfuel/BrainFuel "$pkg/usr/bin/brainfuel"
 
 deb="$root/$out_dir/BrainFuel-linux-x64.deb"
-# dpkg-deb's tar|compressor pipeline dies mid-stream on hosted runners
-# (tar: stdout: write error) with gzip and zstd alike; disk is fine (99G).
-# Ship the package uncompressed until the root cause is understood.
-dpkg-deb --build -Znone --root-owner-group "$pkg" "$deb"
+dpkg-deb --build -Zgzip --root-owner-group "$pkg" "$deb"
 dpkg-deb --info "$deb" >/dev/null
 dpkg-deb --contents "$deb" | grep -q './opt/brainfuel/BrainFuel$'
 
