@@ -144,7 +144,7 @@ jobs:
 
       - name: Upload Debian package
         if: matrix.rid == 'linux-x64'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-linux-deb
           path: |
@@ -152,7 +152,7 @@ jobs:
             dist/deb/BrainFuel-linux-x64.deb.sha256
           if-no-files-found: error
       - name: Upload portable artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-portable-${{ matrix.platform }}
           path: publish/BrainFuel-${{ matrix.platform }}.zip
@@ -187,7 +187,7 @@ jobs:
             dist/native/BrainFuel-macos-arm64.dmg
             dist/native/BrainFuel-macos-arm64.app.zip
       - name: Upload native macOS artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-macos-native
           path: |
@@ -351,7 +351,7 @@ jobs:
         with:
           subject-path: dist/velopack/*
       - name: Upload updater artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-windows-updater
           path: dist/velopack/*
