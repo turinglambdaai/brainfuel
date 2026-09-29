@@ -6,7 +6,7 @@
     <DefineConstants Condition="$([MSBuild]::IsOSPlatform('Windows'))">WINDOWS</DefineConstants>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\tray.ico</ApplicationIcon>
-    <Version>0.8.1</Version>
+    <Version>0.9.0</Version>
     <Product>BrainFuel</Product>
     <Description>Desktop widget for GLM Coding Plan quota</Description>
     <Authors>TuringLambdaAI</Authors>
