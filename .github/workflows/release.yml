@@ -76,7 +76,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
       - name: Build
@@ -101,7 +101,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
       - name: Publish portable (${{ matrix.rid }})
@@ -180,7 +180,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
       - name: Build app bundle and DMG
@@ -224,7 +224,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
       - name: Resolve Windows signing mode
