@@ -65,7 +65,7 @@ cp "$root/Assets/icon.png" "$pkg/usr/share/icons/hicolor/256x256/apps/brainfuel.
 ln -s /opt/brainfuel/BrainFuel "$pkg/usr/bin/brainfuel"
 
 deb="$root/$out_dir/BrainFuel-linux-x64.deb"
-dpkg-deb --build --root-owner-group "$pkg" "$deb"
+dpkg-deb --build -Zgzip --root-owner-group "$pkg" "$deb"
 dpkg-deb --info "$deb" >/dev/null
 dpkg-deb --contents "$deb" | grep -q './opt/brainfuel/BrainFuel$'
 
