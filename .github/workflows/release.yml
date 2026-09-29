@@ -117,10 +117,40 @@ jobs:
       - name: Package portable ZIP
         working-directory: publish
         run: zip -r "BrainFuel-${{ matrix.platform }}.zip" . -x '*.pdb'
+      - name: Build Debian package
+        if: matrix.rid == 'linux-x64'
+        run: bash packaging/linux/build-deb.sh "${{ needs.prepare.outputs.version }}" dist/deb
+
+      - name: Install and remove Debian package
+        if: matrix.rid == 'linux-x64'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ./dist/deb/BrainFuel-linux-x64.deb
+          test -x /opt/brainfuel/BrainFuel
+          test -L /usr/bin/brainfuel
+          test -f /usr/share/applications/brainfuel.desktop
+          sudo apt-get remove -y brainfuel
+
       - name: Attest portable build provenance
         uses: actions/attest@v4
         with:
           subject-path: publish/BrainFuel-${{ matrix.platform }}.zip
+
+      - name: Attest Debian package
+        if: matrix.rid == 'linux-x64'
+        uses: actions/attest@v4
+        with:
+          subject-path: dist/deb/BrainFuel-linux-x64.deb
+
+      - name: Upload Debian package
+        if: matrix.rid == 'linux-x64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-linux-deb
+          path: |
+            dist/deb/BrainFuel-linux-x64.deb
+            dist/deb/BrainFuel-linux-x64.deb.sha256
+          if-no-files-found: error
       - name: Upload portable artifact
         uses: actions/upload-artifact@v4
         with:
@@ -355,6 +385,7 @@ jobs:
             "BrainFuel-macos-arm64.dmg"
             "BrainFuel-macos-arm64.app.zip"
             "BrainFuel-linux-x64.zip"
+            "BrainFuel-linux-x64.deb"
             "BrainFuel-win-Setup.exe"
             "BrainFuel-win-Setup.msi"
             "BrainFuel-${BUILD_VERSION}-full.nupkg"
