@@ -1,3 +1,4 @@
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
@@ -15,6 +16,7 @@ public partial class App : Application
 {
     public static AppSettings Settings { get; private set; } = new();
     public static MainViewModel? ViewModel { get; private set; }
+    public static MainWindow? MainView { get; private set; }
 
     private static CancellationTokenSource? _instanceServerCts;
     private static CancellationTokenSource? _updateCts;
@@ -36,6 +38,7 @@ public partial class App : Application
         Settings = SettingsService.Load();
         ApplyTheme(Settings.ThemeMode);
         Strings.ApplyLanguage(Settings.Language);
+        RingPalette.Apply(Settings.RingPalette);
         AppLog.Info($"BrainFuel {typeof(App).Assembly.GetName().Version?.ToString(3)} starting" +
                     $" (data dir: {SettingsService.AppDirectory}, base domain: {Settings.BaseDomain})");
 
@@ -43,6 +46,7 @@ public partial class App : Application
         {
             ViewModel = new MainViewModel(Settings);
             var main = new MainWindow();
+            MainView = main;
             desktop.MainWindow = main;
             main.Initialize(Settings, ViewModel);
             main.Show();
@@ -66,6 +70,21 @@ public partial class App : Application
             _ = UpdateService.RunAutomaticUpdateLoopAsync(_updateCts.Token);
 
             ApplyHotkey(Settings, main);
+
+            // Prewarm the settings dialog's XAML/type cold path: constructing
+            // one hidden instance ~5 s after startup makes the first real open
+            // ~80 ms instead of ~1 s (measured). Discarded immediately.
+            var prewarm = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
+            prewarm.Tick += (_, _) =>
+            {
+                prewarm.Stop();
+                Dispatcher.UIThread.Post(() =>
+                {
+                    try { _ = new SettingsWindow(Settings); }
+                    catch { /* prewarm is best-effort */ }
+                });
+            };
+            prewarm.Start();
         }
 
         base.OnFrameworkInitializationCompleted();

@@ -553,6 +553,9 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     }
     public double CardOpacity { get => _cardOpacity; set => Set(ref _cardOpacity, value); }
     private double _cardOpacity = 1.0;
+
+    /// <summary>Live preview from the settings dialog's opacity slider.</summary>
+    public void SetCardOpacityPreview(double value) => CardOpacity = value;
     public bool IsError { get => _isError; set => Set(ref _isError, value); }
     private bool _isError;
 

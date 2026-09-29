@@ -37,8 +37,13 @@
             <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="10">
               <TextBlock Text="{DynamicResource LblLanguage}" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/><ComboBox x:Name="LangBox" Grid.Column="1"><ComboBoxItem Content="中文"/><ComboBoxItem Content="English"/></ComboBox>
               <TextBlock Grid.Row="1" Text="{DynamicResource LblTheme}" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/><ComboBox x:Name="ThemeBox" Grid.Row="1" Grid.Column="1"><ComboBoxItem Content="{DynamicResource ThemeSystem}"/><ComboBoxItem Content="{DynamicResource ThemeLight}"/><ComboBoxItem Content="{DynamicResource ThemeDark}"/></ComboBox>
-              <TextBlock Grid.Row="2" Text="{DynamicResource LblOpacity}" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/><Slider x:Name="OpacitySlider" Grid.Row="2" Grid.Column="1" Minimum="0.3" Maximum="1" Value="1" TickFrequency="0.05" IsSnapToTickEnabled="True"/>
+              <TextBlock Grid.Row="2" Text="{DynamicResource LblOpacity}" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondary}"/><Slider x:Name="OpacitySlider" Grid.Row="2" Grid.Column="1" Minimum="0.3" Maximum="1" Value="1" TickFrequency="0.05" IsSnapToTickEnabled="True" ValueChanged="OpacitySlider_ValueChanged"/>
             </Grid>
+            <StackPanel Spacing="6" Margin="0,4,0,0">
+              <TextBlock Text="{DynamicResource LblRingPalette}" Foreground="{DynamicResource TextSecondary}"/>
+              <StackPanel x:Name="PaletteRow" Orientation="Horizontal" Spacing="10"/>
+              <TextBlock Text="{DynamicResource PaletteHint}" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}"/>
+            </StackPanel>
           </StackPanel></Border>
 
           <Border Classes="sectionCard"><StackPanel Spacing="8">

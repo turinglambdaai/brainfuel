@@ -26,6 +26,10 @@ public partial class SettingsWindow : Window
     private bool _validated;
     private bool _saveAnyway;
     private bool _forgetKeyRequested;
+    private double _originalOpacity;
+    private string _originalPalette = RingPalette.DefaultId;
+    private string _previewPalette = RingPalette.DefaultId;
+    private bool _initializingAppearance = true;
 
     // Accounts whose key was typed anew in this dialog; each needs validation on save.
     private readonly List<AccountConfig> _pendingKeyAccounts = new();
@@ -58,6 +62,15 @@ public partial class SettingsWindow : Window
         _initializingInterval = false;
         RefreshIntervalStatus();
         RefreshCredentialStatus();
+
+        // Live-preview anchors: revert on Cancel, persist on Save.
+        _originalOpacity = settings.CardOpacity;
+        _originalPalette = string.IsNullOrWhiteSpace(settings.RingPalette)
+            ? RingPalette.DefaultId
+            : settings.RingPalette;
+        _previewPalette = _originalPalette;
+        BuildPaletteRow();
+        OpacitySlider.ValueChanged += OpacitySlider_ValueChanged;
 
         RebuildAccountList(selectId: settings.ActiveAccountId);
 
@@ -187,6 +200,58 @@ public partial class SettingsWindow : Window
     }
 
     // ---- credential status ---------------------------------------------------
+
+    // ---- live preview: opacity + ring palette -------------------------------
+
+    /// <summary>One round swatch per curated palette; click previews instantly.</summary>
+    private void BuildPaletteRow()
+    {
+        PaletteRow.Children.Clear();
+        foreach (var palette in RingPalette.All)
+        {
+            var id = palette.Id;
+            var border = new Avalonia.Controls.Border
+            {
+                Width = 30,
+                Height = 30,
+                CornerRadius = new Avalonia.CornerRadius(15),
+                BorderThickness = new Avalonia.Thickness(id == _previewPalette ? 2.5 : 1),
+                BorderBrush = id == _previewPalette
+                    ? new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#D97757"))
+                    : new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#66807872")),
+                Background = BuildSwatchBrush(palette),
+                Cursor = new Avalonia.Input.Cursor(Avalonia.Input.StandardCursorType.Hand),
+            };
+            border.Tag = Strings.Current == AppLanguage.Zh ? palette.NameZh : palette.NameEn;
+            border.PointerReleased += (_, _) =>
+            {
+                _previewPalette = id;
+                RingPalette.Apply(id);
+                App.MainView?.ApplySeverityColorsPublic();
+                BuildPaletteRow();
+            };
+            PaletteRow.Children.Add(border);
+        }
+    }
+
+    private static Avalonia.Media.LinearGradientBrush BuildSwatchBrush(RingPalette.Palette palette)
+    {
+        var brush = new Avalonia.Media.LinearGradientBrush
+        {
+            StartPoint = new Avalonia.RelativePoint(0, 0.5, Avalonia.RelativeUnit.Relative),
+            EndPoint = new Avalonia.RelativePoint(1, 0.5, Avalonia.RelativeUnit.Relative),
+        };
+        brush.GradientStops.Add(new Avalonia.Media.GradientStop(Avalonia.Media.Color.Parse(palette.Weekly), 0));
+        brush.GradientStops.Add(new Avalonia.Media.GradientStop(Avalonia.Media.Color.Parse(palette.Hourly), 1));
+        return brush;
+    }
+
+    private void OpacitySlider_ValueChanged(object? sender, Avalonia.Controls.Primitives.RangeBaseValueChangedEventArgs e)
+    {
+        if (_initializingAppearance) return;
+        // Live preview on the real card; Cancel/Save settles the value.
+        App.ViewModel?.SetCardOpacityPreview(e.NewValue);
+    }
 
     private void RefreshCredentialStatus()
     {
@@ -423,6 +488,7 @@ public partial class SettingsWindow : Window
         _settings.NotifyThreshold = (int)(ThresholdBox.Value ?? 80);
         _settings.ThemeMode = (AppTheme)ThemeBox.SelectedIndex;
         _settings.CardOpacity = OpacitySlider.Value;
+        _settings.RingPalette = _previewPalette;
         _settings.Language = (AppLanguage)LangBox.SelectedIndex;
     }
 
@@ -444,5 +510,12 @@ public partial class SettingsWindow : Window
         SaveBtn.Content = Strings.Get("BtnSave");
     }
 
-    private void Cancel_Click(object? sender, RoutedEventArgs e) => Close();
+    private void Cancel_Click(object? sender, RoutedEventArgs e)
+    {
+        // Undo live previews so the card returns to the state the user saved.
+        App.ViewModel?.SetCardOpacityPreview(_originalOpacity);
+        RingPalette.Apply(_originalPalette);
+        App.MainView?.ApplySeverityColorsPublic();
+        Close();
+    }
 }
