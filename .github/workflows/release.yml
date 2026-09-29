@@ -423,7 +423,7 @@ jobs:
         with:
           subject-path: release-assets/SHA256SUMS
       - name: Publish GitHub Release once
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.prepare.outputs.tag }}
           target_commitish: ${{ github.sha }}
