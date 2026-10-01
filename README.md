@@ -13,8 +13,8 @@ Built on [Rivet](https://github.com/turinglambdaai/rivet): one Racket domain cor
 | Platform | Stack | Status |
 |---|---|---|
 | macOS | SwiftUI | Working — floating card, tray, notifications, settings |
+| Linux | GTK4 | Working — card, details, settings (no tray: rivet #118) |
 | Windows | C++/WinRT | Scaffold |
-| Linux | GTK4 | Scaffold |
 
 ## Product model
 

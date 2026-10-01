@@ -14,8 +14,8 @@ Rivet（github.com/turinglambdaai/rivet）：一份 Racket 领域核心，通过
 | 平台宿主 | 技术栈 | 目录 | 状态 |
 |---|---|---|---|
 | macOS | SwiftUI 宿主 + 生成客户端 | `macos-host/` | 可跑已实机验收（悬浮卡+托盘+通知+设置窗） |
-| Windows | C++/WinRT 宿主 + 生成客户端 | `windows/` | 脚手架（counter 级，待实现卡片/设置/托盘） |
-| Linux | GTK4 宿主 + 生成客户端 | `linux/` | 脚手架（counter 级，待实现卡片/设置；托盘缺上游 #118） |
+| Linux | GTK4 宿主 + 生成客户端 | `linux/` | 可用（卡片/详情/设置全实现；托盘缺上游 #118，关窗即退出） |
+| Windows | C++/WinRT 宿主 + 生成客户端 | `windows/` | 脚手架（待实现卡片/设置/托盘） |
 | agent CLI | — | — | 不适用 |
 
 ## 快速命令
