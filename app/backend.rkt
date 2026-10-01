@@ -289,7 +289,7 @@
 ;; Starts the app service and the scheduler thread; returns immediately. The
 ;; initial refresh runs on the scheduler thread, which inherits THIS handler's
 ;; event emitter - background quota updates therefore reach the host.
-(define-rpc (init : Void)
+(define-rpc (initialize : Void)
   (unless (unbox service-box)
     (define data-dir
       (or (unbox data-dir-override-box) (brainfuel-data-dir)))

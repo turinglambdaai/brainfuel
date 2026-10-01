@@ -94,7 +94,7 @@
 
 ;; ---- init: starts the scheduler; its startup refresh emits an Event ----------
 
-(define-values (init-result init-events) (call "init"))
+(define-values (init-result init-events) (call "initialize"))
 (check-equal? init-result (void))
 ;; publish-accounts! runs before the response: only $state Events here.
 (check-true (andmap (lambda (e) (equal? (car e) "$state")) init-events))
