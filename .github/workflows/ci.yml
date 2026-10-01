@@ -66,9 +66,9 @@ jobs:
           export PATH="$RUNNER_TEMP/racket-embed/bin:$PATH"
           embed_prefix="$RUNNER_TEMP/racket-embed"
 
-          # The minimal source build has no compiler-lib; raco ctool — which
-          # compiles the backend bundle — lives there.
-          raco pkg install --auto --no-docs compiler-lib
+          # The minimal source build ships no cext-lib; raco ctool — which
+          # compiles the backend bundle — lives there (it pulls compiler-lib).
+          raco pkg install --auto --no-docs cext-lib
 
           racket_include="$(dirname "$(find "$embed_prefix" -name chezscheme.h -print -quit)")"
           racket_library="$(find "$embed_prefix" -name 'libracketcs*.a' -print -quit)"
