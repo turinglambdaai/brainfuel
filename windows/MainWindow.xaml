@@ -25,11 +25,11 @@
             Height="226"
             Padding="14"
             CornerRadius="16"
+            BorderThickness="1"
             Visibility="Collapsed">
             <Border.BorderBrush>
                 <SolidColorBrush Color="#807872" Opacity="0.13" />
             </Border.BorderBrush>
-            <Border.BorderThickness="1" />
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
