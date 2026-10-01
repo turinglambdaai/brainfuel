@@ -22,3 +22,9 @@ Thumbs.db
 # Local secrets / runtime state (kept out of the repo)
 appsettings.*.json
 *.secret
+
+# rivet build artifacts
+.rivet/
+build/
+dist/
+compiled/
