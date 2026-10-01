@@ -40,7 +40,7 @@ With the GitHub CLI installed:
 gh attestation verify BrainFuel-win-Setup.exe --repo turinglambdaai/brainfuel
 ```
 
-The same command can be used for the portable ZIP files and Velopack packages.
+The same command can be used for the portable ZIP files and future release packages.
 
 A successful attestation verification establishes that the exact artifact digest was attested by a GitHub Actions workflow associated with this repository. It is not an Authenticode signature and therefore does not suppress Windows SmartScreen warnings.
 
