@@ -1,5 +1,7 @@
 # BrainFuel
 
+> **Rivet rebuild (this branch):** `ubrainfuel` is being rebuilt on [Rivet](https://github.com/turinglambdaai/rivet) — one Racket domain core driving first-party native hosts over typed RPC (see AGENTS.md). The stack described below is the archived `main` line, kept as the behavior/visual reference.
+
 A small desktop widget for monitoring **GLM Coding Plan** quota — the 5-hour rolling window and weekly allowance — without interrupting your work. Built with **Avalonia 12 / .NET 10** for Windows, macOS, and Linux.
 
 ![C#](https://img.shields.io/badge/C%23-512BD4?logo=csharp&logoColor=white) [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)

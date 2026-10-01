@@ -1,0 +1,653 @@
+{
+  "device-rpcs": [],
+  "enums": [
+    {
+      "cases": [
+        "authentication",
+        "network",
+        "tls",
+        "proxy",
+        "timeout",
+        "rate-limited",
+        "no-coding-plan",
+        "service-unavailable",
+        "invalid-response",
+        "unknown"
+      ],
+      "name": "FailureKind"
+    },
+    {
+      "cases": [
+        "glm",
+        "codex",
+        "claude"
+      ],
+      "name": "Provider"
+    },
+    {
+      "cases": [
+        "calm",
+        "amber",
+        "red"
+      ],
+      "name": "Severity"
+    }
+  ],
+  "events": [
+    {
+      "name": "alert-triggered",
+      "type": {
+        "kind": "record",
+        "name": "Alert"
+      }
+    },
+    {
+      "name": "quota-updated",
+      "type": {
+        "kind": "record",
+        "name": "QuotaSnapshot"
+      }
+    }
+  ],
+  "format": "rivet-schema",
+  "format-version": 1,
+  "records": [
+    {
+      "fields": [
+        {
+          "name": "id",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "name",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "provider",
+          "type": {
+            "kind": "record",
+            "name": "Provider"
+          }
+        },
+        {
+          "name": "base-domain",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "configured",
+          "type": {
+            "kind": "scalar",
+            "name": "Bool"
+          }
+        }
+      ],
+      "name": "Account"
+    },
+    {
+      "fields": [
+        {
+          "name": "id",
+          "type": {
+            "element": {
+              "kind": "scalar",
+              "name": "String"
+            },
+            "kind": "optional"
+          }
+        },
+        {
+          "name": "name",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "provider",
+          "type": {
+            "kind": "record",
+            "name": "Provider"
+          }
+        },
+        {
+          "name": "base-domain",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "api-key",
+          "type": {
+            "element": {
+              "kind": "scalar",
+              "name": "String"
+            },
+            "kind": "optional"
+          }
+        },
+        {
+          "name": "clear-key",
+          "type": {
+            "kind": "scalar",
+            "name": "Bool"
+          }
+        }
+      ],
+      "name": "AccountDraft"
+    },
+    {
+      "fields": [
+        {
+          "name": "account-id",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "which",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "message",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        }
+      ],
+      "name": "Alert"
+    },
+    {
+      "fields": [
+        {
+          "name": "rate-bp-per-hour",
+          "type": {
+            "element": {
+              "kind": "scalar",
+              "name": "Int64"
+            },
+            "kind": "optional"
+          }
+        },
+        {
+          "name": "minutes-to-empty",
+          "type": {
+            "element": {
+              "kind": "scalar",
+              "name": "Int64"
+            },
+            "kind": "optional"
+          }
+        },
+        {
+          "name": "comparison",
+          "type": {
+            "element": {
+              "kind": "scalar",
+              "name": "String"
+            },
+            "kind": "optional"
+          }
+        }
+      ],
+      "name": "BurnInfo"
+    },
+    {
+      "fields": [
+        {
+          "name": "hourly",
+          "type": {
+            "kind": "record",
+            "name": "WindowUsage"
+          }
+        },
+        {
+          "name": "weekly",
+          "type": {
+            "kind": "record",
+            "name": "WindowUsage"
+          }
+        },
+        {
+          "name": "hourly-burn",
+          "type": {
+            "kind": "record",
+            "name": "BurnInfo"
+          }
+        },
+        {
+          "name": "weekly-burn",
+          "type": {
+            "kind": "record",
+            "name": "BurnInfo"
+          }
+        },
+        {
+          "name": "history",
+          "type": {
+            "element": {
+              "kind": "record",
+              "name": "HistorySample"
+            },
+            "kind": "list"
+          }
+        },
+        {
+          "name": "history-note",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        }
+      ],
+      "name": "Details"
+    },
+    {
+      "fields": [
+        {
+          "name": "kind",
+          "type": {
+            "kind": "record",
+            "name": "FailureKind"
+          }
+        },
+        {
+          "name": "message",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        }
+      ],
+      "name": "FailureInfo"
+    },
+    {
+      "fields": [
+        {
+          "name": "at-ms",
+          "type": {
+            "kind": "scalar",
+            "name": "Int64"
+          }
+        },
+        {
+          "name": "hourly-bp",
+          "type": {
+            "element": {
+              "kind": "scalar",
+              "name": "Int64"
+            },
+            "kind": "optional"
+          }
+        },
+        {
+          "name": "weekly-bp",
+          "type": {
+            "element": {
+              "kind": "scalar",
+              "name": "Int64"
+            },
+            "kind": "optional"
+          }
+        }
+      ],
+      "name": "HistorySample"
+    },
+    {
+      "fields": [
+        {
+          "name": "account-id",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "plan-level",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "hourly",
+          "type": {
+            "kind": "record",
+            "name": "WindowUsage"
+          }
+        },
+        {
+          "name": "weekly",
+          "type": {
+            "kind": "record",
+            "name": "WindowUsage"
+          }
+        },
+        {
+          "name": "severity",
+          "type": {
+            "kind": "record",
+            "name": "Severity"
+          }
+        },
+        {
+          "name": "fetched-at-ms",
+          "type": {
+            "kind": "scalar",
+            "name": "Int64"
+          }
+        },
+        {
+          "name": "failure",
+          "type": {
+            "element": {
+              "kind": "record",
+              "name": "FailureInfo"
+            },
+            "kind": "optional"
+          }
+        }
+      ],
+      "name": "QuotaSnapshot"
+    },
+    {
+      "fields": [
+        {
+          "name": "refresh-interval-minutes",
+          "type": {
+            "kind": "scalar",
+            "name": "Int64"
+          }
+        },
+        {
+          "name": "hourly-remaining",
+          "type": {
+            "kind": "scalar",
+            "name": "Bool"
+          }
+        },
+        {
+          "name": "weekly-remaining",
+          "type": {
+            "kind": "scalar",
+            "name": "Bool"
+          }
+        },
+        {
+          "name": "notify-enabled",
+          "type": {
+            "kind": "scalar",
+            "name": "Bool"
+          }
+        },
+        {
+          "name": "notify-threshold",
+          "type": {
+            "kind": "scalar",
+            "name": "Int64"
+          }
+        },
+        {
+          "name": "theme",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "language",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "size-mode",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "always-on-top",
+          "type": {
+            "kind": "scalar",
+            "name": "Bool"
+          }
+        },
+        {
+          "name": "autostart",
+          "type": {
+            "kind": "scalar",
+            "name": "Bool"
+          }
+        },
+        {
+          "name": "hotkey-enabled",
+          "type": {
+            "kind": "scalar",
+            "name": "Bool"
+          }
+        },
+        {
+          "name": "hotkey-combo",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "ring-palette",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "card-opacity-bp",
+          "type": {
+            "kind": "scalar",
+            "name": "Int64"
+          }
+        },
+        {
+          "name": "credential-state",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        }
+      ],
+      "name": "SettingsData"
+    },
+    {
+      "fields": [
+        {
+          "name": "used-bp",
+          "type": {
+            "element": {
+              "kind": "scalar",
+              "name": "Int64"
+            },
+            "kind": "optional"
+          }
+        },
+        {
+          "name": "reset-at-ms",
+          "type": {
+            "element": {
+              "kind": "scalar",
+              "name": "Int64"
+            },
+            "kind": "optional"
+          }
+        }
+      ],
+      "name": "WindowUsage"
+    }
+  ],
+  "rpcs": [
+    {
+      "arguments": [
+        {
+          "name": "account-id",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        }
+      ],
+      "name": "get-details",
+      "result": {
+        "kind": "record",
+        "name": "Details"
+      }
+    },
+    {
+      "arguments": [],
+      "name": "get-diagnostics",
+      "result": {
+        "kind": "scalar",
+        "name": "String"
+      }
+    },
+    {
+      "arguments": [],
+      "name": "get-settings",
+      "result": {
+        "kind": "record",
+        "name": "SettingsData"
+      }
+    },
+    {
+      "arguments": [],
+      "name": "initialize",
+      "result": {
+        "kind": "scalar",
+        "name": "Void"
+      }
+    },
+    {
+      "arguments": [],
+      "name": "refresh-now",
+      "result": {
+        "kind": "scalar",
+        "name": "Void"
+      }
+    },
+    {
+      "arguments": [
+        {
+          "name": "id",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        }
+      ],
+      "name": "remove-account",
+      "result": {
+        "element": {
+          "kind": "record",
+          "name": "Account"
+        },
+        "kind": "list"
+      }
+    },
+    {
+      "arguments": [
+        {
+          "name": "draft",
+          "type": {
+            "kind": "record",
+            "name": "AccountDraft"
+          }
+        }
+      ],
+      "name": "save-account",
+      "result": {
+        "element": {
+          "kind": "record",
+          "name": "Account"
+        },
+        "kind": "list"
+      }
+    },
+    {
+      "arguments": [
+        {
+          "name": "settings",
+          "type": {
+            "kind": "record",
+            "name": "SettingsData"
+          }
+        }
+      ],
+      "name": "save-settings",
+      "result": {
+        "kind": "record",
+        "name": "SettingsData"
+      }
+    },
+    {
+      "arguments": [
+        {
+          "name": "id",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        }
+      ],
+      "name": "switch-account",
+      "result": {
+        "kind": "scalar",
+        "name": "Void"
+      }
+    }
+  ],
+  "rvt-protocol": 1,
+  "states": [
+    {
+      "name": "accounts",
+      "type": {
+        "element": {
+          "kind": "record",
+          "name": "Account"
+        },
+        "kind": "list"
+      }
+    },
+    {
+      "name": "active-account-id",
+      "type": {
+        "kind": "scalar",
+        "name": "String"
+      }
+    },
+    {
+      "name": "snapshot",
+      "type": {
+        "element": {
+          "kind": "record",
+          "name": "QuotaSnapshot"
+        },
+        "kind": "optional"
+      }
+    }
+  ]
+}

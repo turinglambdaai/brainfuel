@@ -1,5 +1,7 @@
 # BrainFuel
 
+> **Rivet 重建（本分支）：** 正在以 [Rivet](https://github.com/turinglambdaai/rivet) 重建——一份 Racket 领域核心通过类型化 RPC 驱动各平台第一方原生宿主（见 AGENTS.md）。下文描述的旧栈是已归档的 `main` 线，仅作行为与视觉参照。
+
 一个用于监控 **GLM Coding Plan** 5 小时滚动额度和每周额度的桌面小组件。基于 **Avalonia 12 / .NET 10**，支持 Windows / macOS / Linux。
 
 ![C#](https://img.shields.io/badge/C%23-512BD4?logo=csharp&logoColor=white) [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
