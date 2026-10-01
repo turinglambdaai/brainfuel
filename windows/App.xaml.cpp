@@ -2,7 +2,15 @@
 #include "App.xaml.h"
 #include "MainWindow.xaml.h"
 
+#include "system_services.hpp"
+
 namespace winrt::RivetHost::implementation {
+
+namespace {
+// Second launches surface the primary instead of stacking cards (same
+// contract as the Linux host's SingleInstanceLease use).
+std::unique_ptr<rivet::windows::SingleInstanceLease> g_lease;
+}  // namespace
 
 App::App() {
   InitializeComponent();
@@ -20,6 +28,11 @@ App::App() {
 }
 
 void App::OnLaunched(Microsoft::UI::Xaml::LaunchActivatedEventArgs const&) {
+  g_lease =
+      std::make_unique<rivet::windows::SingleInstanceLease>(L"site.jrtx.brainfuel");
+  if (!g_lease->is_primary()) {
+    ::ExitProcess(0);
+  }
   window_ = winrt::make<MainWindow>();
   window_.Activate();
 }

@@ -77,4 +77,5 @@ inline std::string t(std::string const& key,
 `;
 
 writeFileSync("linux/src/GeneratedStrings.hpp", out);
-console.log(`GeneratedStrings.hpp: ${Object.keys(zh).length} zh / ${Object.keys(en).length} en keys`);
+writeFileSync("windows/GeneratedStrings.hpp", out);
+console.log(`GeneratedStrings.hpp: ${Object.keys(zh).length} zh / ${Object.keys(en).length} en keys (linux + windows)`);
