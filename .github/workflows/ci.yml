@@ -66,6 +66,10 @@ jobs:
           export PATH="$RUNNER_TEMP/racket-embed/bin:$PATH"
           embed_prefix="$RUNNER_TEMP/racket-embed"
 
+          # The minimal source build has no compiler-lib; raco ctool — which
+          # compiles the backend bundle — lives there.
+          raco pkg install --auto --no-docs compiler-lib
+
           racket_include="$(dirname "$(find "$embed_prefix" -name chezscheme.h -print -quit)")"
           racket_library="$(find "$embed_prefix" -name 'libracketcs*.a' -print -quit)"
           petite_boot="$(find "$embed_prefix" -name petite.boot -print -quit)"
@@ -80,3 +84,19 @@ jobs:
           export RIVET_RACKET_BOOT_DIR="$(dirname "$petite_boot")"
 
           raco rivet build
+
+  windows-host:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Bogdanp/setup-racket@v1.11
+        with:
+          version: stable
+          architecture: x64
+          distribution: full
+          variant: CS
+      - name: Install rivet (upstream main)
+        run: raco pkg install --auto --no-docs --skip-installed https://github.com/turinglambdaai/rivet.git
+      - name: Build backend bundle and WinUI3 host
+        shell: pwsh
+        run: raco rivet build

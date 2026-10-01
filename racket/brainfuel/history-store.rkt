@@ -81,13 +81,17 @@
 (define (history-samples store)
   (history-store-samples store))
 
-;; Keeps the list time-ordered even if the clock jumps backwards.
+;; Keeps the list time-ordered even if the clock jumps backwards. Appends at
+;; the end and sorts stably so samples recorded within the same millisecond
+;; (fast refreshes on a quick machine) keep their write order instead of
+;; collapsing into a nondeterministic one.
 (define (history-append! store sample)
   (set-history-store-samples!
    store
-   (sort (cons sample (history-store-samples store))
+   (sort (append (history-store-samples store) (list sample))
          <
-         #:key usage-sample-at-ms)))
+         #:key usage-sample-at-ms
+         #:stable #t)))
 
 (define (history-prune! store now-ms)
   (define kept
