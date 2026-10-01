@@ -96,8 +96,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard let visible = (screen ?? NSScreen.main)?.visibleFrame else {
             return NSPoint(x: 40, y: 40)
         }
-        // 20pt margins, matching the old default placement.
-        return NSPoint(x: visible.maxX - 20, y: visible.maxY - 20)
+        // setFrameTopLeftPoint takes the panel's top-left corner, so the
+        // panel width must be subtracted to keep the 20pt right margin.
+        let width = panel?.frame.width ?? 368
+        return NSPoint(x: visible.maxX - width - 20, y: visible.maxY - 20)
     }
 
     private func positionTopRight() {
