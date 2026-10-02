@@ -992,8 +992,10 @@ void MainWindow::ShowDetailsDialogContent(
   }
   dialog.Content(stack);
   dialog.XamlRoot(Content().XamlRoot());
-  [dialog]() -> winrt::fire_and_forget { co_await dialog.ShowAsync(); }(
-      std::move(dialog));
+  [](
+      Microsoft::UI::Xaml::Controls::ContentDialog dialog) -> winrt::fire_and_forget {
+    co_await dialog.ShowAsync();
+  }(std::move(dialog));
 }
 
 // ----------------------------------------------------------- settings window
