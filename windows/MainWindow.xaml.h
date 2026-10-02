@@ -2,8 +2,10 @@
 
 #include "pch.h"
 #include "MainWindow.g.h"
+#include "GeneratedBackend.hpp"
 
 #include <optional>
+#include <string>
 #include <vector>
 
 namespace winrt::RivetHost::implementation {
@@ -53,6 +55,8 @@ struct MainWindow : MainWindowT<MainWindow> {
   void ShowDetailsDialog();
   void ShowDetailsDialogContent(rivet_app::Result<rivet_app::Details> result);
   void ShowErrorUi(std::string const& message);
+  std::wstring SubtitleTextValue() const;
+  std::string ChipPercent(bool hourly) const;
 
   // settings window built in code (no XAML class, no IDL entry)
   void OpenSettingsWindow();

@@ -9,6 +9,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstdio>
+#include <shobjidl_core.h>
 #include <stdexcept>
 
 namespace winrt::RivetHost::implementation {
@@ -459,14 +460,6 @@ void MainWindow::HandleBackendEvent(std::string const& name,
 }
 
 // ---------------------------------------------------------------- ui updates
-
-rivet_app::Account MainWindow::ActiveAccountOr(
-    rivet_app::Account const& fallback) const {
-  for (auto const& account : accounts_) {
-    if (account.id == active_account_id_) return account;
-  }
-  return fallback;
-}
 
 std::wstring MainWindow::SubtitleTextValue() const {
   if (accounts_.size() > 1) {
