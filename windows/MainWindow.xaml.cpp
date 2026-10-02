@@ -615,16 +615,13 @@ void MainWindow::ApplySettingsUi() {
   BootPanel().Visibility(!ready_ ? Microsoft::UI::Xaml::Visibility::Visible
                                  : Microsoft::UI::Xaml::Visibility::Collapsed);
 
-  if (auto window_native = try_as<::IWindowNative>()) {
+  if (auto window_native = try_as<IWindowNative>()) {
     if (HWND hwnd = nullptr; SUCCEEDED(window_native->get_WindowHandle(&hwnd))) {
-      auto const window_id =
-          Microsoft::UI::GetWindowIdFromWindow(reinterpret_cast<UINT64>(hwnd));
-      if (auto const app_window =
-              Microsoft::UI::Windowing::AppWindow::GetFromWindowId(window_id)) {
-        app_window.Resize(mini ? Windows::Graphics::SizeInt32{142, 142}
-                               : Windows::Graphics::SizeInt32{392, 250});
-        app_window.IsAlwaysOnTop(settings_.always_on_top);
-      }
+      ::SetWindowPos(hwnd, nullptr, 0, 0, mini ? 142 : 392, mini ? 142 : 250,
+                     SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+      ::SetWindowPos(hwnd, settings_.always_on_top ? HWND_TOPMOST
+                                                   : HWND_NOTOPMOST,
+                     0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
     }
   }
   RefreshSettingsControls();
