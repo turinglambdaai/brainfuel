@@ -120,11 +120,12 @@ GdkRGBA rgba(double r, double g, double b, double a = 1.0) {
                  static_cast<float>(a)};
 }
 
-// Windowing APIs GTK removed in 4.20 (wayland-first toplevel rework): on
-// 4.20+ the compositor owns placement and keep-above, so those become
-// no-ops and the card lands wherever the session places it.
+// Windowing APIs GTK removed mid-4.x (wayland-first toplevel rework: the
+// compositor owns placement and keep-above). Call the legacy setters only
+// where the headers still declare them; everywhere else these become no-ops
+// and the session places the card.
 void keep_window_above(GtkWindow* window, bool above) {
-#if !GTK_CHECK_VERSION(4, 20, 0)
+#if !GTK_CHECK_VERSION(4, 18, 0)
   gtk_window_set_keep_above(window, above ? TRUE : FALSE);
 #else
   (void)window;
@@ -132,19 +133,18 @@ void keep_window_above(GtkWindow* window, bool above) {
 #endif
 }
 
+// Best-effort top-right placement. gdk_surface_move is a no-op under
+// Wayland; X11 sessions get the card in the corner, everything else keeps
+// the compositor's placement.
 gboolean place_top_right_once(gpointer data) {
-#if !GTK_CHECK_VERSION(4, 20, 0)
+#if !GTK_CHECK_VERSION(4, 18, 0)
   auto* window = static_cast<GtkWindow*>(data);
   GdkSurface* surface = gtk_native_get_surface(GTK_NATIVE(window));
   if (surface == nullptr) return G_SOURCE_CONTINUE;
   GdkDisplay* display = gdk_display_get_default();
   GdkMonitor* monitor = gdk_display_get_monitor_at_surface(display, surface);
   GdkRectangle area{};
-#if !GTK_CHECK_VERSION(4, 18, 0)
-  gdk_monitor_get_workarea(monitor, &area);
-#else
   gdk_monitor_get_geometry(monitor, &area);
-#endif
   gdk_surface_move(surface,
                    area.x + area.width -
                        gtk_widget_get_width(GTK_WIDGET(window)) - 20,
@@ -1105,17 +1105,11 @@ void on_card_drag(GtkGestureDrag* gesture, gdouble, gdouble, gdouble,
   GtkWidget* root_widget = GTK_WIDGET(g.ui.window);
   if (gtk_widget_compute_point(GTK_WIDGET(g.ui.card), root_widget, &local,
                                &root)) {
-#if !GTK_CHECK_VERSION(4, 20, 0)
-    gtk_window_begin_move_drag(g.ui.window, 1,
-                               static_cast<gint>(std::lround(root.x)),
-                               static_cast<gint>(std::lround(root.y)), time);
-#else
     GdkSurface* surface = gtk_native_get_surface(GTK_NATIVE(g.ui.window));
     if (surface != nullptr && GDK_IS_TOPLEVEL(surface)) {
       gdk_toplevel_begin_move(GDK_TOPLEVEL(surface), nullptr, 1, root.x,
                               root.y, time);
     }
-#endif
   }
 }
 
