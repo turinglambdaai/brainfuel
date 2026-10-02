@@ -201,7 +201,8 @@ Windows::UI::Color severity_color(rivet_app::Severity severity,
   return calm;
 }
 
-Media::SolidColorBrush brush(Windows::UI::Color c, double opacity = 1.0) {
+Microsoft::UI::Xaml::Media::SolidColorBrush brush(Windows::UI::Color c,
+                                                  double opacity = 1.0) {
   Media::SolidColorBrush b(c);
   b.Opacity(opacity);
   return b;
@@ -214,7 +215,7 @@ void set_arc(Shapes::Ellipse const& ellipse, double diameter_px,
   double const circumference = 3.14159265358979323846 * diameter_px;
   double const unit = circumference / thickness_px;
   double const dash = std::clamp(fraction, 0.0, 1.0) * unit;
-  Media::DoubleCollection dashes;
+  Microsoft::UI::Xaml::Media::DoubleCollection dashes;
   dashes.Append(dash);
   dashes.Append(unit - dash);
   ellipse.StrokeDashArray(dashes);
@@ -1301,7 +1302,7 @@ void MainWindow::OpenSettingsWindow() {
   interval.SelectionChanged([weak](auto&&, auto&&) {
     if (auto w = weak.get()) {
       if (w->applying_settings_) return;
-      gint const intervals[] = {1, 5, 10, 15, 30, 60};
+      std::int32_t const intervals[] = {1, 5, 10, 15, 30, 60};
       rivet_app::SettingsData next = w->settings_;
       auto const selected = g_settings_ui.interval.SelectedIndex();
       next.refresh_interval_minutes =

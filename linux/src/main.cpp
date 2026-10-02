@@ -120,41 +120,13 @@ GdkRGBA rgba(double r, double g, double b, double a = 1.0) {
                  static_cast<float>(a)};
 }
 
-// Windowing APIs GTK removed mid-4.x (wayland-first toplevel rework: the
-// compositor owns placement and keep-above). Call the legacy setters only
-// where the headers still declare them; everywhere else these become no-ops
-// and the session places the card.
-void keep_window_above(GtkWindow* window, bool above) {
-#if !GTK_CHECK_VERSION(4, 18, 0)
-  gtk_window_set_keep_above(window, above ? TRUE : FALSE);
-#else
-  (void)window;
-  (void)above;
-#endif
-}
+// Keep-above and top-right placement: GTK4 has no public API for either
+// (the wayland-first toplevel rework left them to the compositor), so these
+// are documented no-ops until rivet grows an explicit X11/Wayland policy
+// (the honest-gap note in platform/linux/README.md).
+void keep_window_above(GtkWindow*, bool) {}
 
-// Best-effort top-right placement. gdk_surface_move is a no-op under
-// Wayland; X11 sessions get the card in the corner, everything else keeps
-// the compositor's placement.
-gboolean place_top_right_once(gpointer data) {
-#if !GTK_CHECK_VERSION(4, 18, 0)
-  auto* window = static_cast<GtkWindow*>(data);
-  GdkSurface* surface = gtk_native_get_surface(GTK_NATIVE(window));
-  if (surface == nullptr) return G_SOURCE_CONTINUE;
-  GdkDisplay* display = gdk_display_get_default();
-  GdkMonitor* monitor = gdk_display_get_monitor_at_surface(display, surface);
-  GdkRectangle area{};
-  gdk_monitor_get_geometry(monitor, &area);
-  gdk_surface_move(surface,
-                   area.x + area.width -
-                       gtk_widget_get_width(GTK_WIDGET(window)) - 20,
-                   area.y + 20);
-  return G_SOURCE_REMOVE;
-#else
-  (void)data;
-  return G_SOURCE_REMOVE;
-#endif
-}
+gboolean place_top_right_once(gpointer) { return G_SOURCE_REMOVE; }
 
 std::string format_percent(std::optional<std::int64_t> const& bp,
                            bool remaining = false) {
