@@ -15,6 +15,14 @@
 namespace winrt::RivetHost::implementation {
 namespace {
 
+// WinAppSDK interop: the Window's HWND. Declared here because the header
+// that ships it is not part of the C++/WinRT projection includes.
+struct __declspec(uuid("EE3163B0-4986-44AC-8B2D-BB7C1D6935FF"))
+    IWindowNative : ::IUnknown {
+  virtual HRESULT __stdcall get_WindowHandle(HWND* hwnd) = 0;
+  virtual HRESULT __stdcall put_MessageDialog(HSTRING value) = 0;
+};
+
 // ------------------------------------------------------------------ helpers
 
 std::filesystem::path executable_path() {
@@ -565,11 +573,9 @@ void MainWindow::ApplySnapshot() {
                   {relative_time(*weekly.reset_at_ms, now)}))
             : winrt::to_hstring(L"--"));
     if (snapshot_.has_value() && snapshot_->failure.has_value()) {
-      FooterText().Text(winrt::to_hstring(snapshot_->failure->message));
-      Microsoft::UI::Xaml::ToolTipService::SetToolTip(
-          *this, box_value(winrt::to_hstring(
-                     l10n::t(failure_key(snapshot_->failure->kind)) + ": " +
-                     snapshot_->failure->message)));
+      FooterText().Text(winrt::to_hstring(
+          l10n::t(failure_key(snapshot_->failure->kind)) + ": " +
+          snapshot_->failure->message));
     } else {
       std::int64_t const at = snapshot_.has_value()
                                   ? snapshot_->fetched_at_ms
@@ -885,7 +891,7 @@ void MainWindow::SaveSettings(rivet_app::SettingsData next, bool size_changed) {
                   window->ApplySnapshot();
                   window->RefreshSettingsControls();
                   if (autostart_changed && old_autostart != saved.autostart) {
-                    rivet::windows::Autostart::SetEnabled(
+                    rivet::system::Autostart::SetEnabled(
                         L"site.jrtx.brainfuel", executable_path().wstring(),
                         saved.autostart);
                   }
