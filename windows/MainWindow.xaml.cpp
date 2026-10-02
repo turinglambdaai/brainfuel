@@ -5,6 +5,7 @@
 #endif
 #include "GeneratedBackend.hpp"
 #include "GeneratedStrings.hpp"
+#include "system_services.hpp"
 
 #include <chrono>
 #include <cmath>
@@ -203,15 +204,15 @@ Windows::UI::Color severity_color(rivet_app::Severity severity,
 
 Microsoft::UI::Xaml::Media::SolidColorBrush brush(Windows::UI::Color c,
                                                   double opacity = 1.0) {
-  Media::SolidColorBrush b(c);
+  Microsoft::UI::Xaml::Media::SolidColorBrush b(c);
   b.Opacity(opacity);
   return b;
 }
 
 // Render an Ellipse as a progress arc: dash lengths are multiples of the
 // stroke thickness, so dash = fraction * circumference / thickness.
-void set_arc(Shapes::Ellipse const& ellipse, double diameter_px,
-             double thickness_px, double fraction) {
+void set_arc(Microsoft::UI::Xaml::Shapes::Ellipse const& ellipse,
+             double diameter_px, double thickness_px, double fraction) {
   double const circumference = 3.14159265358979323846 * diameter_px;
   double const unit = circumference / thickness_px;
   double const dash = std::clamp(fraction, 0.0, 1.0) * unit;
@@ -262,7 +263,7 @@ MainWindow::MainWindow() {
   ApplySettingsUi();
 
   // The window shows the fixed-size card; size the frame around it.
-  auto window_native = try_as<::IWindowNative>();
+  auto window_native = try_as<IWindowNative>();
   if (window_native) {
     HWND hwnd = nullptr;
     if (SUCCEEDED(window_native->get_WindowHandle(&hwnd))) {
