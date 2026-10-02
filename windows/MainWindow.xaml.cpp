@@ -263,17 +263,11 @@ MainWindow::MainWindow() {
   ApplySettingsUi();
 
   // The window shows the fixed-size card; size the frame around it.
-  auto window_native = try_as<IWindowNative>();
-  if (window_native) {
+  if (auto window_native = try_as<IWindowNative>()) {
     HWND hwnd = nullptr;
     if (SUCCEEDED(window_native->get_WindowHandle(&hwnd))) {
-      auto const window_id =
-          Microsoft::UI::GetWindowIdFromWindow(reinterpret_cast<UINT64>(hwnd));
-      auto const app_window =
-          Microsoft::UI::Windowing::AppWindow::GetFromWindowId(window_id);
-      if (app_window) {
-        app_window.Resize(Windows::Graphics::SizeInt32{392, 250});
-      }
+      ::SetWindowPos(hwnd, nullptr, 0, 0, 392, 250,
+                     SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
     }
   }
 
@@ -304,13 +298,19 @@ winrt::fire_and_forget MainWindow::InitializeBackendAsync() {
         try {
           auto const event_dispatcher = window->DispatcherQueue();
           window->backend_->set_event_handler(
-              [event_dispatcher,
-               weak](std::string const& name, rivet::Value const& value) {
-                event_dispatcher.TryEnqueue([weak, name, value] {
-                  if (auto current = weak.get()) {
-                    current->HandleBackendEvent(name, value);
-                  }
-                });
+              [event_dispatcher, weak](std::string const& name,
+                                       rivet::Value const& value) {
+                // TryEnqueue takes a no-argument handler, so carry the
+                // event payload into the capture.
+                auto carried_name = name;
+                auto carried_value = value;
+                event_dispatcher.TryEnqueue(
+                    [weak, name = std::move(carried_name),
+                     value = std::move(carried_value)]() {
+                      if (auto current = weak.get()) {
+                        current->HandleBackendEvent(name, value);
+                      }
+                    });
               });
           window->Bootstrap();
         } catch (std::exception const& e) {
