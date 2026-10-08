@@ -226,7 +226,7 @@ jobs:
     # it — the manifest script skips the missing DMG entry — and the macOS
     # job uploads the DMG to the same release whenever a runner frees up.
     needs: [windows, linux]
-    runs-on: macos-latest
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
       - name: Checkout Rivet
