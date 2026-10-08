@@ -258,6 +258,7 @@ SettingsUi g_settings_ui;
 
 MainWindow::MainWindow() {
   InitializeComponent();
+  Title(L"BrainFuel");  // Window.Title is code-only in WinUI 3
   l10n::language() = "zh";
   ApplyPalette();
   ApplySettingsUi();
