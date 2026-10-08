@@ -35,6 +35,7 @@ struct MainWindow : MainWindowT<MainWindow> {
 
  private:
   void Initialize();
+  static void Stage(char const* stage);
   static void ReportStartupFailure(char const* message);
   winrt::fire_and_forget InitializeBackendAsync();
   void Bootstrap();

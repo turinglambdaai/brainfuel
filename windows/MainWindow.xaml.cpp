@@ -272,13 +272,16 @@ MainWindow::MainWindow() {
 }
 
 void MainWindow::Initialize() {
+  Stage("xaml-init-begin");
   InitializeComponent();
+  Stage("xaml-init-ok");
   Title(L"BrainFuel");  // Window.Title is code-only in WinUI 3
   l10n::language() = "zh";
   ApplyPalette();
   ApplySettingsUi();
 
   // The window shows the fixed-size card; size the frame around it.
+  Stage("palette-ok");
   if (auto window_native = try_as<IWindowNative>()) {
     HWND hwnd = nullptr;
     if (SUCCEEDED(window_native->get_WindowHandle(&hwnd))) {
@@ -286,6 +289,7 @@ void MainWindow::Initialize() {
                      SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
     }
   }
+  Stage("hwnd-ok");
 
   Closed([weak = get_weak()](auto&&, auto&&) {
     if (auto window = weak.get()) {
@@ -294,7 +298,15 @@ void MainWindow::Initialize() {
     }
   });
 
+  Stage("ctor-done");
   InitializeBackendAsync();
+}
+
+void MainWindow::Stage(char const* stage) {
+  // Launch-smoke bisect markers: whichever "stage <name>" line is missing
+  // from the smoke output marks the failing phase.
+  std::fprintf(stderr, "stage %s\n", stage);
+  std::fflush(stderr);
 }
 
 void MainWindow::ReportStartupFailure(char const* message) {
@@ -317,8 +329,10 @@ winrt::fire_and_forget MainWindow::InitializeBackendAsync() {
   try {
     // Booting the embedded runtime can block on file I/O, so only startup is
     // moved off the UI thread. RPC/State traffic below is completion-driven.
+    Stage("backend-boot-begin");
     co_await winrt::resume_background();
     backend->start();
+    Stage("backend-boot-ok");
 
     dispatcher.TryEnqueue([weak, backend = std::move(backend)]() mutable {
       if (auto window = weak.get()) {

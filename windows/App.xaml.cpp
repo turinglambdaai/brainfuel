@@ -28,13 +28,21 @@ App::App() {
 }
 
 void App::OnLaunched(Microsoft::UI::Xaml::LaunchActivatedEventArgs const&) {
+  std::fprintf(stderr, "stage onlaunched-enter\n");
+  std::fflush(stderr);
   g_lease =
       std::make_unique<rivet::system::SingleInstanceLease>(L"site.jrtx.brainfuel");
   if (!g_lease->is_primary()) {
     ::ExitProcess(0);
   }
+  std::fprintf(stderr, "stage lease-ok\n");
+  std::fflush(stderr);
   window_ = winrt::make<MainWindow>();
+  std::fprintf(stderr, "stage window-made\n");
+  std::fflush(stderr);
   window_.Activate();
+  std::fprintf(stderr, "stage activated\n");
+  std::fflush(stderr);
 }
 
 }  // namespace winrt::RivetHost::implementation
