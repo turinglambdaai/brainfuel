@@ -34,6 +34,7 @@ jobs:
     name: macOS DMG
     needs: validate
     runs-on: macos-15
+    # Independent of the publish job: uploads the DMG itself (see release).
     steps:
       - uses: actions/checkout@v4
       - name: Checkout Rivet
@@ -58,6 +59,19 @@ jobs:
         run: |
           hdiutil create -volname BrainFuel -srcfolder dist/brainfuel.app -ov -format UDZO \
             "BrainFuel-${{ github.ref_name }}-macos.dmg"
+      - name: Upload DMG to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for attempt in 1 2 3 4 5; do
+            if gh release view "${{ github.ref_name }}" -R turinglambdaai/brainfuel >/dev/null 2>&1; then
+              gh release upload "${{ github.ref_name }}" "BrainFuel-${{ github.ref_name }}-macos.dmg" --clobber -R turinglambdaai/brainfuel
+              exit 0
+            fi
+            sleep 300
+          done
+          echo "::error::release ${{ github.ref_name }} never appeared; upload the DMG manually" >&2
+          exit 1
       - uses: actions/upload-artifact@v4
         with:
           name: macos
@@ -208,7 +222,10 @@ jobs:
 
   release:
     name: Sign manifest + publish
-    needs: [macos, windows, linux]
+    # The macOS runner pool periodically stalls for hours; publish without
+    # it — the manifest script skips the missing DMG entry — and the macOS
+    # job uploads the DMG to the same release whenever a runner frees up.
+    needs: [windows, linux]
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
