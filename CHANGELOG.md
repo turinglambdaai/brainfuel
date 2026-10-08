@@ -9,6 +9,31 @@ Entries start at 0.6.0; for the 0.1–0.5 history, see the
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-10-02
+
+### Changed
+
+- Complete rebuild on Rivet: one Racket domain core (426 tests) drives
+  first-party native hosts over typed RPC — SwiftUI on macOS, GTK4 on Linux,
+  WinUI 3 on Windows. The legacy Avalonia/.NET stack is retired; settings,
+  usage history, and OS-keyring credentials are drop-in compatible with 0.9.0.
+
+### Added
+
+- Linux host: floating quota card, details popover with history graphs,
+  structured settings, mini mode, single instance, notifications, autostart
+  (tray pending the upstream rivet tray contract — closing the card quits).
+- Windows host: quota card with severity rings, details dialog with burn
+  projections, settings, mini mode, keep-on-top, single instance, autostart.
+- Signed self-contained update feeds (Ed25519) for Windows and Linux;
+  SHA256SUMS and build provenance attestation on every release.
+
+### Fixed
+
+- Floating card placement parked 348 pt off-screen on macOS.
+- Usage-history samples recorded within the same millisecond could collapse
+  into a machine-dependent order on fast machines.
+
 ## [0.6.7] - 2026-09-28
 
 ### Added
