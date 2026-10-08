@@ -9,7 +9,7 @@ Entries start at 0.6.0; for the 0.1–0.5 history, see the
 
 ## [Unreleased]
 
-## [0.10.0] - 2026-10-02
+## [1.0.0] - 2026-10-02
 
 ### Changed
 
