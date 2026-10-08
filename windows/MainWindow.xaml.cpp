@@ -8,6 +8,7 @@
 #include "system_services.hpp"
 
 #include <chrono>
+#include <fstream>
 #include <cmath>
 #include <cstdio>
 #include <shobjidl_core.h>
@@ -300,12 +301,11 @@ void MainWindow::ReportStartupFailure(char const* message) {
   // launch-smoke captures both channels; the file is the race-free copy.
   std::fprintf(stderr, "brainfuel startup failed: %s\n", message);
   std::fflush(stderr);
-  if (char const* temp = std::getenv("TEMP")) {
-    if (FILE* f = std::fopen((std::string(temp) + "\\brainfuel-startup.log").c_str(),
-                             "w")) {
-      std::fprintf(f, "brainfuel startup failed: %s\n", message);
-      std::fclose(f);
-    }
+  char temp[MAX_PATH]{};
+  if (::GetEnvironmentVariableA("TEMP", temp, MAX_PATH) > 0) {
+    std::ofstream log(std::string(temp) + "\\brainfuel-startup.log",
+                      std::ios_base::trunc);
+    if (log) log << "brainfuel startup failed: " << message << '\n';
   }
 }
 
