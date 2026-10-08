@@ -156,12 +156,12 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --yes libgtk-4-dev
-      - name: Install crypto package (rivet/distribution dependency)
-        run: raco pkg install --auto --no-docs crypto
       - name: Link Rivet + provide raco ctool
         run: |
           echo "$RUNNER_TEMP/racket-embed/bin" >> "$GITHUB_PATH"
           export PATH="$RUNNER_TEMP/racket-embed/bin:$PATH"
+          # crypto first: rivet's own setup compiles rivet/distribution.
+          raco pkg install --auto --no-docs crypto
           raco pkg install --auto --no-docs --link "$GITHUB_WORKSPACE/rivet/rivet" "$GITHUB_WORKSPACE/rivet/rivet-cli"
           # The minimal source build ships no cext-lib; raco ctool — which
           # compiles the backend bundle — lives there.

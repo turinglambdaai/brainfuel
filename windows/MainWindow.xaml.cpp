@@ -257,6 +257,20 @@ SettingsUi g_settings_ui;
 // ----------------------------------------------------------------- lifecycle
 
 MainWindow::MainWindow() {
+  // Startup fail-fasts (0xC0000409) reach neither stderr nor a debugger on
+  // headless CI runners, so surface any constructor exception here.
+  try {
+    Initialize();
+  } catch (winrt::hresult_error const& e) {
+    ReportStartupFailure(winrt::to_string(e.message()).c_str());
+    throw;
+  } catch (std::exception const& e) {
+    ReportStartupFailure(e.what());
+    throw;
+  }
+}
+
+void MainWindow::Initialize() {
   InitializeComponent();
   Title(L"BrainFuel");  // Window.Title is code-only in WinUI 3
   l10n::language() = "zh";
@@ -280,6 +294,19 @@ MainWindow::MainWindow() {
   });
 
   InitializeBackendAsync();
+}
+
+void MainWindow::ReportStartupFailure(char const* message) {
+  // launch-smoke captures both channels; the file is the race-free copy.
+  std::fprintf(stderr, "brainfuel startup failed: %s\n", message);
+  std::fflush(stderr);
+  if (char const* temp = std::getenv("TEMP")) {
+    if (FILE* f = std::fopen((std::string(temp) + "\\brainfuel-startup.log").c_str(),
+                             "w")) {
+      std::fprintf(f, "brainfuel startup failed: %s\n", message);
+      std::fclose(f);
+    }
+  }
 }
 
 winrt::fire_and_forget MainWindow::InitializeBackendAsync() {

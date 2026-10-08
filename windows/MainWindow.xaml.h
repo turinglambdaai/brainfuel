@@ -34,6 +34,8 @@ struct MainWindow : MainWindowT<MainWindow> {
                           Microsoft::UI::Xaml::RoutedEventArgs const&);
 
  private:
+  void Initialize();
+  static void ReportStartupFailure(char const* message);
   winrt::fire_and_forget InitializeBackendAsync();
   void Bootstrap();
   void HandleBackendEvent(std::string const& name, rivet::Value const& value);
