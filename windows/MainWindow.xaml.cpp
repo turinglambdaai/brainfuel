@@ -251,7 +251,15 @@ struct SettingsUi {
 
   void reset() { *this = SettingsUi{}; }
 };
-SettingsUi g_settings_ui;
+
+// Function-local static: projected WinUI types activate their underlying
+// controls on default construction, so a file-scope instance would build
+// real XAML objects during CRT startup — before the framework exists —
+// and fail-fast the process before main.
+SettingsUi& settings_ui() {
+  static SettingsUi instance;
+  return instance;
+}
 
 }  // namespace
 
@@ -294,7 +302,7 @@ void MainWindow::Initialize() {
   Closed([weak = get_weak()](auto&&, auto&&) {
     if (auto window = weak.get()) {
       window->settings_window_ = nullptr;
-      g_settings_ui.reset();
+      settings_ui().reset();
     }
   });
 
@@ -1062,43 +1070,43 @@ Microsoft::UI::Xaml::Controls::TextBlock bold_label(winrt::hstring const& text) 
 }  // namespace
 
 void MainWindow::RefreshSettingsControls() {
-  if (g_settings_ui.window == nullptr) return;
+  if (settings_ui().window == nullptr) return;
   applying_settings_ = true;
-  g_settings_ui.language.SelectedIndex(settings_.language == "en" ? 1 : 0);
-  g_settings_ui.theme.SelectedIndex(settings_.theme == "light"  ? 1
+  settings_ui().language.SelectedIndex(settings_.language == "en" ? 1 : 0);
+  settings_ui().theme.SelectedIndex(settings_.theme == "light"  ? 1
                                     : settings_.theme == "dark" ? 2
                                                                 : 0);
   std::string const palettes[] = {"classic", "teal", "forest", "violet",
                                   "mono"};
   for (std::size_t i = 0; i < 5; ++i) {
     if (settings_.ring_palette == palettes[i]) {
-      g_settings_ui.palette.SelectedIndex(static_cast<std::int32_t>(i));
+      settings_ui().palette.SelectedIndex(static_cast<std::int32_t>(i));
     }
   }
-  g_settings_ui.opacity.Value(static_cast<double>(settings_.card_opacity_bp /
+  settings_ui().opacity.Value(static_cast<double>(settings_.card_opacity_bp /
                                                   100));
-  g_settings_ui.topmost.IsChecked(settings_.always_on_top);
+  settings_ui().topmost.IsChecked(settings_.always_on_top);
   std::int32_t const intervals[] = {1, 5, 10, 15, 30, 60};
   for (std::int32_t i = 0; i < 6; ++i) {
     if (settings_.refresh_interval_minutes == intervals[i]) {
-      g_settings_ui.interval.SelectedIndex(i);
+      settings_ui().interval.SelectedIndex(i);
     }
   }
-  g_settings_ui.hourly_remaining.IsChecked(settings_.hourly_remaining);
-  g_settings_ui.weekly_remaining.IsChecked(settings_.weekly_remaining);
-  g_settings_ui.autostart.IsChecked(settings_.autostart);
-  g_settings_ui.notify.IsChecked(settings_.notify_enabled);
-  g_settings_ui.threshold.Value(static_cast<double>(settings_.notify_threshold));
-  g_settings_ui.threshold_value.Text(winrt::to_hstring(
+  settings_ui().hourly_remaining.IsChecked(settings_.hourly_remaining);
+  settings_ui().weekly_remaining.IsChecked(settings_.weekly_remaining);
+  settings_ui().autostart.IsChecked(settings_.autostart);
+  settings_ui().notify.IsChecked(settings_.notify_enabled);
+  settings_ui().threshold.Value(static_cast<double>(settings_.notify_threshold));
+  settings_ui().threshold_value.Text(winrt::to_hstring(
       std::string(l10n::t("LblThreshold")) + ": " +
       std::to_string(settings_.notify_threshold) + "%"));
-  g_settings_ui.account_name.Text({});
-  g_settings_ui.api_key.Password({});
-  g_settings_ui.platform.SelectedIndex(0);
-  g_settings_ui.remove_account.IsEnabled(!accounts_.empty() &&
+  settings_ui().account_name.Text({});
+  settings_ui().api_key.Password({});
+  settings_ui().platform.SelectedIndex(0);
+  settings_ui().remove_account.IsEnabled(!accounts_.empty() &&
                                          !active_account_id_.empty());
   // account picker
-  auto picker = g_settings_ui.accounts;
+  auto picker = settings_ui().accounts;
   picker.Items().Clear();
   std::int32_t active_index = 0;
   for (std::size_t i = 0; i < accounts_.size(); ++i) {
@@ -1129,8 +1137,8 @@ void MainWindow::OpenSettingsWindow() {
   SettingsUi ui;
   auto const window = Window();
   window.Title(l10("SettingsTitle"));
-  g_settings_ui = std::move(ui);
-  g_settings_ui.window = window;
+  settings_ui() = std::move(ui);
+  settings_ui().window = window;
   settings_window_ = window;
 
   auto const root = Pivot();
@@ -1140,31 +1148,31 @@ void MainWindow::OpenSettingsWindow() {
   auto const language = ComboBox();
   language.Items().Append(box_value(winrt::to_hstring(L"中文")));
   language.Items().Append(box_value(winrt::to_hstring(L"English")));
-  g_settings_ui.language = language;
+  settings_ui().language = language;
   general.Children().Append(language);
   auto const theme = ComboBox();
   theme.Items().Append(box_value(l10("ThemeSystem")));
   theme.Items().Append(box_value(l10("ThemeLight")));
   theme.Items().Append(box_value(l10("ThemeDark")));
-  g_settings_ui.theme = theme;
+  settings_ui().theme = theme;
   general.Children().Append(theme);
   auto const palette = ComboBox();
   for (char const* name : {"Classic", "Teal", "Forest", "Violet", "Mono"}) {
     palette.Items().Append(box_value(winrt::to_hstring(name)));
   }
-  g_settings_ui.palette = palette;
+  settings_ui().palette = palette;
   general.Children().Append(palette);
   auto const opacity = Slider();
   opacity.Minimum(30);
   opacity.Maximum(100);
   opacity.StepFrequency(5);
-  g_settings_ui.opacity = opacity;
+  settings_ui().opacity = opacity;
   general.Children().Append(opacity);
 
   general.Children().Append(bold_label(l10("SectionDesktopBehavior")));
   auto const topmost = CheckBox();
   topmost.Content(box_value(l10("ChkAlwaysOnTop")));
-  g_settings_ui.topmost = topmost;
+  settings_ui().topmost = topmost;
   general.Children().Append(topmost);
   auto const interval = ComboBox();
   for (int minutes : {1, 5, 10, 15, 30, 60}) {
@@ -1172,23 +1180,23 @@ void MainWindow::OpenSettingsWindow() {
         winrt::to_hstring(std::to_string(minutes) + " " +
                           l10n::t("UnitMinutes"))));
   }
-  g_settings_ui.interval = interval;
+  settings_ui().interval = interval;
   general.Children().Append(interval);
 
   general.Children().Append(bold_label(l10("SectionQuotaDisplay")));
   auto const hourly_remaining = CheckBox();
   hourly_remaining.Content(box_value(l10("ChkHourlyRemaining")));
-  g_settings_ui.hourly_remaining = hourly_remaining;
+  settings_ui().hourly_remaining = hourly_remaining;
   general.Children().Append(hourly_remaining);
   auto const weekly_remaining = CheckBox();
   weekly_remaining.Content(box_value(l10("ChkWeeklyRemaining")));
-  g_settings_ui.weekly_remaining = weekly_remaining;
+  settings_ui().weekly_remaining = weekly_remaining;
   general.Children().Append(weekly_remaining);
 
   general.Children().Append(bold_label(l10("SectionStartup")));
   auto const autostart = CheckBox();
   autostart.Content(box_value(l10("ChkAutostart")));
-  g_settings_ui.autostart = autostart;
+  settings_ui().autostart = autostart;
   general.Children().Append(autostart);
 
   auto const general_item = PivotItem();
@@ -1200,16 +1208,16 @@ void MainWindow::OpenSettingsWindow() {
   auto const account = settings_column();
   account.Children().Append(bold_label(l10("ManageAccounts")));
   auto const accounts_pick = ComboBox();
-  g_settings_ui.accounts = accounts_pick;
+  settings_ui().accounts = accounts_pick;
   account.Children().Append(accounts_pick);
   auto const remove = Button();
   remove.Content(box_value(l10("RemoveAccount")));
-  g_settings_ui.remove_account = remove;
+  settings_ui().remove_account = remove;
   account.Children().Append(remove);
   account.Children().Append(bold_label(l10("SectionAccount")));
   auto const name_box = TextBox();
   name_box.PlaceholderText(l10("AccountNamePlaceholder"));
-  g_settings_ui.account_name = name_box;
+  settings_ui().account_name = name_box;
   account.Children().Append(name_box);
   auto const platform = ComboBox();
   platform.Items().Append(box_value(l10("PlatformCn")));
@@ -1217,20 +1225,20 @@ void MainWindow::OpenSettingsWindow() {
   platform.Items().Append(box_value(l10("PlatformCodex")));
   platform.Items().Append(box_value(l10("PlatformClaude")));
   platform.SelectedIndex(0);
-  g_settings_ui.platform = platform;
+  settings_ui().platform = platform;
   account.Children().Append(platform);
   auto const key_box = PasswordBox();
   key_box.PlaceholderText(l10("KeyPlaceholder"));
-  g_settings_ui.api_key = key_box;
+  settings_ui().api_key = key_box;
   account.Children().Append(key_box);
   auto const save = Button();
   save.Content(box_value(l10("BtnSave")));
-  g_settings_ui.save_account = save;
+  settings_ui().save_account = save;
   account.Children().Append(save);
   auto const message = TextBlock();
   message.Text(l10("AccountDesc"));
   message.TextWrapping(TextWrapping::Wrap);
-  g_settings_ui.account_message = message;
+  settings_ui().account_message = message;
   account.Children().Append(message);
 
   auto const account_item = PivotItem();
@@ -1242,16 +1250,16 @@ void MainWindow::OpenSettingsWindow() {
   auto const notifications = settings_column();
   auto const notify = CheckBox();
   notify.Content(box_value(l10("ChkNotify")));
-  g_settings_ui.notify = notify;
+  settings_ui().notify = notify;
   notifications.Children().Append(notify);
   auto const threshold_value = TextBlock();
-  g_settings_ui.threshold_value = threshold_value;
+  settings_ui().threshold_value = threshold_value;
   notifications.Children().Append(threshold_value);
   auto const threshold = Slider();
   threshold.Minimum(10);
   threshold.Maximum(99);
   threshold.StepFrequency(1);
-  g_settings_ui.threshold = threshold;
+  settings_ui().threshold = threshold;
   notifications.Children().Append(threshold);
   auto const notify_desc = TextBlock();
   notify_desc.Text(l10("NotificationsDesc"));
@@ -1281,7 +1289,7 @@ void MainWindow::OpenSettingsWindow() {
   software.Children().Append(trust);
   auto const copy = Button();
   copy.Content(box_value(l10("DiagnosticsCopy")));
-  g_settings_ui.copy_diagnostics = copy;
+  settings_ui().copy_diagnostics = copy;
   software.Children().Append(copy);
 
   auto const software_item = PivotItem();
@@ -1299,7 +1307,7 @@ void MainWindow::OpenSettingsWindow() {
       if (w->applying_settings_) return;
       rivet_app::SettingsData next = w->settings_;
       next.language =
-          g_settings_ui.language.SelectedIndex() == 1 ? "en" : "zh";
+          settings_ui().language.SelectedIndex() == 1 ? "en" : "zh";
       w->SaveSettings(next, false);
     }
   });
@@ -1307,7 +1315,7 @@ void MainWindow::OpenSettingsWindow() {
     if (auto w = weak.get()) {
       if (w->applying_settings_) return;
       rivet_app::SettingsData next = w->settings_;
-      auto const selected = g_settings_ui.theme.SelectedIndex();
+      auto const selected = settings_ui().theme.SelectedIndex();
       next.theme = selected == 1 ? "light" : selected == 2 ? "dark" : "system";
       w->SaveSettings(next, false);
     }
@@ -1318,7 +1326,7 @@ void MainWindow::OpenSettingsWindow() {
       char const* const palettes[] = {"classic", "teal", "forest", "violet",
                                       "mono"};
       rivet_app::SettingsData next = w->settings_;
-      auto const selected = g_settings_ui.palette.SelectedIndex();
+      auto const selected = settings_ui().palette.SelectedIndex();
       next.ring_palette =
           palettes[std::clamp<std::int32_t>(selected, 0, 4)];
       w->SaveSettings(next, false);
@@ -1329,7 +1337,7 @@ void MainWindow::OpenSettingsWindow() {
       if (w->applying_settings_) return;
       rivet_app::SettingsData next = w->settings_;
       next.card_opacity_bp = static_cast<std::int64_t>(
-          std::lround(g_settings_ui.opacity.Value())) * 100;
+          std::lround(settings_ui().opacity.Value())) * 100;
       w->SaveSettings(next, false);
     }
   });
@@ -1337,7 +1345,7 @@ void MainWindow::OpenSettingsWindow() {
     if (auto w = weak.get()) {
       if (w->applying_settings_) return;
       rivet_app::SettingsData next = w->settings_;
-      next.always_on_top = g_settings_ui.topmost.IsChecked().GetBoolean();
+      next.always_on_top = settings_ui().topmost.IsChecked().GetBoolean();
       w->SaveSettings(next, false);
     }
   });
@@ -1346,7 +1354,7 @@ void MainWindow::OpenSettingsWindow() {
       if (w->applying_settings_) return;
       std::int32_t const intervals[] = {1, 5, 10, 15, 30, 60};
       rivet_app::SettingsData next = w->settings_;
-      auto const selected = g_settings_ui.interval.SelectedIndex();
+      auto const selected = settings_ui().interval.SelectedIndex();
       next.refresh_interval_minutes =
           intervals[std::clamp<std::int32_t>(selected, 0, 5)];
       w->SaveSettings(next, false);
@@ -1357,7 +1365,7 @@ void MainWindow::OpenSettingsWindow() {
       if (w->applying_settings_) return;
       rivet_app::SettingsData next = w->settings_;
       next.hourly_remaining =
-          g_settings_ui.hourly_remaining.IsChecked().GetBoolean();
+          settings_ui().hourly_remaining.IsChecked().GetBoolean();
       w->SaveSettings(next, false);
     }
   });
@@ -1366,7 +1374,7 @@ void MainWindow::OpenSettingsWindow() {
       if (w->applying_settings_) return;
       rivet_app::SettingsData next = w->settings_;
       next.weekly_remaining =
-          g_settings_ui.weekly_remaining.IsChecked().GetBoolean();
+          settings_ui().weekly_remaining.IsChecked().GetBoolean();
       w->SaveSettings(next, false);
     }
   });
@@ -1374,7 +1382,7 @@ void MainWindow::OpenSettingsWindow() {
     if (auto w = weak.get()) {
       if (w->applying_settings_) return;
       rivet_app::SettingsData next = w->settings_;
-      next.autostart = g_settings_ui.autostart.IsChecked().GetBoolean();
+      next.autostart = settings_ui().autostart.IsChecked().GetBoolean();
       w->SaveSettings(next, false);
     }
   });
@@ -1382,7 +1390,7 @@ void MainWindow::OpenSettingsWindow() {
     if (auto w = weak.get()) {
       if (w->applying_settings_) return;
       rivet_app::SettingsData next = w->settings_;
-      next.notify_enabled = g_settings_ui.notify.IsChecked().GetBoolean();
+      next.notify_enabled = settings_ui().notify.IsChecked().GetBoolean();
       w->SaveSettings(next, false);
     }
   });
@@ -1391,8 +1399,8 @@ void MainWindow::OpenSettingsWindow() {
       if (w->applying_settings_) return;
       rivet_app::SettingsData next = w->settings_;
       next.notify_threshold = static_cast<std::int64_t>(
-          std::lround(g_settings_ui.threshold.Value()));
-      g_settings_ui.threshold_value.Text(winrt::to_hstring(
+          std::lround(settings_ui().threshold.Value()));
+      settings_ui().threshold_value.Text(winrt::to_hstring(
           std::string(l10n::t("LblThreshold")) + ": " +
           std::to_string(next.notify_threshold) + "%"));
       w->SaveSettings(next, false);
@@ -1400,12 +1408,12 @@ void MainWindow::OpenSettingsWindow() {
   });
   platform.SelectionChanged([weak](auto&&, auto&&) {
     if (auto w = weak.get()) {
-      auto const selected = g_settings_ui.platform.SelectedIndex();
+      auto const selected = settings_ui().platform.SelectedIndex();
       bool const cli = selected == 2 || selected == 3;
-      g_settings_ui.api_key.Visibility(
+      settings_ui().api_key.Visibility(
           cli ? Microsoft::UI::Xaml::Visibility::Collapsed
               : Microsoft::UI::Xaml::Visibility::Visible);
-      g_settings_ui.account_message.Text(
+      settings_ui().account_message.Text(
           winrt::to_hstring(l10n::t(cli ? "CliLoginHint" : "AccountDesc")));
     }
   });
@@ -1413,11 +1421,11 @@ void MainWindow::OpenSettingsWindow() {
     if (auto w = weak.get()) {
       char const* const platforms[] = {"cn", "intl", "codex", "claude"};
       auto const selected = std::clamp<std::int32_t>(
-          g_settings_ui.platform.SelectedIndex(), 0, 3);
-      std::string const key = winrt::to_string(g_settings_ui.api_key.Password());
+          settings_ui().platform.SelectedIndex(), 0, 3);
+      std::string const key = winrt::to_string(settings_ui().api_key.Password());
       if (selected < 2 && key.empty()) return;
       w->SaveAccountForm(
-          winrt::to_string(g_settings_ui.account_name.Text()),
+          winrt::to_string(settings_ui().account_name.Text()),
           platforms[selected], key);
     }
   });
@@ -1429,7 +1437,7 @@ void MainWindow::OpenSettingsWindow() {
   accounts_pick.SelectionChanged([weak](auto&&, auto&&) {
     if (auto w = weak.get()) {
       if (w->applying_settings_) return;
-      auto const selected = g_settings_ui.accounts.SelectedIndex();
+      auto const selected = settings_ui().accounts.SelectedIndex();
       if (selected >= 0 &&
           selected < static_cast<std::int32_t>(w->accounts_.size())) {
         w->SwitchAccount(w->accounts_[static_cast<std::size_t>(selected)].id);
@@ -1442,7 +1450,7 @@ void MainWindow::OpenSettingsWindow() {
     }
   });
   window.Closed([weak](auto&&, auto&&) {
-    g_settings_ui.reset();
+    settings_ui().reset();
     if (auto w = weak.get()) {
       w->settings_window_ = nullptr;
     }
@@ -1470,7 +1478,7 @@ void MainWindow::CopyDiagnostics() {
             data_plane.SetText(winrt::to_hstring(text));
             Windows::ApplicationModel::DataTransfer::Clipboard::SetContent(
                 data_plane);
-            g_settings_ui.copy_diagnostics.Content(
+            settings_ui().copy_diagnostics.Content(
                 box_value(winrt::to_hstring(l10n::t("DiagnosticsCopied"))));
           }
         });
