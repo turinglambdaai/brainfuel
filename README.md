@@ -2,7 +2,7 @@
 
 A small desktop widget for monitoring **GLM Coding Plan** quota — the 5-hour rolling window and weekly allowance — without interrupting your work. Also reads OpenAI Codex and Claude (Pro/Max) usage from your local CLI login.
 
-![Racket](https://img.shields.io/badge/Racket-9.3-blue) ![Swift](https://img.shields.io/badge/macOS-SwiftUI-orange) [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![CI](https://github.com/turinglambdaai/brainfuel/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/turinglambdaai/brainfuel/actions/workflows/ci.yml)
+[![CI](https://github.com/turinglambdaai/brainfuel/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/turinglambdaai/brainfuel/actions/workflows/ci.yml) ![Racket](https://img.shields.io/badge/Racket-9.3-blue) ![Swift](https://img.shields.io/badge/macOS-SwiftUI-orange) [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 **English** · [中文](README.zh-CN.md)
 
