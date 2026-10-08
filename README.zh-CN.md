@@ -2,7 +2,7 @@
 
 一个用于监控 **GLM Coding Plan** 5 小时滚动额度和每周额度的桌面小组件，看一眼即走。同时通过本机 CLI 登录读取 OpenAI Codex 与 Claude（Pro/Max）用量。
 
-![Racket](https://img.shields.io/badge/Racket-9.3-blue) ![Swift](https://img.shields.io/badge/macOS-SwiftUI-orange) [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![CI](https://github.com/turinglambdaai/brainfuel/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/turinglambdaai/brainfuel/actions/workflows/ci.yml)
+[![CI](https://github.com/turinglambdaai/brainfuel/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/turinglambdaai/brainfuel/actions/workflows/ci.yml) ![Racket](https://img.shields.io/badge/Racket-9.3-blue) ![Swift](https://img.shields.io/badge/macOS-SwiftUI-orange) [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 [English](README.md) · **中文**
 
