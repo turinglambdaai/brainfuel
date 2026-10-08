@@ -40,6 +40,7 @@ struct CardPalette {
     let textMuted: Color
     let track: Color
 
+    @MainActor
     static func resolve(theme: String) -> CardPalette {
         let dark = CardPalette(
             cardBg: Color(red: 0x1F / 255, green: 0x1F / 255, blue: 0x1E / 255),
