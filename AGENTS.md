@@ -50,5 +50,5 @@ raco test racket/          # 领域核心测试（426 项）
 ├── windows/            WinUI3 宿主（脚手架）
 ├── linux/              GTK4 宿主（脚手架）
 ├── scripts/            gen-swift-strings.mjs（生成 GeneratedStrings.swift）
-└── docs/               官网（index.html）+ 签名/winget 文档
+└── docs/               官网（index.html）+ 签名文档
 ```
