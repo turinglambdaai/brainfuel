@@ -57,7 +57,7 @@ brainfuel/
 ├── macos-host/         # SwiftUI host (SwiftPM)
 ├── windows/            # WinUI3 host (scaffold)
 ├── linux/              # GTK4 host (scaffold)
-└── docs/               # website + signing/winget notes
+└── docs/               # website + signing notes
 ```
 
 ## License

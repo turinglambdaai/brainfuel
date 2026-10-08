@@ -57,7 +57,7 @@ brainfuel/
 ├── macos-host/         # SwiftUI 宿主（SwiftPM）
 ├── windows/            # WinUI3 宿主（脚手架）
 ├── linux/              # GTK4 宿主（脚手架）
-└── docs/               # 官网 + 签名/winget 文档
+└── docs/               # 官网 + 签名文档
 ```
 
 ## 许可
