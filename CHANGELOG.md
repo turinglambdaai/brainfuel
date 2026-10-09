@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-10-09
+
+### Fixed
+
+- The update check follows HTTP redirects (rivet#153): GitHub release
+  assets answer with a 302 to their CDN, and the previous fetch verified
+  an empty redirect body — every in-app update check failed at signature
+  verification. No app changes; rebuilt on the fixed rivet.
+
+
 ## [1.0.0] - 2026-10-02
 
 ### Changed
