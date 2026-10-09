@@ -13,6 +13,13 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
+env:
+  # Exact Rivet pin in release builds — the family policy (taskly): CI
+  # may track upstream main, but releases ship from a commit the hosts
+  # are verified against. Floating releases broke three ways in one day
+  # (linux native-installer deps, windows copy semantics, swift codegen).
+  RIVET_COMMIT: 2fcdd091ddd7fd157fa934ac6053cdf4f9ab6100
+
 jobs:
   validate:
     name: Validate release tag
@@ -42,10 +49,11 @@ jobs:
             racket-arch: x64
     steps:
       - uses: actions/checkout@v4
-      - name: Checkout Rivet
+      - name: Checkout Rivet (pinned)
         uses: actions/checkout@v4
         with:
           repository: turinglambdaai/rivet
+          ref: ${{ env.RIVET_COMMIT }}
           path: rivet
       - name: Install Racket
         uses: Bogdanp/setup-racket@v1.15
@@ -85,10 +93,11 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Checkout Rivet
+      - name: Checkout Rivet (pinned)
         uses: actions/checkout@v4
         with:
           repository: turinglambdaai/rivet
+          ref: ${{ env.RIVET_COMMIT }}
           path: rivet
       - name: Install Racket
         uses: Bogdanp/setup-racket@v1.15
@@ -152,10 +161,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Checkout Rivet
+      - name: Checkout Rivet (pinned)
         uses: actions/checkout@v4
         with:
           repository: turinglambdaai/rivet
+          ref: ${{ env.RIVET_COMMIT }}
           path: rivet
       - name: Cache embedded Racket CS build
         id: cache-racket-embed
