@@ -5,6 +5,10 @@
         (macos-icon . "shared/assets/brainfuel.icns")
         (identifier . "site.jrtx.brainfuel")
         (release-channel . stable)
+        ;; raco rivet release also builds native Linux installers by default
+        ;; (deb/rpm/appimage, upstream 2b4388c); BrainFuel ships the signed
+        ;; tar.gz only until those formats are adopted deliberately.
+        (linux-formats . ())
         (url-schemes . ())
         (file-associations . ())
         (macos-min-version . "14.0")
