@@ -125,6 +125,11 @@ jobs:
           RIVET_UPDATE_PRIVATE_KEY_B64: ${{ secrets.UPDATE_ED25519_PRIVATE_KEY_B64 }}
         run: |
           set -euo pipefail
+          # The release step re-packages; a stale package dir left by the zip
+          # step above makes rivet's host build fail with "copy-file:
+          # destination exists". Start from a clean dist — the zip lives in
+          # the repo root and is not touched.
+          rm -rf dist
           KEY_DER="$(mktemp -d)/update-ed25519-private.der"
           printf '%s' "$RIVET_UPDATE_PRIVATE_KEY_B64" | base64 -d > "$KEY_DER"
           export RIVET_UPDATE_PRIVATE_KEY="$KEY_DER"
