@@ -34,6 +34,27 @@ Built on [Rivet](https://github.com/turinglambdaai/rivet): one Racket domain cor
 - Bilingual UI (中文/English); light / dark / system theme
 - Data formats are drop-in compatible with v0.9.0: same `settings.json`, same usage-history files, same data directories
 
+## Install
+
+Grab your build from
+[Releases](https://github.com/turinglambdaai/brainfuel/releases/latest):
+
+| Platform | Portable zip | Installer |
+|---|---|---|
+| macOS Apple silicon | `brainfuel-<version>-macos-arm64.zip` | `brainfuel-<version>-macos-arm64.dmg` |
+| macOS Intel | `brainfuel-<version>-macos-x64.zip` | `brainfuel-<version>-macos-x64.dmg` |
+| Windows x64 | `brainfuel-<version>-windows-x64.zip` | `brainfuel-<version>-windows-x64.msi` |
+| Linux x64 | `brainfuel-<version>-linux-x64.tar.gz` | native packages planned |
+
+Every release carries a `SHA256SUMS` manifest over all assets.
+
+macOS builds are ad-hoc signed; if Gatekeeper complains on first launch,
+run `xattr -cr /Applications/BrainFuel.app`.
+
+Linux needs a GTK 4 desktop (unpack the tarball and run `RivetHost`;
+GTK 4 and its system libraries are the only runtime dependencies —
+everything else is bundled).
+
 ## Build from source
 
 Requires Racket CS 9.x with [Rivet](https://github.com/turinglambdaai/rivet) linked:

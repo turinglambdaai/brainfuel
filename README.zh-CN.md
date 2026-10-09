@@ -34,6 +34,25 @@
 - 中英双语；浅色 / 深色 / 跟随系统
 - 数据格式与 v0.9.0 逐字节兼容：同一 `settings.json`、同一历史文件、同一数据目录
 
+## 安装
+
+从 [Releases](https://github.com/turinglambdaai/brainfuel/releases/latest) 下载对应平台的构建：
+
+| 平台 | 便携 zip | 安装器 |
+|---|---|---|
+| macOS Apple silicon | `brainfuel-<version>-macos-arm64.zip` | `brainfuel-<version>-macos-arm64.dmg` |
+| macOS Intel | `brainfuel-<version>-macos-x64.zip` | `brainfuel-<version>-macos-x64.dmg` |
+| Windows x64 | `brainfuel-<version>-windows-x64.zip` | `brainfuel-<version>-windows-x64.msi` |
+| Linux x64 | `brainfuel-<version>-linux-x64.tar.gz` | 原生包格式规划中 |
+
+每个 release 附带覆盖全部资产的 `SHA256SUMS` 校验清单。
+
+macOS 构建为 ad-hoc 签名；若首次启动被 Gatekeeper 拦截，执行
+`xattr -cr /Applications/BrainFuel.app`。
+
+Linux 需要 GTK 4 桌面（解压后运行 `RivetHost`；GTK 4 及其系统库是仅有的
+运行时依赖——其余全部内置）。
+
 ## 从源码构建
 
 需要 Racket CS 9.x 与已 link 的 [Rivet](https://github.com/turinglambdaai/rivet)：

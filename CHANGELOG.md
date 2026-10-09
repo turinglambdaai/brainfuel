@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-09
+
+### Changed
+
+- Release engineering aligned with the taskly v1.3.0 packaging benchmark:
+  a `VERSION` file with a release preflight (`scripts/check-release-version.sh`,
+  run in CI and on every tag) keeps VERSION, `rivet.rktd`, and the git tag
+  aligned. macOS now ships both Apple silicon and Intel builds, each as DMG
+  and portable zip; Windows adds a portable zip next to the MSI. All assets
+  follow the unified lowercase `brainfuel-<version>-<os>-<arch>.<ext>`
+  naming, and every release publishes one `SHA256SUMS` covering all assets.
+
+### Removed
+
+- The signed update manifests (`update-stable*.json`) shipped since 1.0.0.
+  The app has no update client to consume them — no update RPC, no host
+  update UI — so publishing them promised a capability that does not
+  exist. Manifests return together with a real updater (backend port of
+  taskly's `racket/taskly/updater.rkt` pattern plus host UIs on all three
+  platforms).
+
 ## [1.0.1] - 2026-10-09
 
 ### Fixed
@@ -90,7 +111,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Multi-account support and previous-period graph overlay.
 
-[Unreleased]: https://github.com/turinglambdaai/brainfuel/compare/v0.6.7...HEAD
+[Unreleased]: https://github.com/turinglambdaai/brainfuel/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/turinglambdaai/brainfuel/compare/v1.0.1...v1.1.0
+[1.0.1]: https://github.com/turinglambdaai/brainfuel/compare/v1.0.0...v1.0.1
 [0.6.7]: https://github.com/turinglambdaai/brainfuel/compare/v0.6.6...v0.6.7
 [0.6.6]: https://github.com/turinglambdaai/brainfuel/compare/v0.6.5...v0.6.6
 [0.6.5]: https://github.com/turinglambdaai/brainfuel/compare/v0.6.4...v0.6.5

@@ -151,8 +151,8 @@ function applyLanguage(lang, persist) {
 async function initReleaseLinks() {
     const assetMatchers = {
         'dl-macos': name => /macos-arm64\.dmg$/i.test(name),
-        'dl-windows': name => /setup\.exe$/i.test(name),
-        'dl-linux': name => /linux.*\.zip$/i.test(name),
+        'dl-windows': name => /windows-x64\.msi$/i.test(name),
+        'dl-linux': name => /linux-x64\.tar\.gz$/i.test(name),
     };
 
     const versionBadge = document.getElementById('ver-badge');
@@ -170,14 +170,18 @@ async function initReleaseLinks() {
             versionBadge.textContent = release.tag_name;
         }
 
-        // Resolve each platform's preferred asset.
+        // Resolve each platform's preferred asset and rewrite the card's
+        // first download link (the div itself has no href).
         for (const [id, match] of Object.entries(assetMatchers)) {
             const card = document.getElementById(id);
             if (!card) continue;
 
             const asset = (release.assets || []).find(a => match(a.name));
-            if (asset && asset.browser_download_url) {
-                card.href = asset.browser_download_url;
+            const link = card.querySelector('a.platform-link');
+            if (asset && asset.browser_download_url && link) {
+                link.href = asset.browser_download_url;
+                const nameEl = link.querySelector('.link-name');
+                if (nameEl) nameEl.textContent = asset.name;
             }
         }
     } catch (err) {
