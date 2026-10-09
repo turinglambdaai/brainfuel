@@ -145,7 +145,10 @@ jobs:
           raco rivet release --development
           rm -f "$KEY_DER"
           rm -f dist/update-*.json
-          test -f "dist/brainfuel-${GITHUB_REF_NAME#v}-windows-x64.msi"
+          # Move next to the zip so the artifact upload's shared glob root
+          # sees both files (the msi is produced inside dist/).
+          mv "dist/brainfuel-${GITHUB_REF_NAME#v}-windows-x64.msi" .
+          test -f "brainfuel-${GITHUB_REF_NAME#v}-windows-x64.msi"
         shell: bash
       - uses: actions/upload-artifact@v4
         with:
