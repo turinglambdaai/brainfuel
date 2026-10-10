@@ -300,6 +300,26 @@ private struct SoftwareTab: View {
                 .font(.title3.weight(.semibold))
             Text(L10n.t("SoftwareDesc"))
                 .font(.callout).foregroundColor(.secondary)
+            HStack {
+                Button(L10n.t("BtnCheckUpdates")) {
+                    model.checkForUpdates()
+                }
+                .disabled(model.updatePhase == .downloading)
+                if model.updatePhase == .checking {
+                    ProgressView().scaleEffect(0.7)
+                    Text(L10n.t("UpdateCheckingShort"))
+                        .font(.footnote).foregroundColor(.secondary)
+                } else if model.updatePhase == .available {
+                    Text(L10n.t("UpdateAvailableTitle"))
+                        .font(.footnote).foregroundColor(.secondary)
+                } else if model.updatePhase == .upToDate {
+                    Text(L10n.t("UpdateUpToDateShort"))
+                        .font(.footnote).foregroundColor(.secondary)
+                } else if model.updatePhase == .failed {
+                    Text(L10n.t("UpdateFailedShort"))
+                        .font(.footnote).foregroundColor(.secondary)
+                }
+            }
             Divider()
             Text(L10n.t("SoftwareTrustTitle")).font(.headline)
             Text(L10n.t("SoftwareTrustDesc"))

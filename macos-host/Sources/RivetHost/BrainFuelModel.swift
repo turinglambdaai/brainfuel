@@ -3,6 +3,18 @@ import RivetEmbedding
 import RivetRuntime
 import RivetSystem
 
+/// Update-panel phase machine (shared/spec/UPDATE.md behavior contract):
+/// check → offer → download → install; silent checks open the panel only
+/// for an offer.
+enum UpdatePhase: Equatable {
+    case idle
+    case checking
+    case available
+    case downloading
+    case upToDate
+    case failed
+}
+
 /// Main-actor model bridging the embedded Racket backend and the card UI.
 /// All business logic lives in the backend; this only renders and forwards.
 @MainActor
@@ -47,6 +59,21 @@ final class BrainFuelModel: ObservableObject {
     var onQuit: (() -> Void)?
     var onSizeModeChanged: (() -> Void)?
     var onTopmostChanged: (() -> Void)?
+    var onShowUpdate: (() -> Void)?
+    var onHideUpdate: (() -> Void)?
+
+    // Updater (shared/spec/UPDATE.md)
+    @Published var updatePanelVisible = false
+    @Published var updatePhase: UpdatePhase = .idle
+    @Published var updateProgressPercent = 0
+    @Published var updateAvailableVersion = ""
+    @Published var updateErrorMessage = ""
+    /// Update offer accepted but not yet installed (lost on relaunch — the
+    /// user re-offers on the next check). Non-@Published: offers are
+    /// transient until accepted, and lazy service creation keeps the
+    /// public key parse off startup.
+    private var pendingUpdateManifest: UpdateService.Manifest?
+    private lazy var updateService = UpdateService()
 
     private var backend: EmbeddedRacketBackend?
 
@@ -104,6 +131,133 @@ final class BrainFuelModel: ObservableObject {
         L10n.language = settings.language
         ready = true
         status = ""
+        autoCheckForUpdates()
+    }
+
+    // MARK: updates (shared/spec/UPDATE.md)
+
+    /// Silent checks run at most once per 4 hours; the timestamp lives in
+    /// the backend's updater state (get-setting/set-setting), shared with
+    /// the Windows/Linux hosts.
+    static let updateThrottleInterval: TimeInterval = 4 * 60 * 60
+
+    /// Manual entry point: tray menu / Settings ▸ Software ▸ Check for
+    /// Updates. The panel reports every outcome (up to date, offer,
+    /// failure, dev copy).
+    func checkForUpdates() {
+        guard updatePhase != .downloading else { return }
+        showUpdatePanel()
+        updatePhase = .checking
+        Task { await runUpdateCheck(present: true) }
+    }
+
+    /// Silent launch check: once shortly after startup, throttled to one
+    /// attempt per 4 h; failures never nag.
+    func autoCheckForUpdates() {
+        Task {
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            await runUpdateCheck(present: false)
+        }
+    }
+
+    private func runUpdateCheck(present: Bool) async {
+        guard updatePhase != .downloading else { return }
+        if !present {
+            guard await updateThrottleElapsed() else { return }
+        }
+        do {
+            let result = try await updateService.check()
+            await recordUpdateCheck()
+            switch result {
+            case .available(let manifest):
+                pendingUpdateManifest = manifest
+                updateAvailableVersion = manifest.version
+                updatePhase = .available
+                showUpdatePanel()
+            case .upToDate:
+                updatePhase = present ? .upToDate : .idle
+                if present { showUpdatePanel() }
+            }
+        } catch {
+            await recordUpdateCheck()
+            guard present else {
+                updatePhase = .idle
+                return
+            }
+            if case UpdateService.UpdateError.notInstalled = error {
+                updateErrorMessage = L10n.t("UpdateNotInstalled")
+            } else {
+                updateErrorMessage = L10n.t("UpdateCheckFailed", Self.cleanError(error))
+            }
+            updatePhase = .failed
+            showUpdatePanel()
+        }
+    }
+
+    private func showUpdatePanel() {
+        updatePanelVisible = true
+        onShowUpdate?()
+    }
+
+    /// The throttle lives in the backend's updater state (the two-key
+    /// whitelist store; unix epoch seconds).
+    private func updateThrottleElapsed() async -> Bool {
+        guard let backend else { return false }
+        let raw = (try? await RivetAPI(client: backend.client)
+            .get_setting(key: "last-update-check")) ?? ""
+        let last = TimeInterval(raw.trimmingCharacters(in: .whitespaces)) ?? 0
+        return Date().timeIntervalSince1970 - last >= Self.updateThrottleInterval
+    }
+
+    private func recordUpdateCheck() async {
+        guard let backend else { return }
+        _ = try? await RivetAPI(client: backend.client).set_setting(
+            key: "last-update-check",
+            value: String(Int(Date().timeIntervalSince1970)))
+    }
+
+    /// Offer accepted: download (progress in the panel) → sha256 + Ed25519
+    /// already verified → in-place swap → relaunch. UpdateService terminates
+    /// the app on success; any earlier throw leaves this version running.
+    func installUpdate() {
+        guard updatePhase == .available, let manifest = pendingUpdateManifest else { return }
+        updatePhase = .downloading
+        updateProgressPercent = 0
+        updateErrorMessage = ""
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                try await updateService.downloadAndInstall(manifest) { [weak self] percent in
+                    // The download runs off the main actor; hop the write
+                    // back so SwiftUI sees it.
+                    Task { @MainActor [weak self] in
+                        self?.updateProgressPercent = percent
+                    }
+                }
+            } catch {
+                updateErrorMessage = L10n.t("UpdateInstallFailed", Self.cleanError(error))
+                updatePhase = .failed
+            }
+        }
+    }
+
+    func dismissUpdatePanel() {
+        updatePanelVisible = false
+        if updatePhase != .downloading {
+            updatePhase = .idle
+            updateErrorMessage = ""
+            pendingUpdateManifest = nil
+            onHideUpdate?()
+        }
+    }
+
+    static func cleanError(_ error: Error) -> String {
+        let text = error.localizedDescription
+        // RVT1 failures arrive as "...error: <message>"; keep the message.
+        if let range = text.range(of: "error: ") {
+            return String(text[range.upperBound...])
+        }
+        return text
     }
 
     // MARK: events

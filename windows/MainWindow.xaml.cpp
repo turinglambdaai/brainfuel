@@ -247,6 +247,8 @@ struct SettingsUi {
   Microsoft::UI::Xaml::Controls::Slider threshold;
   Microsoft::UI::Xaml::Controls::TextBlock threshold_value;
   Microsoft::UI::Xaml::Controls::Button copy_diagnostics;
+  Microsoft::UI::Xaml::Controls::Button check_updates;
+  Microsoft::UI::Xaml::Controls::TextBlock software_status;
   bool filled = false;
 
   void reset() { *this = SettingsUi{}; }
@@ -262,6 +264,15 @@ SettingsUi& settings_ui() {
 }
 
 }  // namespace
+
+// Progress/status copy for the update flow (MainWindow.Update.cpp), shown
+// on the settings window's software tab when it is open; dialogs carry
+// every terminal outcome either way.
+void SetUpdateStatus(std::wstring const& message) {
+  if (auto* status = settings_ui().software_status) {
+    status->Text(message);
+  }
+}
 
 // ----------------------------------------------------------------- lifecycle
 
@@ -467,6 +478,12 @@ void MainWindow::Bootstrap() {
                                                 window->ApplySettingsUi();
                                                 window->ApplySnapshot();
                                                 window->UpdateMenuAccounts();
+                                                // A previous update run may
+                                                // have left a failure report
+                                                // or a stale .old copy behind
+                                                // (MainWindow.Update.cpp).
+                                                window->HandleInstallMarkers();
+                                                window->AutoCheckUpdatesAsync();
                                               }
                                             });
                                       });
@@ -686,6 +703,7 @@ void MainWindow::SetMiniMode(bool mini) {
 
 void MainWindow::UpdateMenuState() {
   MenuTopmost().IsChecked(settings_.always_on_top);
+  MenuCheckUpdates().Text(winrt::to_hstring(l10n::t("MenuCheckUpdates")));
 }
 
 // ------------------------------------------------------------------ rpc glue
@@ -1292,6 +1310,17 @@ void MainWindow::OpenSettingsWindow() {
   settings_ui().copy_diagnostics = copy;
   software.Children().Append(copy);
 
+  // In-app update (shared/spec/UPDATE.md): manual check + a status line the
+  // update flow writes progress into.
+  auto const check = Button();
+  check.Content(box_value(l10("BtnCheckUpdates")));
+  settings_ui().check_updates = check;
+  software.Children().Append(check);
+  auto const update_status = TextBlock();
+  update_status.TextWrapping(TextWrapping::Wrap);
+  settings_ui().software_status = update_status;
+  software.Children().Append(update_status);
+
   auto const software_item = PivotItem();
   software_item.Header(box_value(l10("TabSoftware")));
   software_item.Content(software);
@@ -1299,7 +1328,6 @@ void MainWindow::OpenSettingsWindow() {
 
   window.Content(root);
   RefreshSettingsControls();
-
   auto const weak = get_weak();
   // change handlers apply immediately; the backend clamps and persists
   language.SelectionChanged([weak](auto&&, auto&&) {
@@ -1447,6 +1475,11 @@ void MainWindow::OpenSettingsWindow() {
   copy.Click([weak](auto&&, auto&&) {
     if (auto w = weak.get()) {
       w->CopyDiagnostics();
+    }
+  });
+  check.Click([weak](auto&&, auto&&) {
+    if (auto w = weak.get()) {
+      w->RunUpdateCheck(/*silent=*/false);
     }
   });
   window.Closed([weak](auto&&, auto&&) {

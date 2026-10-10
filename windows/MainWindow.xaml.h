@@ -10,6 +10,11 @@
 
 namespace winrt::RivetHost::implementation {
 
+// Progress/status copy for the update flow, shown on the settings window's
+// software tab when it is open (defined in MainWindow.xaml.cpp, where the
+// settings control registry lives).
+void SetUpdateStatus(std::wstring const& message);
+
 struct MainWindow : MainWindowT<MainWindow> {
   MainWindow();
 
@@ -32,6 +37,8 @@ struct MainWindow : MainWindowT<MainWindow> {
                           Microsoft::UI::Xaml::Input::DoubleTappedRoutedEventArgs const&);
   void OnMenuAccountClick(winrt::Windows::Foundation::IInspectable const&,
                           Microsoft::UI::Xaml::RoutedEventArgs const&);
+  void OnCheckUpdates(winrt::Windows::Foundation::IInspectable const&,
+                      Microsoft::UI::Xaml::RoutedEventArgs const&);
 
  private:
   void Initialize();
@@ -66,6 +73,28 @@ struct MainWindow : MainWindowT<MainWindow> {
   void RefreshSettingsControls();
   void CopyDiagnostics();
 
+  // Updates (shared/spec/UPDATE.md; flow lives in MainWindow.Update.cpp)
+  winrt::fire_and_forget AutoCheckUpdatesAsync();
+  void RunSilentUpdateCheck();
+  void RunUpdateCheck(bool silent);
+  void HandleUpdateCheckResult(bool ok, rivet_app::UpdateCheck const& check,
+                               std::string const& failure, bool silent);
+  void RecordUpdateCheck();
+  void StartDownload();
+  void PollUpdateState(
+      std::shared_ptr<rivet::windows::Backend> const& backend);
+  void HandleUpdatePoll(rivet_app::Result<rivet_app::UpdateState> const& result);
+  void FailDownload(std::string const& message);
+  winrt::fire_and_forget ShowInstallConsent(std::wstring const& path);
+  void InstallDownloadedUpdate(std::wstring const& zip_path);
+  void HandleInstallMarkers();
+  bool IsDevCopy();
+  bool IsMsiInstall();
+  winrt::fire_and_forget ShowUpdateDialog(
+      std::wstring const& title, std::wstring const& body,
+      std::wstring const& primary_button, std::wstring const& close_button,
+      std::function<void()> on_primary);
+
   std::shared_ptr<rivet::windows::Backend> backend_;
   bool ready_ = false;
   bool refreshing_ = false;
@@ -75,6 +104,8 @@ struct MainWindow : MainWindowT<MainWindow> {
   std::optional<rivet_app::QuotaSnapshot> snapshot_;
   rivet_app::SettingsData settings_{};
   Microsoft::UI::Xaml::Window settings_window_{nullptr};
+  winrt::Microsoft::UI::Xaml::DispatcherTimer update_timer_{nullptr};
+  bool update_downloading_{false};
 };
 
 }  // namespace winrt::RivetHost::implementation

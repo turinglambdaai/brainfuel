@@ -20,6 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var panel: NSPanel?
     private var settingsWindow: NSWindow?
+    private var updateWindow: NSWindow?
     private var menuBar: RivetMenuBarController?
     // Retained for the process lifetime: dropping it releases the lease.
     private var instanceLease: RivetSingleInstance?
@@ -46,6 +47,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.onQuit = { NSApp.terminate(nil) }
         model.onSizeModeChanged = { [weak self] in self?.applySizeMode() }
         model.onTopmostChanged = { [weak self] in self?.applyTopmost() }
+        model.onShowUpdate = { [weak self] in self?.showUpdateWindow() }
+        model.onHideUpdate = { [weak self] in self?.updateWindow?.orderOut(nil) }
 
         model.start()
         applySizeMode()
@@ -136,6 +139,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             (L10n.t("TrayShow"), "tray-show", { [weak self] in self?.showCard() }),
             (L10n.t("MenuRefresh"), "tray-refresh", { model.refreshNow() }),
             (L10n.t("TraySettings"), "tray-settings", { [weak self] in self?.showSettings() }),
+            (L10n.t("MenuCheckUpdates"), "tray-check-updates", { [weak self] in
+                self?.showUpdateWindow()
+                model.checkForUpdates()
+            }),
             (L10n.t("MenuQuit"), "tray-quit", { NSApp.terminate(nil) }),
         ])
         menuBar = controller
@@ -163,6 +170,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         settingsWindow = window
+    }
+
+    // MARK: update window
+
+    /// Hosts UpdatePanelView; shown for manual checks and for a silent
+    /// check that found an offer. Closing the window just hides it — the
+    /// model resets through dismissUpdatePanel (the download phase pins it).
+    func showUpdateWindow() {
+        if let window = updateWindow {
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+        guard let model else { return }
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 360, height: 200),
+                              styleMask: [.titled, .closable],
+                              backing: .buffered, defer: false)
+        window.title = L10n.t("UpdateSectionTitle")
+        window.contentView = NSHostingView(rootView: UpdatePanelView().environmentObject(model))
+        window.center()
+        window.setFrameAutosaveName("BrainFuelUpdateWindow")
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        updateWindow = window
     }
 }
 

@@ -477,6 +477,134 @@
     {
       "fields": [
         {
+          "name": "status",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "error",
+          "type": {
+            "element": {
+              "kind": "scalar",
+              "name": "String"
+            },
+            "kind": "optional"
+          }
+        },
+        {
+          "name": "current-version",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "available-version",
+          "type": {
+            "element": {
+              "kind": "scalar",
+              "name": "String"
+            },
+            "kind": "optional"
+          }
+        },
+        {
+          "name": "build",
+          "type": {
+            "element": {
+              "kind": "scalar",
+              "name": "Int64"
+            },
+            "kind": "optional"
+          }
+        },
+        {
+          "name": "published-at",
+          "type": {
+            "element": {
+              "kind": "scalar",
+              "name": "String"
+            },
+            "kind": "optional"
+          }
+        },
+        {
+          "name": "installer",
+          "type": {
+            "element": {
+              "kind": "scalar",
+              "name": "String"
+            },
+            "kind": "optional"
+          }
+        },
+        {
+          "name": "size-bytes",
+          "type": {
+            "element": {
+              "kind": "scalar",
+              "name": "Int64"
+            },
+            "kind": "optional"
+          }
+        }
+      ],
+      "name": "UpdateCheck"
+    },
+    {
+      "fields": [
+        {
+          "name": "phase",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "percent",
+          "type": {
+            "kind": "scalar",
+            "name": "Int64"
+          }
+        },
+        {
+          "name": "message",
+          "type": {
+            "element": {
+              "kind": "scalar",
+              "name": "String"
+            },
+            "kind": "optional"
+          }
+        },
+        {
+          "name": "downloaded-path",
+          "type": {
+            "element": {
+              "kind": "scalar",
+              "name": "String"
+            },
+            "kind": "optional"
+          }
+        },
+        {
+          "name": "available-version",
+          "type": {
+            "element": {
+              "kind": "scalar",
+              "name": "String"
+            },
+            "kind": "optional"
+          }
+        }
+      ],
+      "name": "UpdateState"
+    },
+    {
+      "fields": [
+        {
           "name": "used-bp",
           "type": {
             "element": {
@@ -502,6 +630,14 @@
   ],
   "rpcs": [
     {
+      "arguments": [],
+      "name": "check-updates",
+      "result": {
+        "kind": "record",
+        "name": "UpdateCheck"
+      }
+    },
+    {
       "arguments": [
         {
           "name": "account-id",
@@ -520,6 +656,22 @@
     {
       "arguments": [],
       "name": "get-diagnostics",
+      "result": {
+        "kind": "scalar",
+        "name": "String"
+      }
+    },
+    {
+      "arguments": [
+        {
+          "name": "key",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        }
+      ],
+      "name": "get-setting",
       "result": {
         "kind": "scalar",
         "name": "String"
@@ -606,6 +758,37 @@
     {
       "arguments": [
         {
+          "name": "key",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        },
+        {
+          "name": "value",
+          "type": {
+            "kind": "scalar",
+            "name": "String"
+          }
+        }
+      ],
+      "name": "set-setting",
+      "result": {
+        "kind": "scalar",
+        "name": "Void"
+      }
+    },
+    {
+      "arguments": [],
+      "name": "start-download",
+      "result": {
+        "kind": "scalar",
+        "name": "Void"
+      }
+    },
+    {
+      "arguments": [
+        {
           "name": "id",
           "type": {
             "kind": "scalar",
@@ -617,6 +800,14 @@
       "result": {
         "kind": "scalar",
         "name": "Void"
+      }
+    },
+    {
+      "arguments": [],
+      "name": "update-state",
+      "result": {
+        "kind": "record",
+        "name": "UpdateState"
       }
     }
   ],

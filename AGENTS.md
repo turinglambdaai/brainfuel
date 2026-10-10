@@ -34,7 +34,7 @@ raco test racket/          # 领域核心测试（426 项）
 
 - **数据路径与格式与 v0.9.0 完全一致**（drop-in 迁移）：settings.json / usage-history-{accountId}.json / 凭据（Windows DPAPI·macOS 钥匙串·Linux secret-tool），目录 macOS ~/Library/Application Support/BrainFuel · Linux ~/.config/BrainFuel · Windows %APPDATA%/BrainFuel
 - **i18n 单源**：`shared/i18n/{zh,en}.json`，平台副本必须逐字节一致；zh 为默认
-- **RPC 面**：`app/backend.rkt` 的 define-rpc 是宿主唯一数据通道（initialize / refresh-now / switch-account / get-details / save-account / remove-account / get-settings / save-settings / get-diagnostics）；改签名 = 各端宿主 + 生成客户端同步改
+- **RPC 面**：`app/backend.rkt` 的 define-rpc 是宿主唯一数据通道（initialize / refresh-now / switch-account / get-details / save-account / remove-account / get-settings / save-settings / get-diagnostics / check-updates / start-download / update-state / get-setting / set-setting）；改签名 = 各端宿主 + 生成客户端同步改
 - **宿主只做渲染与交互**：业务一律走 RPC；定时器/调度/HTTP/存储都在 Racket 后端
 - **Rivet 改动走上游**：缺能力先提 issue/PR 到 turinglambdaai/rivet
 

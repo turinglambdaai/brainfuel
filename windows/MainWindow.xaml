@@ -67,6 +67,7 @@
                                 <MenuFlyoutItem x:Name="MenuRefresh" Click="OnMenuRefreshClick" />
                                 <MenuFlyoutSubItem x:Name="MenuAccounts" />
                                 <MenuFlyoutItem x:Name="MenuSettings" Click="OnMenuSettingsClick" />
+                                <MenuFlyoutItem x:Name="MenuCheckUpdates" Click="OnCheckUpdates" />
                                 <ToggleMenuFlyoutItem x:Name="MenuTopmost" Click="OnMenuTopmostClick" />
                                 <MenuFlyoutItem x:Name="MenuMini" Click="OnMenuMiniClick" />
                                 <MenuFlyoutSeparator />

@@ -16,6 +16,7 @@
          "../racket/brainfuel/http-fetch.rkt"
          "../racket/brainfuel/scheduler.rkt"
          "../racket/brainfuel/settings.rkt"
+         "../racket/brainfuel/updater.rkt"
          "../racket/brainfuel/usage-models.rkt")
 
 (provide start
@@ -70,6 +71,28 @@
    [ring-palette : String] [card-opacity-bp : Int64]
    [credential-state : String]))
 
+;; Result of check-updates. status: "available" | "up-to-date" | "error";
+;; the descriptive fields are only filled for "available" (the family
+;; UpdateCheck shape, taskly racket/taskly/rivet-schema.rkt).
+(define-record UpdateCheck
+  ([status : String]
+   [error : (Optional String)]
+   [current-version : String]
+   [available-version : (Optional String)]
+   [build : (Optional Int64)]
+   [published-at : (Optional String)]
+   [installer : (Optional String)]
+   [size-bytes : (Optional Int64)]))
+
+;; Polled by the host while a download runs. phase: idle | checking |
+;; downloading | downloaded | error.
+(define-record UpdateState
+  ([phase : String]
+   [percent : Int64]
+   [message : (Optional String)]
+   [downloaded-path : (Optional String)]
+   [available-version : (Optional String)]))
+
 ;; ---- events / states ---------------------------------------------------------
 
 (define-event quota-updated : QuotaSnapshot)
@@ -100,7 +123,7 @@
 
 (define-runtime-path rivet-manifest-path "../rivet.rktd")
 
-(define (app-version)
+(define (manifest-version)
   (with-handlers ([exn:fail? (lambda (_) "0.0.0")])
     (define manifest (with-input-from-file rivet-manifest-path read))
     (if (and (hash? manifest) (hash-ref manifest 'version #f))
@@ -147,6 +170,10 @@
     [(exact-integer? v) v]
     [(real? v) (inexact->exact (truncate v))]
     [else (void)]))
+
+;; #f travels over the wire as the absent Optional.
+(define (opt-value v)
+  (if v v (void)))
 
 (define (window-usage->dto pct reset-ms)
   (WindowUsage (opt-real->bp pct) (opt-ms->int reset-ms)))
@@ -338,8 +365,65 @@
    (service-apply-settings! (require-service) (dto->settings-info settings))))
 
 (define-rpc (get-diagnostics : String)
-  (parameterize ([current-app-version (app-version)])
+  (parameterize ([current-app-version (manifest-version)])
     (service-diagnostics (require-service))))
+
+;; ---- online update -----------------------------------------------------------
+;; The family pattern (rivet/distribution, taskly racket/taskly/backend.rkt):
+;; this backend verifies and downloads the signed artifact; hosts own
+;; installation and the silent 4-hour throttle (last-update-check
+;; updater-state key, shared/spec/UPDATE.md).
+
+(define (update-check->record result)
+  (UpdateCheck
+   (hash-ref result 'status "error")
+   (opt-value (hash-ref result 'message #f))
+   (hash-ref result 'currentVersion app-version)
+   (opt-value (hash-ref result 'availableVersion #f))
+   (opt-value (hash-ref result 'build #f))
+   (opt-value (hash-ref result 'publishedAt #f))
+   (opt-value (hash-ref result 'installer #f))
+   (opt-value (hash-ref result 'sizeBytes #f))))
+
+;; Never raises: network/manifest failures surface as status "error" so a
+;; headless check can't take the host down with it.
+(define-rpc (check-updates : UpdateCheck)
+  (with-handlers
+      ([exn:fail?
+        (lambda (e)
+          (UpdateCheck "error" (void) app-version
+                       (void) (void) (void) (void) (void)))])
+    (update-check->record (perform-check!))))
+
+;; Runs on a backend worker thread; the host follows progress via
+;; update-state. Never raises: failures surface through the state's phase.
+(define-rpc (start-download : Void)
+  (with-handlers
+      ([exn:fail? (lambda (e) (set-update-error! (exn-message e)))])
+    (start-download! (update-data-dir)))
+  (void))
+
+(define-rpc (update-state : UpdateState)
+  (define s (update-state-snapshot))
+  (UpdateState
+   (hash-ref s 'phase "idle")
+   (hash-ref s 'percent 0)
+   (opt-value (hash-ref s 'message #f))
+   (opt-value (hash-ref s 'downloadedPath #f))
+   (opt-value (hash-ref s 'availableVersion #f))))
+
+;; Minimal validated key-value channel for host-side updater bookkeeping —
+;; the BrainFuel equivalent of taskly's get_setting/set_setting pair plus
+;; its config.ini write whitelist: exactly the updater-state keys are
+;; readable/writable, values are integers-as-strings. Unset keys read as
+;; the empty string so hosts parse a single shape ("value or default").
+(define-rpc (get-setting [key : String] : String)
+  (updater-setting (string-downcase (string-trim key))))
+
+(define-rpc (set-setting [key : String] [value : String] : Void)
+  (set-updater-setting! (string-downcase (string-trim key))
+                        (string-trim value))
+  (void))
 
 ;; ---- entry point ---------------------------------------------------------------
 

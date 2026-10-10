@@ -28,3 +28,6 @@ appsettings.*.json
 build/
 dist/
 compiled/
+
+# Update signing keys (private) — see scripts/update-keys.sh
+.keys/

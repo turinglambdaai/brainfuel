@@ -11,7 +11,8 @@
          rivet/backend
          rivet/protocol
          "../../app/backend.rkt"
-         "../../racket/brainfuel/credentials.rkt")
+         "../../racket/brainfuel/credentials.rkt"
+         "../../racket/brainfuel/updater.rkt")
 
 ;; ---- stubs: no network, no user data ----------------------------------------
 
@@ -255,6 +256,43 @@
 (define unknown-rpc (send-request "no_such_rpc"))
 (define unknown-response (let-values (((r e) (read-terminal unknown-rpc))) r))
 (check-equal? (frame-type unknown-response) message:error)
+
+;; ---- online update RPCs (offline deterministic paths) -------------------------------------
+;; The feed rides on the updater's box override (parameterizations do not
+;; cross into serve threads): a closed port exercises the full check path
+;; without touching the real feed or the user's data dir.
+(set-update-base-url-override! "https://127.0.0.1:9/brainfuel")
+(set-update-data-dir-override! data-dir)
+
+;; check-updates never raises: the network failure lands as status "error"
+;; and the shared state carries the phase + message for the UI.
+(define check (call* "check-updates"))
+;; wire shape: (status error current-version available-version build
+;;                 published-at installer size-bytes)
+(check-equal? (list-ref check 0) "error")
+(check-equal? (list-ref check 2) "1.2.0")
+(define update-state0 (call* "update-state"))
+;; (phase percent message downloaded-path available-version)
+(check-equal? (list-ref update-state0 0) "error")
+(check-true (string? (list-ref update-state0 2)))
+
+;; start-download without a candidate surfaces through the state, not the
+;; RPC frame (the host's single failure channel).
+(void (call* "start-download"))
+(check-equal? (list-ref (call* "update-state") 0) "error")
+
+;; The updater-state key-value channel: the 4h-throttle timestamp storage
+;; shared by all three hosts, whitelisted to the two updater keys.
+(check-equal? (call* "get-setting" "last-update-check") "")
+(void (call* "set-setting" "last-update-check" "1760000000"))
+(check-equal? (call* "get-setting" "last-update-check") "1760000000")
+(check-exn exn:fail? (lambda () (call* "set-setting" "theme" "dark")))
+(check-exn exn:fail? (lambda () (call* "set-setting" "rollout-bucket" "abc")))
+(check-equal? (file->string (build-path data-dir "updater-state.json"))
+              "{\"last-update-check\":1760000000}")
+
+(set-update-base-url-override! #f)
+(set-update-data-dir-override! #f)
 
 ;; ---- graceful shutdown ---------------------------------------------------------------------
 

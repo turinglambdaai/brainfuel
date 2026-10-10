@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-10
+
+### Added
+
+- Family-style in-app updater (the taskly port — backend verifies and
+  downloads, hosts install): backend `check-updates` / `start-download` /
+  `update-state` RPCs over `rivet/distribution` (Ed25519-signed channel
+  manifest + sha256-verified artifacts, sticky per-install rollout bucket in
+  a two-key `updater-state.json` whitelist) plus `get-setting` /
+  `set-setting` for the shared 4-hour silent-check throttle. Release
+  pipeline signs `update-manifest.json` from the four portable artifacts
+  (`scripts/make-update-manifest.sh`, key: `scripts/update-keys.sh`,
+  secret `UPDATE_ED25519_PRIVATE_KEY_B64`; missing secret warns and ships
+  without a manifest). macOS host: UpdateService (CryptoKit wrapper verify,
+  zip → ditto → in-place swap with `.old` fallback, relaunch), tray and
+  Settings ▸ Software entries, update panel, silent launch check. Windows
+  host: silent throttled check, card-menu and software-tab entries, progress
+  polling, `update-install.cmd` handoff swap with failure marker on next
+  launch, MSI-installed copies guided to the releases page. Linux host:
+  silent throttled check, card-menu and software-tab entries, progress
+  dialog, downloaded dialog with manual-install hint and open-folder.
+  Contract and platform table: `shared/spec/UPDATE.md`.
+
+### Changed
+
+- Release preflight (`scripts/check-release-version.sh`) now also checks
+  the updater's embedded version against VERSION (VERSION == rivet.rktd ==
+  updater == tag).
+
 ## [1.1.0] - 2026-10-09
 
 ### Changed

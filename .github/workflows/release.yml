@@ -262,6 +262,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Set up Racket CS
+        uses: Bogdanp/setup-racket@v1.15
+        with:
+          architecture: x64
+          version: stable
+          distribution: full
+      - name: Install crypto package (rivet/distribution dependency)
+        run: raco pkg install --auto --no-docs crypto
+      - name: Checkout + link Rivet (release pin; the manifest signer)
+        uses: actions/checkout@v4
+        with:
+          repository: turinglambdaai/rivet
+          ref: ${{ env.RIVET_COMMIT }}
+          path: rivet
+      - name: Link Rivet
+        run: raco pkg install --auto --no-docs --link "$GITHUB_WORKSPACE/rivet/rivet" "$GITHUB_WORKSPACE/rivet/rivet-cli"
       - uses: actions/download-artifact@v4
         with:
           path: dist
@@ -270,6 +286,23 @@ jobs:
           find dist -mindepth 2 -maxdepth 2 -type f -exec mv {} dist/ \;
           find dist -mindepth 1 -maxdepth 1 -type d -empty -delete
           ls -la dist/
+      # The portable zips + linux tar.gz are the update feed (macOS/Windows
+      # hosts swap them in place; Linux updates through the tar.gz). The
+      # dmg/msi stay human installers, out of the feed. Missing secret →
+      # warn and publish without a manifest (hosts then report
+      # "manifest missing" on manual checks).
+      - name: Sign the update feed
+        env:
+          UPDATE_ED25519_PRIVATE_KEY_B64: ${{ secrets.UPDATE_ED25519_PRIVATE_KEY_B64 }}
+        run: |
+          set -euo pipefail
+          if [[ -n "${UPDATE_ED25519_PRIVATE_KEY_B64:-}" ]]; then
+            KEY_DER="$RUNNER_TEMP/update-ed25519-private.der"
+            printf '%s' "$UPDATE_ED25519_PRIVATE_KEY_B64" | base64 -d > "$KEY_DER"
+            scripts/make-update-manifest.sh "$GITHUB_REF_NAME" dist "$KEY_DER"
+          else
+            echo "::warning::UPDATE_ED25519_PRIVATE_KEY_B64 not set — release ships without an update manifest"
+          fi
       - name: Ensure SHA256SUMS
         run: |
           cd dist

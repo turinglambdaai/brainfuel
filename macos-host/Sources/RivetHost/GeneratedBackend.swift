@@ -7,8 +7,8 @@ public enum RivetGeneratedConfig {
     public static let moduleName = "backend"
     public static let entryName = "start"
     public static let displayName = "BrainFuel"
-    public static let version = "1.1.0"
-    public static let build: Int64 = 3
+    public static let version = "1.2.0"
+    public static let build: Int64 = 4
     public static let identifier = "site.jrtx.brainfuel"
     public static let releaseChannel = "stable"
 }
@@ -192,11 +192,48 @@ public struct SettingsData: Sendable {
     }
 }
 
+public struct UpdateCheck: Sendable {
+    public let status: String
+    public let error: String?
+    public let current_version: String
+    public let available_version: String?
+    public let build: Int64?
+    public let published_at: String?
+    public let installer: String?
+    public let size_bytes: Int64?
+    public init(status: String, error: String?, current_version: String, available_version: String?, build: Int64?, published_at: String?, installer: String?, size_bytes: Int64?) {
+        self.status = status
+        self.error = error
+        self.current_version = current_version
+        self.available_version = available_version
+        self.build = build
+        self.published_at = published_at
+        self.installer = installer
+        self.size_bytes = size_bytes
+    }
+}
+
+public struct UpdateState: Sendable {
+    public let phase: String
+    public let percent: Int64
+    public let message: String?
+    public let downloaded_path: String?
+    public let available_version: String?
+    public init(phase: String, percent: Int64, message: String?, downloaded_path: String?, available_version: String?) {
+        self.phase = phase
+        self.percent = percent
+        self.message = message
+        self.downloaded_path = downloaded_path
+        self.available_version = available_version
+    }
+}
+
 private func encode_String(_ v: String) -> RivetValue { .string(v) }
+private func encode__Optional_String_(_ v: String?) -> RivetValue { v.map(encode_String) ?? .null }
 private func encode_Int64(_ v: Int64) -> RivetValue { .int64(v) }
 private func encode__Optional_Int64_(_ v: Int64?) -> RivetValue { v.map(encode_Int64) ?? .null }
+private func encode_UpdateCheck(_ v: UpdateCheck) -> RivetValue { .list([encode_String(v.status), encode__Optional_String_(v.error), encode_String(v.current_version), encode__Optional_String_(v.available_version), encode__Optional_Int64_(v.build), encode__Optional_String_(v.published_at), encode__Optional_String_(v.installer), encode__Optional_Int64_(v.size_bytes)]) }
 private func encode_WindowUsage(_ v: WindowUsage) -> RivetValue { .list([encode__Optional_Int64_(v.used_bp), encode__Optional_Int64_(v.reset_at_ms)]) }
-private func encode__Optional_String_(_ v: String?) -> RivetValue { v.map(encode_String) ?? .null }
 private func encode_BurnInfo(_ v: BurnInfo) -> RivetValue { .list([encode__Optional_Int64_(v.rate_bp_per_hour), encode__Optional_Int64_(v.minutes_to_empty), encode__Optional_String_(v.comparison)]) }
 private func encode_HistorySample(_ v: HistorySample) -> RivetValue { .list([encode_Int64(v.at_ms), encode__Optional_Int64_(v.hourly_bp), encode__Optional_Int64_(v.weekly_bp)]) }
 private func encode__List_HistorySample_(_ v: [HistorySample]) -> RivetValue { .list(v.map(encode_HistorySample)) }
@@ -208,6 +245,7 @@ private func encode_Provider(_ v: Provider) -> RivetValue { .string(v.rawValue) 
 private func encode_Account(_ v: Account) -> RivetValue { .list([encode_String(v.id), encode_String(v.name), encode_Provider(v.provider), encode_String(v.base_domain), encode_Bool(v.configured)]) }
 private func encode__List_Account_(_ v: [Account]) -> RivetValue { .list(v.map(encode_Account)) }
 private func encode_AccountDraft(_ v: AccountDraft) -> RivetValue { .list([encode__Optional_String_(v.id), encode_String(v.name), encode_Provider(v.provider), encode_String(v.base_domain), encode__Optional_String_(v.api_key), encode_Bool(v.clear_key)]) }
+private func encode_UpdateState(_ v: UpdateState) -> RivetValue { .list([encode_String(v.phase), encode_Int64(v.percent), encode__Optional_String_(v.message), encode__Optional_String_(v.downloaded_path), encode__Optional_String_(v.available_version)]) }
 private func encode_Alert(_ v: Alert) -> RivetValue { .list([encode_String(v.account_id), encode_String(v.which), encode_String(v.message)]) }
 private func encode_Severity(_ v: Severity) -> RivetValue { .string(v.rawValue) }
 private func encode_FailureKind(_ v: FailureKind) -> RivetValue { .string(v.rawValue) }
@@ -217,10 +255,11 @@ private func encode_QuotaSnapshot(_ v: QuotaSnapshot) -> RivetValue { .list([enc
 private func encode__Optional_QuotaSnapshot_(_ v: QuotaSnapshot?) -> RivetValue { v.map(encode_QuotaSnapshot) ?? .null }
 
 private func decode_String(_ v: RivetValue) throws -> String { guard case .string(let x) = v else { throw RivetGeneratedError.typeMismatch("String") }; return x }
+private func decode__Optional_String_(_ v: RivetValue) throws -> String? { if case .null = v { return nil }; return try decode_String(v) }
 private func decode_Int64(_ v: RivetValue) throws -> Int64 { guard case .int64(let x) = v else { throw RivetGeneratedError.typeMismatch("Int64") }; return x }
 private func decode__Optional_Int64_(_ v: RivetValue) throws -> Int64? { if case .null = v { return nil }; return try decode_Int64(v) }
+private func decode_UpdateCheck(_ v: RivetValue) throws -> UpdateCheck { guard case .list(let xs) = v, xs.count == 8 else { throw RivetGeneratedError.typeMismatch("UpdateCheck") }; return UpdateCheck(status: try decode_String(xs[0]), error: try decode__Optional_String_(xs[1]), current_version: try decode_String(xs[2]), available_version: try decode__Optional_String_(xs[3]), build: try decode__Optional_Int64_(xs[4]), published_at: try decode__Optional_String_(xs[5]), installer: try decode__Optional_String_(xs[6]), size_bytes: try decode__Optional_Int64_(xs[7])) }
 private func decode_WindowUsage(_ v: RivetValue) throws -> WindowUsage { guard case .list(let xs) = v, xs.count == 2 else { throw RivetGeneratedError.typeMismatch("WindowUsage") }; return WindowUsage(used_bp: try decode__Optional_Int64_(xs[0]), reset_at_ms: try decode__Optional_Int64_(xs[1])) }
-private func decode__Optional_String_(_ v: RivetValue) throws -> String? { if case .null = v { return nil }; return try decode_String(v) }
 private func decode_BurnInfo(_ v: RivetValue) throws -> BurnInfo { guard case .list(let xs) = v, xs.count == 3 else { throw RivetGeneratedError.typeMismatch("BurnInfo") }; return BurnInfo(rate_bp_per_hour: try decode__Optional_Int64_(xs[0]), minutes_to_empty: try decode__Optional_Int64_(xs[1]), comparison: try decode__Optional_String_(xs[2])) }
 private func decode_HistorySample(_ v: RivetValue) throws -> HistorySample { guard case .list(let xs) = v, xs.count == 3 else { throw RivetGeneratedError.typeMismatch("HistorySample") }; return HistorySample(at_ms: try decode_Int64(xs[0]), hourly_bp: try decode__Optional_Int64_(xs[1]), weekly_bp: try decode__Optional_Int64_(xs[2])) }
 private func decode__List_HistorySample_(_ v: RivetValue) throws -> [HistorySample] { guard case .list(let xs) = v else { throw RivetGeneratedError.typeMismatch("(List HistorySample)") }; return try xs.map(decode_HistorySample) }
@@ -232,6 +271,7 @@ private func decode_Provider(_ v: RivetValue) throws -> Provider { guard case .s
 private func decode_Account(_ v: RivetValue) throws -> Account { guard case .list(let xs) = v, xs.count == 5 else { throw RivetGeneratedError.typeMismatch("Account") }; return Account(id: try decode_String(xs[0]), name: try decode_String(xs[1]), provider: try decode_Provider(xs[2]), base_domain: try decode_String(xs[3]), configured: try decode_Bool(xs[4])) }
 private func decode__List_Account_(_ v: RivetValue) throws -> [Account] { guard case .list(let xs) = v else { throw RivetGeneratedError.typeMismatch("(List Account)") }; return try xs.map(decode_Account) }
 private func decode_AccountDraft(_ v: RivetValue) throws -> AccountDraft { guard case .list(let xs) = v, xs.count == 6 else { throw RivetGeneratedError.typeMismatch("AccountDraft") }; return AccountDraft(id: try decode__Optional_String_(xs[0]), name: try decode_String(xs[1]), provider: try decode_Provider(xs[2]), base_domain: try decode_String(xs[3]), api_key: try decode__Optional_String_(xs[4]), clear_key: try decode_Bool(xs[5])) }
+private func decode_UpdateState(_ v: RivetValue) throws -> UpdateState { guard case .list(let xs) = v, xs.count == 5 else { throw RivetGeneratedError.typeMismatch("UpdateState") }; return UpdateState(phase: try decode_String(xs[0]), percent: try decode_Int64(xs[1]), message: try decode__Optional_String_(xs[2]), downloaded_path: try decode__Optional_String_(xs[3]), available_version: try decode__Optional_String_(xs[4])) }
 private func decode_Alert(_ v: RivetValue) throws -> Alert { guard case .list(let xs) = v, xs.count == 3 else { throw RivetGeneratedError.typeMismatch("Alert") }; return Alert(account_id: try decode_String(xs[0]), which: try decode_String(xs[1]), message: try decode_String(xs[2])) }
 private func decode_Severity(_ v: RivetValue) throws -> Severity { guard case .string(let x) = v, let result = Severity(rawValue: x) else { throw RivetGeneratedError.typeMismatch("Severity") }; return result }
 private func decode_FailureKind(_ v: RivetValue) throws -> FailureKind { guard case .string(let x) = v, let result = FailureKind(rawValue: x) else { throw RivetGeneratedError.typeMismatch("FailureKind") }; return result }
@@ -257,12 +297,20 @@ public struct RivetAPI: Sendable {
     public let client: RivetClient
     public init(client: RivetClient) { self.client = client }
 
+    public func check_updates() async throws -> UpdateCheck {
+        let result = try await client.call("check-updates", arguments: [])
+        return try decode_UpdateCheck(result)
+    }
     public func get_details(account_id: String) async throws -> Details {
         let result = try await client.call("get-details", arguments: [encode_String(account_id)])
         return try decode_Details(result)
     }
     public func get_diagnostics() async throws -> String {
         let result = try await client.call("get-diagnostics", arguments: [])
+        return try decode_String(result)
+    }
+    public func get_setting(key: String) async throws -> String {
+        let result = try await client.call("get-setting", arguments: [encode_String(key)])
         return try decode_String(result)
     }
     public func get_settings() async throws -> SettingsData {
@@ -289,9 +337,21 @@ public struct RivetAPI: Sendable {
         let result = try await client.call("save-settings", arguments: [encode_SettingsData(settings)])
         return try decode_SettingsData(result)
     }
+    public func set_setting(key: String, value: String) async throws -> Void {
+        let result = try await client.call("set-setting", arguments: [encode_String(key), encode_String(value)])
+        return try decode_Void(result)
+    }
+    public func start_download() async throws -> Void {
+        let result = try await client.call("start-download", arguments: [])
+        return try decode_Void(result)
+    }
     public func switch_account(id: String) async throws -> Void {
         let result = try await client.call("switch-account", arguments: [encode_String(id)])
         return try decode_Void(result)
+    }
+    public func update_state() async throws -> UpdateState {
+        let result = try await client.call("update-state", arguments: [])
+        return try decode_UpdateState(result)
     }
 
     // Shared state
