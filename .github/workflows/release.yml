@@ -18,7 +18,10 @@ env:
   # may track upstream main, but releases ship from a commit the hosts
   # are verified against. Floating releases broke three ways in one day
   # (linux native-installer deps, windows copy semantics, swift codegen).
-  RIVET_COMMIT: 2fcdd091ddd7fd157fa934ac6053cdf4f9ab6100
+  # 410fc7c is rivet 0.6.1 — the same commit taskly and fulcrum ship; it
+  # carries the linux-formats mechanism (deb/rpm/AppImage from
+  # `raco rivet release`, upstream 2b4388c) the 0.2.0 release adopts.
+  RIVET_COMMIT: 410fc7c6987cda5fcf4e4f795d1d4f7a90d4e0f6
 
 jobs:
   validate:
@@ -159,97 +162,83 @@ jobs:
           if-no-files-found: error
 
   linux:
-    name: Linux tar.gz
+    name: Linux (${{ matrix.arch }})
     needs: validate
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v4
+      # Build + cache the checksum-pinned embeddable Racket CS and export
+      # the RIVET_RACKET_* embedding variables (family pipeline, taskly).
+      - name: Set up embeddable Racket CS
+        uses: turinglambdaai/rivet/.github/actions/setup-embed-racket@410fc7c6987cda5fcf4e4f795d1d4f7a90d4e0f6
+      - name: Install crypto (rivet/distribution dependency) into the embeddable runtime
+        run: raco pkg install --auto --no-docs crypto
       - name: Checkout Rivet (pinned)
         uses: actions/checkout@v4
         with:
           repository: turinglambdaai/rivet
           ref: ${{ env.RIVET_COMMIT }}
           path: rivet
-      - name: Cache embedded Racket CS build
-        id: cache-racket-embed
-        uses: actions/cache@v4
-        with:
-          path: ${{ runner.temp }}/racket-embed
-          key: racket-embed-9.3-linux-v1
-          save-always: true
-      - name: Build full Racket CS 9.3 from pinned source
-        if: steps.cache-racket-embed.outputs.cache-hit != 'true'
-        run: |
-          set -euo pipefail
-          archive="$RUNNER_TEMP/racket-minimal-9.3-src-builtpkgs.tgz"
-          source_root="$RUNNER_TEMP/racket-9.3"
-          build_root="$RUNNER_TEMP/racket-embed-build"
-          embed_prefix="$RUNNER_TEMP/racket-embed"
-
-          curl --fail --location --retry 3 \
-            --output "$archive" \
-            https://download.racket-lang.org/releases/9.3/installers/racket-minimal-9.3-src-builtpkgs.tgz
-          echo "3a01324d559a15e3f1f58b0c57a92bb344dce534e72e564e0d8b75e3b9c65295  $archive" |
-            sha256sum --check
-          tar -xzf "$archive" -C "$RUNNER_TEMP"
-          mkdir -p "$build_root"
-          cd "$build_root"
-          "$source_root/src/configure" --prefix="$embed_prefix"
-          make -j2
-          make install
-      - name: Install GTK4 development files
+      - name: Link Rivet
+        run: raco pkg install --auto --no-docs --link "$GITHUB_WORKSPACE/rivet/rivet" "$GITHUB_WORKSPACE/rivet/rivet-cli"
+      # libglib2.0-dev provides glib-compile-schemas for the AppImage
+      # schema staging; rpm is the rpmbuild toolchain; desktop-file-utils
+      # is the desktop entry validator the AppImage preflight requires.
+      - name: Install GTK4, rpm and packaging tooling
         run: |
           sudo apt-get update
-          sudo apt-get install --yes libgtk-4-dev
-      - name: Link Rivet + provide raco ctool
-        run: |
-          echo "$RUNNER_TEMP/racket-embed/bin" >> "$GITHUB_PATH"
-          export PATH="$RUNNER_TEMP/racket-embed/bin:$PATH"
-          # crypto first: rivet's own setup compiles rivet/distribution.
-          raco pkg install --auto --no-docs crypto
-          raco pkg install --auto --no-docs --link "$GITHUB_WORKSPACE/rivet/rivet" "$GITHUB_WORKSPACE/rivet/rivet-cli"
-          # The minimal source build ships no cext-lib; raco ctool — which
-          # compiles the backend bundle — lives there.
-          raco pkg install --auto --no-docs cext-lib
-      - name: Version preflight (VERSION == rivet.rktd == tag)
+          sudo apt-get install --yes libgtk-4-dev libglib2.0-dev rpm desktop-file-utils
+      - name: Version preflight (VERSION == rivet.rktd == updater == tag)
         run: bash scripts/check-release-version.sh "${{ github.ref_name }}"
-      - name: Release tar.gz (launch smoke included; development-strength signing)
+      # tar.gz (the update-feed payload) + deb + rpm + AppImage, launch
+      # smoke included. The AppImage carries its own GTK4 dependency
+      # closure; APPIMAGE_EXTRACT_AND_RUN lets appimagetool run on the
+      # runner (development-strength signing, same as before).
+      - name: Release (tar.gz + deb + rpm + AppImage)
         env:
           # raco rivet release hard-requires the update environment to emit an
-          # installer. The app has no update client yet, so the manifest it
-          # produces is deleted below and never shipped — the tar.gz only.
+          # installer. The manifest produced here is deleted below and never
+          # shipped — the update feed is signed centrally in the publish job.
           RIVET_UPDATE_BASE_URL: https://github.com/turinglambdaai/brainfuel/releases/download/${{ github.ref_name }}
           RIVET_UPDATE_KEY_ID: brainfuel-2026-10
           RIVET_UPDATE_PRIVATE_KEY_B64: ${{ secrets.UPDATE_ED25519_PRIVATE_KEY_B64 }}
-          RIVET_RACKET_INCLUDE: ${{ runner.temp }}/racket-embed/include/racket
+          APPIMAGE_EXTRACT_AND_RUN: '1'
         run: |
           set -euo pipefail
-          export PATH="$RUNNER_TEMP/racket-embed/bin:$PATH"
-          racket_include="$RIVET_RACKET_INCLUDE"
-          racket_library="$(find "$RUNNER_TEMP/racket-embed" -name 'libracketcs*.a' -print -quit)"
-          petite_boot="$(find "$RUNNER_TEMP/racket-embed" -name petite.boot -print -quit)"
-          for artifact in "$racket_include" "$racket_library" "$petite_boot"; do
-            if [[ -z "$artifact" ]]; then
-              echo "embedded Racket CS artifact not found" >&2
-              exit 1
-            fi
-          done
-          export RIVET_RACKET_LIBRARY="$racket_library"
-          export RIVET_RACKET_BOOT_DIR="$(dirname "$petite_boot")"
-
           KEY_DER="$(mktemp -d)/update-ed25519-private.der"
           printf '%s' "$RIVET_UPDATE_PRIVATE_KEY_B64" | base64 -d > "$KEY_DER"
           export RIVET_UPDATE_PRIVATE_KEY="$KEY_DER"
           raco rivet release --development
           rm -f "$KEY_DER"
-          # rivet names the tar.gz brainfuel-<version>-linux-<arch>.tar.gz;
-          # verify rather than rename.
-          test -f "dist/brainfuel-${GITHUB_REF_NAME#v}-linux-x64.tar.gz"
+          # rivet names every linux artifact brainfuel-<version>-linux-<arch>
+          # with the arch spelled per ecosystem (tar.gz/AppImage-side x64 vs
+          # deb amd64 vs rpm x86_64, which embeds the build number); verify
+          # rather than rename. The rpm check is a glob: a no-match leaves
+          # the pattern literal and ls fails the step.
+          V="${GITHUB_REF_NAME#v}"
+          ARCH="${{ matrix.arch }}"
+          test -f "dist/brainfuel-${V}-linux-${ARCH}.tar.gz"
+          case "$ARCH" in
+            x64)   test -f "dist/brainfuel-${V}-linux-amd64.deb"
+                   ls dist/brainfuel-${V}-*-linux-x86_64.rpm > /dev/null
+                   test -f "dist/brainfuel-${V}-linux-x86_64.AppImage" ;;
+            arm64) test -f "dist/brainfuel-${V}-linux-arm64.deb"
+                   ls dist/brainfuel-${V}-*-linux-aarch64.rpm > /dev/null
+                   test -f "dist/brainfuel-${V}-linux-aarch64.AppImage" ;;
+          esac
           rm -f dist/update-*.json
       - uses: actions/upload-artifact@v4
         with:
-          name: linux
-          path: dist/brainfuel-*-linux-x64.tar.gz
+          name: linux-${{ matrix.arch }}
+          path: dist/brainfuel-*-linux-*
           if-no-files-found: error
 
   release:

@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-10
+
+### Added
+
+- Native Linux installers: `raco rivet release` now produces deb, rpm, and
+  AppImage beside the signed tar.gz on both x64 and arm64 (the release pin
+  moves to the family rivet 0.6.1 commit, which carries the linux-formats
+  mechanism). The deb installs `/opt/brainfuel` with a desktop entry and
+  pixmaps icon (`Depends: libgtk-4-1`); the rpm builds through rpmbuild
+  (`Requires: gtk4`); the AppImage bundles its own GTK4 dependency closure
+  with the 512 px icon (`shared/assets/brainfuel-icon-512.png`, extracted
+  from the icns) as the top-level AppDir icon. The tar.gz stays the
+  update-channel payload — Linux updates are unchanged.
+
 ## [0.1.0] - 2026-10-10
 
 ### Added

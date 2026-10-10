@@ -270,7 +270,9 @@
 ;; wire shape: (status error current-version available-version build
 ;;                 published-at installer size-bytes)
 (check-equal? (list-ref check 0) "error")
-(check-equal? (list-ref check 2) "0.1.0")
+;; The current-version slot rides on the updater's app-version constant, so
+;; release version bumps never touch this test.
+(check-equal? (list-ref check 2) app-version)
 (define update-state0 (call* "update-state"))
 ;; (phase percent message downloaded-path available-version)
 (check-equal? (list-ref update-state0 0) "error")

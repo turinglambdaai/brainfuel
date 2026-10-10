@@ -1,14 +1,15 @@
 #hasheq((name . "brainfuel")
         (display-name . "BrainFuel")
-        (version . "0.1.0")
-        (build . 1)
+        (version . "0.2.0")
+        (build . 2)
         (macos-icon . "shared/assets/brainfuel.icns")
         (identifier . "site.jrtx.brainfuel")
         (release-channel . stable)
-        ;; raco rivet release also builds native Linux installers by default
-        ;; (deb/rpm/appimage, upstream 2b4388c); BrainFuel ships the signed
-        ;; tar.gz only until those formats are adopted deliberately.
-        (linux-formats . ())
+        (linux-icon . "shared/assets/brainfuel-icon-512.png")
+        ;; Native Linux installers (deb installs /opt/brainfuel with a
+        ;; desktop entry, rpm builds via rpmbuild, AppImage carries its own
+        ;; GTK4 closure); the signed tar.gz stays the update-channel payload.
+        (linux-formats . ("deb" "rpm" "appimage"))
         (url-schemes . ())
         (file-associations . ())
         (macos-min-version . "14.0")
