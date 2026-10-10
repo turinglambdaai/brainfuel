@@ -46,7 +46,6 @@ Grab your build from
 | Windows x64 | `brainfuel-<version>-windows-x64.zip` | `brainfuel-<version>-windows-x64.msi` |
 | Linux x64 | `brainfuel-<version>-linux-x64.tar.gz` | `.deb` / `.rpm` / `.AppImage` |
 | Linux ARM64 | `brainfuel-<version>-linux-arm64.tar.gz` | `.deb` / `.rpm` / `.AppImage` |
-| Linux x64 | `brainfuel-<version>-linux-x64.tar.gz` | native packages planned |
 
 Every release carries a `SHA256SUMS` manifest over all assets.
 
