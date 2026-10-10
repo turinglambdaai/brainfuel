@@ -20,7 +20,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - uses: Bogdanp/setup-racket@v1.11
+      - uses: Bogdanp/setup-racket@v1.15
         with:
           version: stable
       - name: Install rivet (upstream main)
@@ -37,7 +37,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: Bogdanp/setup-racket@v1.11
+      - uses: Bogdanp/setup-racket@v1.15
         with:
           version: stable
       - name: Install rivet (upstream main)
@@ -104,7 +104,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: Bogdanp/setup-racket@v1.11
+      - uses: Bogdanp/setup-racket@v1.15
         with:
           version: stable
           architecture: x64
