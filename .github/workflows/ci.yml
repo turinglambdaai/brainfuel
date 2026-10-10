@@ -8,7 +8,7 @@ jobs:
     name: Release metadata (VERSION == rivet.rktd)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Verify release version alignment
         run: bash scripts/check-release-version.sh
 
@@ -19,7 +19,7 @@ jobs:
         os: [macos-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: Bogdanp/setup-racket@v1.11
         with:
           version: stable
@@ -36,7 +36,7 @@ jobs:
   linux-host:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: Bogdanp/setup-racket@v1.11
         with:
           version: stable
@@ -103,7 +103,7 @@ jobs:
   windows-host:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: Bogdanp/setup-racket@v1.11
         with:
           version: stable
