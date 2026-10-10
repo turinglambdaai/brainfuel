@@ -27,42 +27,6 @@ struct __declspec(uuid("EE3163B0-4986-44AC-8B2D-BB7C1D6935FF"))
 
 // ------------------------------------------------------------------ helpers
 
-std::filesystem::path executable_path() {
-  std::wstring buffer(32768, L'\0');
-  auto const length = ::GetModuleFileNameW(nullptr, buffer.data(),
-                                          static_cast<DWORD>(buffer.size()));
-  if (length == 0 || length == buffer.size()) {
-    throw std::runtime_error("GetModuleFileNameW failed");
-  }
-  buffer.resize(length);
-  return std::filesystem::path(buffer);
-}
-
-std::string utf8(std::filesystem::path const& path) {
-  auto const wide = path.wstring();
-  if (wide.empty()) {
-    return {};
-  }
-  auto const size = ::WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS,
-                                          wide.data(),
-                                          static_cast<int>(wide.size()),
-                                          nullptr, 0, nullptr, nullptr);
-  if (size <= 0) {
-    throw std::runtime_error("WideCharToMultiByte failed");
-  }
-  std::string result(static_cast<std::size_t>(size), '\0');
-  if (::WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS,
-                            wide.data(), static_cast<int>(wide.size()),
-                            result.data(), size, nullptr, nullptr) != size) {
-    throw std::runtime_error("WideCharToMultiByte failed");
-  }
-  return result;
-}
-
-std::wstring wide(std::string const& text) {
-  return winrt::to_hstring(text).c_str();
-}
-
 rivet::windows::RacketRuntimeConfig runtime_config() {
   auto const exe = executable_path();
   auto const root = exe.parent_path();
@@ -265,12 +229,51 @@ SettingsUi& settings_ui() {
 
 }  // namespace
 
+// Host helpers shared with MainWindow.Update.cpp (the family
+// HostHelpers pattern); declared in MainWindow.xaml.h.
+std::filesystem::path executable_path() {
+  std::wstring buffer(32768, L'\0');
+  auto const length = ::GetModuleFileNameW(nullptr, buffer.data(),
+                                          static_cast<DWORD>(buffer.size()));
+  if (length == 0 || length == buffer.size()) {
+    throw std::runtime_error("GetModuleFileNameW failed");
+  }
+  buffer.resize(length);
+  return std::filesystem::path(buffer);
+}
+
+std::string utf8(std::filesystem::path const& path) {
+  auto const wide = path.wstring();
+  if (wide.empty()) {
+    return {};
+  }
+  auto const size = ::WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS,
+                                          wide.data(),
+                                          static_cast<int>(wide.size()),
+                                          nullptr, 0, nullptr, nullptr);
+  if (size <= 0) {
+    throw std::runtime_error("WideCharToMultiByte failed");
+  }
+  std::string result(static_cast<std::size_t>(size), '\0');
+  if (::WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS,
+                            wide.data(), static_cast<int>(wide.size()),
+                            result.data(), size, nullptr, nullptr) != size) {
+    throw std::runtime_error("WideCharToMultiByte failed");
+  }
+  return result;
+}
+
+std::wstring wide(std::string const& text) {
+  return winrt::to_hstring(text).c_str();
+}
+
 // Progress/status copy for the update flow (MainWindow.Update.cpp), shown
 // on the settings window's software tab when it is open; dialogs carry
 // every terminal outcome either way.
 void SetUpdateStatus(std::wstring const& message) {
-  if (auto* status = settings_ui().software_status) {
-    status->Text(message);
+  auto const& status = settings_ui().software_status;
+  if (status) {
+    status.Text(message);
   }
 }
 

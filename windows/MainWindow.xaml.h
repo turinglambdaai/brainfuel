@@ -10,6 +10,13 @@
 
 namespace winrt::RivetHost::implementation {
 
+// Host helpers shared with MainWindow.Update.cpp (the family HostHelpers
+// pattern): executable path and UTF conversion. Defined in
+// MainWindow.xaml.cpp at namespace scope.
+std::filesystem::path executable_path();
+std::string utf8(std::filesystem::path const& path);
+std::wstring wide(std::string const& text);
+
 // Progress/status copy for the update flow, shown on the settings window's
 // software tab when it is open (defined in MainWindow.xaml.cpp, where the
 // settings control registry lives).

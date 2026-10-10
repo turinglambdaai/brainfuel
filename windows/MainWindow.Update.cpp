@@ -47,10 +47,12 @@ std::wstring lowercase(std::wstring text) {
   return text;
 }
 
-std::wstring t(char const* key) { return winrt::to_hstring(l10n::t(key)); }
+std::wstring t(char const* key) {
+  return winrt::to_hstring(l10n::t(key)).c_str();
+}
 
 std::wstring tf(char const* key, std::wstring const& arg0) {
-  return winrt::to_hstring(l10n::t(key, {winrt::to_string(arg0)}));
+  return winrt::to_hstring(l10n::t(key, {winrt::to_string(arg0)})).c_str();
 }
 
 // %TEMP%\brainfuel-update — handoff script, extract dir, and markers live

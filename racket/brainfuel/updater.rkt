@@ -71,8 +71,8 @@
 ;; Release identity duplicated from rivet.rktd. The packaged app cannot
 ;; read the project file at runtime, so the updater embeds these constants.
 ;; scripts/check-release-version.sh re-checks app-version against VERSION.
-(define app-version "1.2.0")
-(define app-build 4)
+(define app-version "0.1.0")
+(define app-build 1)
 (define app-identifier "site.jrtx.brainfuel")
 (define app-channel 'stable)
 (define app-display-name "BrainFuel")

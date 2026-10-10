@@ -270,7 +270,7 @@
 ;; wire shape: (status error current-version available-version build
 ;;                 published-at installer size-bytes)
 (check-equal? (list-ref check 0) "error")
-(check-equal? (list-ref check 2) "1.2.0")
+(check-equal? (list-ref check 2) "0.1.0")
 (define update-state0 (call* "update-state"))
 ;; (phase percent message downloaded-path available-version)
 (check-equal? (list-ref update-state0 0) "error")

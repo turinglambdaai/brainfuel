@@ -255,6 +255,6 @@
   (check-equal? app-channel 'stable)
   (check-equal? update-key-id "brainfuel-2026-10")
   (check-true (string? app-version))
-  (check-equal? app-build 4))
+  (check-equal? app-build 1))
 
 (set-update-data-dir-override! #f)
