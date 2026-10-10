@@ -28,7 +28,7 @@ jobs:
     name: Validate release tag
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Version preflight (VERSION == rivet.rktd == tag)
         run: bash scripts/check-release-version.sh "${{ github.ref_name }}"
       - name: Check CHANGELOG has a section for this version
@@ -51,9 +51,9 @@ jobs:
             runner: macos-15-intel
             racket-arch: x64
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Checkout Rivet (pinned)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: turinglambdaai/rivet
           ref: ${{ env.RIVET_COMMIT }}
@@ -95,9 +95,9 @@ jobs:
     needs: validate
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Checkout Rivet (pinned)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: turinglambdaai/rivet
           ref: ${{ env.RIVET_COMMIT }}
@@ -174,7 +174,7 @@ jobs:
           - arch: arm64
             runner: ubuntu-24.04-arm
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # Build + cache the checksum-pinned embeddable Racket CS and export
       # the RIVET_RACKET_* embedding variables (family pipeline, taskly).
       - name: Set up embeddable Racket CS
@@ -182,7 +182,7 @@ jobs:
       - name: Install crypto (rivet/distribution dependency) into the embeddable runtime
         run: raco pkg install --auto --no-docs crypto
       - name: Checkout Rivet (pinned)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: turinglambdaai/rivet
           ref: ${{ env.RIVET_COMMIT }}
@@ -250,7 +250,7 @@ jobs:
     needs: [macos, windows, linux]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Set up Racket CS
         uses: Bogdanp/setup-racket@v1.15
         with:
@@ -260,7 +260,7 @@ jobs:
       - name: Install crypto package (rivet/distribution dependency)
         run: raco pkg install --auto --no-docs crypto
       - name: Checkout + link Rivet (release pin; the manifest signer)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: turinglambdaai/rivet
           ref: ${{ env.RIVET_COMMIT }}
