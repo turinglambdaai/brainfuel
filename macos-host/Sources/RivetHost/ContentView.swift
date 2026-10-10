@@ -4,15 +4,15 @@ import AppKit
 // MARK: - settings copy helper
 // Generated records expose `let` fields; this builds an updated copy.
 
-extension SettingsData {
+extension RivetTypes.SettingsData {
     func with(size_mode: String? = nil, always_on_top: Bool? = nil,
               language: String? = nil, theme: String? = nil,
               ring_palette: String? = nil, card_opacity_bp: Int64? = nil,
               refresh_interval_minutes: Int64? = nil,
               hourly_remaining: Bool? = nil, weekly_remaining: Bool? = nil,
               notify_enabled: Bool? = nil, notify_threshold: Int64? = nil,
-              autostart: Bool? = nil) -> SettingsData {
-        SettingsData(
+              autostart: Bool? = nil) -> RivetTypes.SettingsData {
+        RivetTypes.SettingsData(
             refresh_interval_minutes: refresh_interval_minutes ?? self.refresh_interval_minutes,
             hourly_remaining: hourly_remaining ?? self.hourly_remaining,
             weekly_remaining: weekly_remaining ?? self.weekly_remaining,
@@ -83,7 +83,7 @@ func ringColors(paletteId: String) -> (Color, Color) {
     }
 }
 
-func severityColor(_ severity: Severity, calm: Color) -> Color {
+func severityColor(_ severity: RivetTypes.Severity, calm: Color) -> Color {
     switch severity {
     case .amber: return Color(red: 0xF5 / 255, green: 0xA6 / 255, blue: 0x23 / 255)
     case .red: return Color(red: 0xE5 / 255, green: 0x48 / 255, blue: 0x4D / 255)
@@ -285,7 +285,7 @@ private struct StandardCardView: View {
 }
 
 private struct UsageRingsView: View {
-    let snapshot: QuotaSnapshot?
+    let snapshot: RivetTypes.QuotaSnapshot?
     let paletteId: String
 
     var body: some View {
@@ -320,8 +320,8 @@ private struct UsageRingsView: View {
 
 private struct UsageChip: View {
     let title: String
-    let usage: WindowUsage?
-    let severity: Severity
+    let usage: RivetTypes.WindowUsage?
+    let severity: RivetTypes.Severity
     let showRemaining: Bool
     let hourly: Bool
     let palette: CardPalette
@@ -413,7 +413,7 @@ private struct MiniCardView: View {
 
 private struct DetailsPopover: View {
     @EnvironmentObject var model: BrainFuelModel
-    @State private var details: Details?
+    @State private var details: RivetTypes.Details?
     @State private var loadError: String?
 
     var body: some View {
@@ -454,9 +454,9 @@ private struct DetailsPopover: View {
 
 private struct WindowDetailRow: View {
     let title: String
-    let usage: WindowUsage
-    let burn: BurnInfo
-    let samples: [HistorySample]
+    let usage: RivetTypes.WindowUsage
+    let burn: RivetTypes.BurnInfo
+    let samples: [RivetTypes.HistorySample]
     let hourly: Bool
     let palette: CardPalette
 
@@ -512,7 +512,7 @@ private struct WindowDetailRow: View {
 /// Solid line: samples inside the current period window; dashed: the same
 /// window one period earlier (yesterday / last week).
 private struct HistoryGraph: View {
-    let samples: [HistorySample]
+    let samples: [RivetTypes.HistorySample]
     let hourly: Bool
     let palette: CardPalette
 
@@ -554,13 +554,13 @@ private struct HistoryGraph: View {
         ringColors(paletteId: "classic").0
     }
 
-    private func value(_ s: HistorySample) -> Double? {
+    private func value(_ s: RivetTypes.HistorySample) -> Double? {
         let bp = hourly ? s.hourly_bp : s.weekly_bp
         guard let bp else { return nil }
         return Double(bp) / 10_000.0
     }
 
-    private func addLine(to path: inout Path, samples: [HistorySample], window: Int64,
+    private func addLine(to path: inout Path, samples: [RivetTypes.HistorySample], window: Int64,
                          anchor: Int64, size: CGSize) {
         let points: [CGPoint] = samples.compactMap { s in
             guard let v = value(s) else { return nil }

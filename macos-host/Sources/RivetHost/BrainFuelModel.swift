@@ -29,8 +29,8 @@ final class BrainFuelModel: ObservableObject {
             model?.receive(event)
         }
 
-        func ready(accounts: [Account], activeId: String,
-                   snapshot: QuotaSnapshot?, settings: SettingsData) {
+        func ready(accounts: [RivetTypes.Account], activeId: String,
+                   snapshot: RivetTypes.QuotaSnapshot?, settings: RivetTypes.SettingsData) {
             model?.bootstrap(accounts: accounts, activeId: activeId,
                              snapshot: snapshot, settings: settings)
         }
@@ -44,10 +44,10 @@ final class BrainFuelModel: ObservableObject {
 
     @Published var ready = false
     @Published var status = ""
-    @Published var accounts: [Account] = []
+    @Published var accounts: [RivetTypes.Account] = []
     @Published var activeAccountId = ""
-    @Published var snapshot: QuotaSnapshot?
-    @Published var settings = SettingsData(
+    @Published var snapshot: RivetTypes.QuotaSnapshot?
+    @Published var settings = RivetTypes.SettingsData(
         refresh_interval_minutes: 5, hourly_remaining: true, weekly_remaining: false,
         notify_enabled: true, notify_threshold: 80, theme: "dark", language: "zh",
         size_mode: "standard", always_on_top: false, autostart: false,
@@ -77,7 +77,7 @@ final class BrainFuelModel: ObservableObject {
 
     private var backend: EmbeddedRacketBackend?
 
-    var activeAccount: Account? {
+    var activeAccount: RivetTypes.Account? {
         accounts.first { $0.id == activeAccountId }
     }
 
@@ -107,9 +107,9 @@ final class BrainFuelModel: ObservableObject {
                     let api = RivetAPI(client: backend.client)
                     // initialize starts the backend refresh scheduler.
                     try await api.initialize()
-                    async let accounts = api.getAccounts()
-                    async let active = api.getActive_account_id()
-                    async let snapshot = api.getSnapshot()
+                    async let accounts = api.get_accounts()
+                    async let active = api.get_active_account_id()
+                    async let snapshot = api.get_snapshot()
                     async let settings = api.get_settings()
                     let (a, id, s, cfg) = try await (accounts, active, snapshot, settings)
                     await relay.ready(accounts: a, activeId: id, snapshot: s, settings: cfg)
@@ -122,8 +122,8 @@ final class BrainFuelModel: ObservableObject {
         }
     }
 
-    private func bootstrap(accounts: [Account], activeId: String,
-                           snapshot: QuotaSnapshot?, settings: SettingsData) {
+    private func bootstrap(accounts: [RivetTypes.Account], activeId: String,
+                           snapshot: RivetTypes.QuotaSnapshot?, settings: RivetTypes.SettingsData) {
         self.accounts = accounts
         self.activeAccountId = activeId
         self.snapshot = snapshot
@@ -303,11 +303,11 @@ final class BrainFuelModel: ObservableObject {
             let api = RivetAPI(client: backend.client)
             try? await api.switch_account(id: id)
             activeAccountId = id
-            snapshot = try? await api.getSnapshot()
+            snapshot = try? await api.get_snapshot()
         }
     }
 
-    func saveAccount(_ draft: AccountDraft) async throws {
+    func saveAccount(_ draft: RivetTypes.AccountDraft) async throws {
         guard let backend else { return }
         let api = RivetAPI(client: backend.client)
         accounts = try await api.save_account(draft: draft)
@@ -323,7 +323,7 @@ final class BrainFuelModel: ObservableObject {
         if !accounts.contains(where: { $0.id == activeAccountId }) {
             if let first = accounts.first {
                 activeAccountId = first.id
-                snapshot = try? await api.getSnapshot()
+                snapshot = try? await api.get_snapshot()
             } else {
                 activeAccountId = ""
                 snapshot = nil
@@ -331,7 +331,7 @@ final class BrainFuelModel: ObservableObject {
         }
     }
 
-    func saveSettings(_ cfg: SettingsData) {
+    func saveSettings(_ cfg: RivetTypes.SettingsData) {
         guard let backend, ready else { return }
         let previous = settings
         settings = cfg
@@ -354,7 +354,7 @@ final class BrainFuelModel: ObservableObject {
         }
     }
 
-    func details() async throws -> Details? {
+    func details() async throws -> RivetTypes.Details? {
         guard let backend, ready else { return nil }
         return try await RivetAPI(client: backend.client)
             .get_details(account_id: activeAccountId)

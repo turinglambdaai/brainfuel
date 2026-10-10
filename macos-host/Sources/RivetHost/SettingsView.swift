@@ -224,29 +224,29 @@ private struct AccountTab: View {
         .padding(14)
     }
 
-    private func display(_ account: Account) -> String {
+    private func display(_ account: RivetTypes.Account) -> String {
         let label = account.name.isEmpty ? account.base_domain : account.name
         return account.configured ? label : "\(label) · \(L10n.t("NotConfigured"))"
     }
 
     private func saveAccount() {
         busy = true
-        let draft: AccountDraft
+        let draft: RivetTypes.AccountDraft
         switch platform {
         case "codex":
-            draft = AccountDraft(id: nil, name: name, provider: .codex,
+            draft = RivetTypes.AccountDraft(id: nil, name: name, provider: .codex,
                                  base_domain: "https://chatgpt.com",
                                  api_key: nil, clear_key: false)
         case "claude":
-            draft = AccountDraft(id: nil, name: name, provider: .claude,
+            draft = RivetTypes.AccountDraft(id: nil, name: name, provider: .claude,
                                  base_domain: "https://api.anthropic.com",
                                  api_key: nil, clear_key: false)
         case "intl":
-            draft = AccountDraft(id: nil, name: name, provider: .glm,
+            draft = RivetTypes.AccountDraft(id: nil, name: name, provider: .glm,
                                  base_domain: "https://api.z.ai",
                                  api_key: apiKey, clear_key: false)
         default:
-            draft = AccountDraft(id: nil, name: name, provider: .glm,
+            draft = RivetTypes.AccountDraft(id: nil, name: name, provider: .glm,
                                  base_domain: "https://open.bigmodel.cn",
                                  api_key: apiKey, clear_key: false)
         }
